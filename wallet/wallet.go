@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"regexp"
+	"rpcClient"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,7 +30,7 @@ type EOA struct {
 	signerMutex   *sync.Mutex
 }
 
-func InitializeEOA() {
+func initializeEOA() {
 
 	wallet := os.Getenv("WALLET_ADDRESS")
 	wallet, err := toChecksumAddress(wallet)
