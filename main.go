@@ -16,4 +16,5 @@ func main() {
 	limitOrders.Initialize()
 
 	//start listening for price changes
+
 }
