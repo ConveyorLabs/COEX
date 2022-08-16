@@ -30,6 +30,6 @@ func decrementGasCreditBalance(address common.Address, amount *big.Int) {
 //functions to alter the internal data structures
 func addOrderToActiveOrders() {}
 
-func removeOrderToActiveOrders() {}
+func removeOrderFromActiveOrders() {}
 
 func updateActiveOrder() {}

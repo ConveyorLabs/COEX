@@ -10,7 +10,14 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-func listenForContractEvents() {
+var placeOrderEventSignature = common.HexToHash("")
+var cancelOrderEventSignature = common.HexToHash("")
+var updateOrderEventSignature = common.HexToHash("")
+var gasCreditEventSignature = common.HexToHash("")
+var orderRefreshEventSignature = common.HexToHash("")
+var syncEventSignature = common.HexToHash("")
+
+func ListenForEventLogs() {
 
 	//create a channel to handle incoming events
 	eventLogChannel := make(chan types.Log)
@@ -22,7 +29,7 @@ func listenForContractEvents() {
 		Topics:  [][]common.Hash{
 			//add sync events to update price
 
-			//add conveyor contract events (place order, update order, cancel order, gas credit events, ect)
+			//add conveyor contract events (place order, update order, cancel order, gas credit events, order refresh events ect)
 
 		},
 	}
@@ -35,8 +42,26 @@ func listenForContractEvents() {
 
 	for {
 		eventLog := <-eventLogChannel
-		fmt.Println(eventLog)
 
+		switch eventLog.Topics[0] {
+		case placeOrderEventSignature:
+			addOrderToActiveOrders()
+		case cancelOrderEventSignature:
+			removeOrderFromActiveOrders()
+		case updateOrderEventSignature:
+			updateActiveOrder()
+		case gasCreditEventSignature:
+			//increment or decrement gas balance
+			// incrementGasCreditBalance()
+			// decrementGasCreditBalance()
+		case orderRefreshEventSignature:
+			//refresh order
+
+		case syncEventSignature:
+			//update prices
+			//check if execution prices are met and handle from there
+
+		}
 	}
 
 }

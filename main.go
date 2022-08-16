@@ -15,6 +15,7 @@ func main() {
 	wallet.Initialize()
 	limitOrders.Initialize()
 
-	//start listening for price changes
+	//start listening for events
+	limitOrders.ListenForEventLogs()
 
 }

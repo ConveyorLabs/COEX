@@ -13,11 +13,6 @@ import (
 var WSClient *ethclient.Client
 var HTTPClient *ethclient.Client
 
-func Initialize(httpUrl string, websocketURL string) {
-	initializeHTTPClient(httpUrl)
-	initializeWSClient(websocketURL)
-}
-
 func initializeHTTPClient(httpUrl string) {
 	httpClient, err := ethclient.Dial(httpUrl)
 	if err != nil {
