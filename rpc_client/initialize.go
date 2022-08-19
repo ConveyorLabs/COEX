@@ -1,6 +1,9 @@
 package rpcClient
 
+import "beacon/config"
+
 func Initialize(httpUrl string, websocketURL string) {
-	initializeHTTPClient(httpUrl)
-	initializeWSClient(websocketURL)
+
+	initializeHTTPClient(config.Configuration.NodeHttpEndpoint)
+	initializeWSClient(config.Configuration.NodeWebsocketsEndpoint)
 }

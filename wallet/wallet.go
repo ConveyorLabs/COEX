@@ -1,13 +1,13 @@
 package wallet
 
 import (
+	rpcClient "beacon/rpc_client"
 	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"os"
 	"regexp"
-	"rpcClient"
 	"strconv"
 	"strings"
 	"sync"

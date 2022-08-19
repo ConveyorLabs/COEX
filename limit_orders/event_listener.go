@@ -1,9 +1,9 @@
 package limitOrders
 
 import (
+	rpcClient "beacon/rpc_client"
 	"context"
 	"fmt"
-	"rpcClient"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
