@@ -13,11 +13,6 @@ import (
 var WSClient *ethclient.Client
 var HTTPClient *ethclient.Client
 
-func Initialize(httpUrl string, websocketURL string) {
-	initializeHTTPClient(httpUrl)
-	initializeWSClient(websocketURL)
-}
-
 func initializeHTTPClient(httpUrl string) {
 	httpClient, err := ethclient.Dial(httpUrl)
 	if err != nil {
@@ -34,7 +29,7 @@ func initializeWSClient(websocketURL string) {
 	WSClient = wsClient
 }
 
-func CallContract(ABI *abi.ABI, to *common.Address, method string, args ...interface{}) ([]interface{}, error) {
+func Call(ABI *abi.ABI, to *common.Address, method string, args ...interface{}) ([]interface{}, error) {
 	callData, err := ABI.Pack(method, args...)
 	if err != nil {
 		println("error when constructing calldata:", err)

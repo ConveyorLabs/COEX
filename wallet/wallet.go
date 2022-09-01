@@ -1,8 +1,12 @@
 package wallet
 
 import (
+	"beacon/config"
+	rpcClient "beacon/rpc_client"
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -10,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -17,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fatih/color"
 	"golang.org/x/crypto/sha3"
+	"golang.org/x/term"
 )
 
 var Wallet EOA
@@ -29,23 +35,22 @@ type EOA struct {
 	signerMutex   *sync.Mutex
 }
 
-func InitializeEOA() {
+func initializeEOA() {
 
-	wallet := os.Getenv("WALLET_ADDRESS")
+	wallet := config.Configuration.WalletAddress
 	wallet, err := toChecksumAddress(wallet)
-
-	private_key := os.Getenv("PRIVATE_KEY")
-
-	pk := initializePrivateKey(wallet, private_key)
-
 	if err != nil {
-		panic("To checksumAddress failed, use a correct PublicKey")
+		panic("Issue when checksumming the provided wallet address...")
 	}
 
-	chainId := os.Getenv("CHAIN_ID")
+	privateKey := config.Configuration.PrivateKey
+
+	pk := initializePrivateKey(wallet, privateKey)
+
+	chainId := config.Configuration.ChainID
 
 	newBigInt := new(big.Int)
-	chainIdBigInt, ok := newBigInt.SetString(chainId, 0)
+	chainIdBigInt, ok := newBigInt.SetString(fmt.Sprint(chainId), 0)
 
 	if !ok {
 		fmt.Println("Error when converting string to big int during chainId initialization")
@@ -77,29 +82,47 @@ func InitializeEOA() {
 
 }
 
-//Initialize a new private key and wipe the input after usage
+// Initialize a new private key and wipe the input after usage
 func initializePrivateKey(walletChecksumAddress string, privateKey string) *ecdsa.PrivateKey {
 	//Initialize a key variable
 	var walletKey *ecdsa.PrivateKey
 
-	if privateKey[:2] == "0x" {
-		privateKey = privateKey[2:]
-	}
+	if privateKey != "debug" {
 
-	ecdsaPrivateKey, err := crypto.HexToECDSA(privateKey)
+		if privateKey == "" {
 
-	if err != nil {
-		errString := fmt.Sprintf("Incorrect or invalid private key for %s. Please check your wallet address/private key and try again.\n", walletChecksumAddress)
-		panic(errString)
-	} else {
-		//Set user wallet private key
-		walletKey = ecdsaPrivateKey
+			privateKeyBytes := inputPrivateKey("Input your private key: ")
+			bytesToECDSA(privateKeyBytes)
+			ecdsaPrivateKey, err := crypto.HexToECDSA(privateKey)
+
+			if err != nil {
+				panic(fmt.Sprintf("Incorrect or invalid private key for %s. Please check your wallet address/private key and try again.\n", walletChecksumAddress))
+			} else {
+				//Set user wallet private key
+				walletKey = ecdsaPrivateKey
+			}
+
+		} else {
+
+			if privateKey[:2] == "0x" {
+				privateKey = privateKey[2:]
+			}
+
+			ecdsaPrivateKey, err := crypto.HexToECDSA(privateKey)
+
+			if err != nil {
+				panic(fmt.Sprintf("Incorrect or invalid private key for %s. Please check your wallet address/private key and try again.\n", walletChecksumAddress))
+			} else {
+				//Set user wallet private key
+				walletKey = ecdsaPrivateKey
+			}
+		}
 	}
 	// Return the wallet key
 	return walletKey
 }
 
-//Convert a hex address to checksum address
+// Convert a hex address to checksum address
 func toChecksumAddress(address string) (string, error) {
 
 	//Check that the address is a valid Ethereum address
@@ -209,4 +232,54 @@ func WaitForTransactionToComplete(txHash common.Hash) *types.Transaction {
 
 		time.Sleep(time.Second * time.Duration(1))
 	}
+}
+
+// Prompt the user for a terminal input while obscuring the input and return the value as bytes
+// This allows for the input to be "zeroed", wiping the input
+func inputPrivateKey(message string) []byte {
+
+	//Display the message prompt
+	fmt.Print(message)
+
+	//Wait for the user input, text is obscured while entering the input and returned as bytes
+	privateKeyBytes, err := term.ReadPassword(int(syscall.Stdin))
+
+	if err != nil {
+		panic("Error when entering private key")
+	}
+
+	//Trim the 0x from the private key and format the byte slice
+	trimmedPrivateKeyBytes := []byte{}
+	for i := 0; i < 64; i++ {
+		trimmedPrivateKeyBytes = append(trimmedPrivateKeyBytes, privateKeyBytes[len(privateKeyBytes)-(i+1)])
+	}
+	for i, j := 0, len(trimmedPrivateKeyBytes)-1; i < j; i, j = i+1, j-1 {
+		trimmedPrivateKeyBytes[i], trimmedPrivateKeyBytes[j] = trimmedPrivateKeyBytes[j], trimmedPrivateKeyBytes[i]
+	}
+
+	//Zero the byte slice containing the private key
+	for i := range privateKeyBytes {
+		privateKeyBytes[i] = 0
+	}
+
+	//Return the input as bytes
+	return trimmedPrivateKeyBytes
+}
+
+// Parses private key bytes to an ECDSA Key
+func bytesToECDSA(byteSlice []byte) (*ecdsa.PrivateKey, error) {
+
+	//Decode the private key bytes
+	n, err := hex.Decode(byteSlice, byteSlice)
+	b := byteSlice[:n]
+
+	//Check the byte slice for invalid characters
+	if byteErr, ok := err.(hex.InvalidByteError); ok {
+		return nil, fmt.Errorf("invalid hex character %q in private key", byte(byteErr))
+	} else if err != nil {
+		return nil, errors.New("invalid hex data for private key")
+	}
+
+	//Return an ECDSA key
+	return crypto.ToECDSA(b)
 }
