@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 	"strings"
 
@@ -13,26 +14,28 @@ import (
 var Configuration Config
 
 type Config struct {
-	ChainName                 string
-	ChainID                   uint32
-	NativeToken               string
-	WrappedNativeTokenAddress common.Address
-	USDPeggedTokenAddress     common.Address
-	NodeHttpEndpoint          string
-	NodeWebsocketsEndpoint    string
-	WalletAddress             string
-	PrivateKey                string
-	LimitOrderRouterAddress   common.Address
+	ChainName                     string
+	ChainID                       uint32
+	NativeToken                   string
+	WrappedNativeTokenAddress     common.Address
+	USDPeggedTokenAddress         common.Address
+	NodeHttpEndpoint              string
+	NodeWebsocketsEndpoint        string
+	WalletAddress                 string
+	PrivateKey                    string
+	LimitOrderRouterAddress       common.Address
+	LimitOrderRouterCreationBlock *big.Int
 }
 
 func initializeConfig() {
 	var conf Config
 
 	//Read in the config toml file
-	tomlBytes, err := os.ReadFile("file.txt")
+	tomlBytes, err := os.ReadFile("config/config.toml")
 	if err != nil {
-		fmt.Print(err)
+		panic(fmt.Sprintf("Error when reading the config.toml %s", err))
 	}
+
 	tomlString := string(tomlBytes)
 
 	//Decode the toml file
@@ -69,8 +72,8 @@ func initializeChain(configuration *Config) {
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
-		//TODO:
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 
 	} else if chainName == "polygon" {
 		configuration.ChainID = 137
@@ -78,6 +81,8 @@ func initializeChain(configuration *Config) {
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270")
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
+		configuration.LimitOrderRouterAddress = common.HexToAddress("")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 
 	} else if chainName == "optimism" {
 		configuration.ChainID = 10
@@ -86,6 +91,7 @@ func initializeChain(configuration *Config) {
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 
 	} else if chainName == "arbitrum" {
 		configuration.ChainID = 42161
@@ -94,6 +100,7 @@ func initializeChain(configuration *Config) {
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 
 	} else if chainName == "bsc" {
 		configuration.ChainID = 56
@@ -102,6 +109,7 @@ func initializeChain(configuration *Config) {
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 
 	} else if chainName == "cronos" {
 		configuration.ChainID = 25
@@ -110,6 +118,7 @@ func initializeChain(configuration *Config) {
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 
 	} else if chainName == "goerli" {
 		configuration.ChainID = 5
@@ -117,6 +126,8 @@ func initializeChain(configuration *Config) {
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6")
 		configuration.USDPeggedTokenAddress = common.HexToAddress("0x2f3A40A3db8a7e3D09B0adfEfbCe4f6F81927557")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("0x154b7A7B3F78d0434751a6c99eA26C59952abBE2")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(7504948)
+
 	} else {
 		log.Fatal("Unrecognized chain name")
 	}

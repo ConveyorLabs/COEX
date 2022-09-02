@@ -5,6 +5,7 @@ import (
 	limitOrders "beacon/limit_orders"
 	rpcClient "beacon/rpc_client"
 	"beacon/wallet"
+	"log"
 	"sync"
 )
 
@@ -14,11 +15,16 @@ func main() {
 	wg.Add(1)
 
 	//Initalize packages
+	log.Println("Initializing configuration...")
 	config.Initialize()
+	log.Println("Initializing RPC client...")
 	rpcClient.Initialize()
+	log.Println("Initializing signer...")
 	wallet.Initialize()
+	log.Println("Initializing limit orders...")
 	limitOrders.Initialize()
 
+	log.Println("Listening for event logs...")
 	//Start listening for events
 	limitOrders.ListenForEventLogs()
 
