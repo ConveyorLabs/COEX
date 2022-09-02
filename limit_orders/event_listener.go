@@ -20,7 +20,7 @@ var syncEventSignature = common.HexToHash("")
 func ListenForEventLogs() {
 
 	//create a channel to handle incoming events
-	eventLogChannel := make(chan types.Log)
+	blockHeaderChannel := make(chan *types.Header)
 
 	//create a topic filter
 
@@ -35,33 +35,50 @@ func ListenForEventLogs() {
 	}
 
 	//subscribe to block headers
-	_, err := rpcClient.WSClient.SubscribeFilterLogs(context.Background(), eventLogsFilter, eventLogChannel)
+	_, err := rpcClient.WSClient.SubscribeNewHead(context.Background(), blockHeaderChannel)
 	if err != nil {
 		fmt.Println("Error when subscribing to block headers", err)
 	}
 
 	for {
-		eventLog := <-eventLogChannel
 
-		//Handle the event log signature
-		switch eventLog.Topics[0] {
+		<-blockHeaderChannel
 
-		case placeOrderEventSignature:
-			addOrderToOrderBook(eventLog.Topics[1])
-		case cancelOrderEventSignature:
-			removeOrderFromOrderBook(eventLog.Topics[1])
-		case updateOrderEventSignature:
-			updateOrderInOrderBook(eventLog.Topics[1])
-		case gasCreditEventSignature:
+		eventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), eventLogsFilter)
+
+		if err != nil {
+			//TODO: handle the error
+		}
+
+		syncLogs := []types.Log{}
+
+		//Handle logs from limit order router first
+		for _, eventLog := range eventLogs {
+			//Handle the event log signature
+			switch eventLog.Topics[0] {
+
+			case placeOrderEventSignature:
+				addOrderToOrderBook(eventLog.Topics[1])
+			case cancelOrderEventSignature:
+				removeOrderFromOrderBook(eventLog.Topics[1])
+			case updateOrderEventSignature:
+				updateOrderInOrderBook(eventLog.Topics[1])
+			case gasCreditEventSignature:
 			//increment or decrement gas balance
-			// incrementGasCreditBalance()
-			// decrementGasCreditBalance()
-		case orderRefreshEventSignature:
-			//refresh order
-			refreshOrder(eventLog.Topics[1])
-		case syncEventSignature:
+			case orderRefreshEventSignature:
+				//refresh order
+				refreshOrder(eventLog.Topics[1])
+			case syncEventSignature:
+				syncLogs = append(syncLogs, eventLog)
+
+			}
+		}
+
+		//Handle sync log events
+		for _, syncLog := range syncLogs {
 			//update prices
 			//check if execution prices are met and handle from there
+			fmt.Println(syncLog)
 
 		}
 	}

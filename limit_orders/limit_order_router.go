@@ -13,8 +13,11 @@ import (
 
 var LimitOrderRouterABI *abi.ABI
 var ActiveOrders = make(map[common.Hash]*LimitOrder)
-
 var GasCreditBalances = make(map[common.Address]*big.Int)
+
+// Hash TokenIn and TokenOut for the key. Values are a map of prices to order Ids.
+var ExecutionPrices = make(map[common.Hash]map[float32][]common.Hash)
+var SortedExecutionPricesKeys = []float32{}
 
 func initializeLimitOrderRouterABI() {
 	file, err := os.Open("./limit_order_router_abi.json")
@@ -103,9 +106,7 @@ func updateOrderInOrderBook(orderId common.Hash) {
 	addOrderToOrderBook(orderId)
 }
 
-func refreshOrder(orderId common.Hash) {
-
-}
+func refreshOrder(orderId common.Hash) {}
 
 func simulate_execute_orders() {}
 
