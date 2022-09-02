@@ -3,10 +3,14 @@ package limitOrders
 import (
 	"beacon/config"
 	rpcClient "beacon/rpc_client"
+	"context"
 	"fmt"
+	"math/big"
 	"os"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func Initialize() {
@@ -45,14 +49,45 @@ func initializeGasCreditBalances() {
 
 func initializeActiveOrders() {
 
-	activeOrders, err := rpcClient.Call(LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "orderIdToOrder")
+	latestBlock, err := rpcClient.HTTPClient.BlockNumber(context.Background())
 
+	//TODO: handle error
 	if err != nil {
-		//Panic because the program can not function if the active orders can not be retrieved
-		panic("Issue fetching active orders...")
+		fmt.Println(err)
 	}
 
-	//TODO:
-	fmt.Println(activeOrders...)
+	currentBlockBigInt := big.NewInt(int64(latestBlock))
+	blockIncrement := big.NewInt(100000)
+
+	for i := config.Configuration.LimitOrderRouterCreationBlock; i.Cmp(currentBlockBigInt) < 0; i.Add(i, blockIncrement) {
+
+		toBlock := big.NewInt(0).Add(i, blockIncrement)
+
+		query := ethereum.FilterQuery{
+			FromBlock: i,
+			ToBlock:   toBlock,
+			Addresses: []common.Address{config.Configuration.LimitOrderRouterAddress},
+			Topics:    [][]common.Hash{{LimitOrderRouterABI.Events["OrderPlaced"].ID}},
+		}
+
+		logs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), query)
+		if err != nil {
+			//TODO: handle errors
+			panic(err)
+		}
+
+		for _, log := range logs {
+
+			orderId := log.Topics[1]
+
+			fmt.Println(orderId.Hex())
+
+			order := getRemoteOrderById(orderId)
+
+			//TODO: handle this
+			fmt.Println(order)
+
+		}
+	}
 
 }

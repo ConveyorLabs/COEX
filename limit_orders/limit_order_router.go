@@ -5,6 +5,7 @@ import (
 	rpcClient "beacon/rpc_client"
 	"fmt"
 	"math/big"
+	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -37,6 +38,7 @@ func getRemoteOrderById(orderId common.Hash) LimitOrder {
 
 	//TODO:
 	fmt.Println(order)
+	os.Exit(1)
 
 	return LimitOrder{}
 }
