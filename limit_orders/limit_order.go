@@ -17,3 +17,7 @@ type LimitOrder struct {
 	tokenIn              common.Address
 	tokenOut             common.Address
 }
+
+type OrderBookEventData struct {
+	orderIds []common.Hash
+}

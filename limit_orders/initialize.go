@@ -70,24 +70,23 @@ func initializeActiveOrders() {
 			Topics:    [][]common.Hash{{LimitOrderRouterABI.Events["OrderPlaced"].ID}},
 		}
 
-		logs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), query)
+		eventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), query)
 		if err != nil {
 			//TODO: handle errors
 			panic(err)
 		}
 
-		for _, log := range logs {
+		for _, eventLog := range eventLogs {
 
-			orderId := log.Topics[1]
-
-			fmt.Println(orderId.Hex())
-
-			order := getRemoteOrderById(orderId)
+			orderIds := parseOrderIdsFromEventData(eventLog.Data)
 
 			//TODO: handle this
-			fmt.Println(order)
+
+			fmt.Println(orderIds)
 
 		}
 	}
+
+	os.Exit(99)
 
 }

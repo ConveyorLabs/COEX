@@ -125,8 +125,8 @@ func initializeChain(configuration *Config) {
 		configuration.NativeToken = "ETH"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6")
 		configuration.USDPeggedTokenAddress = common.HexToAddress("0x2f3A40A3db8a7e3D09B0adfEfbCe4f6F81927557")
-		configuration.LimitOrderRouterAddress = common.HexToAddress("0x154b7A7B3F78d0434751a6c99eA26C59952abBE2")
-		configuration.LimitOrderRouterCreationBlock = big.NewInt(7504948)
+		configuration.LimitOrderRouterAddress = common.HexToAddress("0x5dB0654E443d7e542932519Cec53C1c2B34B1554")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(7543328)
 
 	} else {
 		log.Fatal("Unrecognized chain name")
