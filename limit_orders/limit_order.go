@@ -14,6 +14,6 @@ type LimitOrder struct {
 	price                *big.Int
 	amountOutMin         *big.Int
 	quantity             *big.Int
-	tokenIn              common.Address
-	tokenOut             common.Address
+	tokenIn              *common.Address
+	tokenOut             *common.Address
 }

@@ -77,16 +77,10 @@ func initializeActiveOrders() {
 		}
 
 		for _, eventLog := range eventLogs {
-
 			orderIds := parseOrderIdsFromEventData(eventLog.Data)
-
-			//TODO: handle this
-
-			fmt.Println(orderIds)
+			addOrderToOrderBook(orderIds)
 
 		}
 	}
-
-	os.Exit(99)
 
 }

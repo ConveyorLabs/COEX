@@ -5,7 +5,6 @@ import (
 	rpcClient "beacon/rpc_client"
 	"fmt"
 	"math/big"
-	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -36,11 +35,17 @@ func getRemoteOrderById(orderId common.Hash) LimitOrder {
 		//TODO: handle error
 	}
 
-	//TODO:
-	fmt.Println(order)
-	os.Exit(1)
-
-	return LimitOrder{}
+	return LimitOrder{
+		buy:                  order[0].(bool),
+		taxed:                order[1].(bool),
+		lastRefreshTimestamp: order[2].(uint32),
+		expirationTimestamp:  order[3].(uint32),
+		price:                order[7].(*big.Int),
+		amountOutMin:         order[8].(*big.Int),
+		quantity:             order[9].(*big.Int),
+		tokenIn:              order[11].(*common.Address),
+		tokenOut:             order[12].(*common.Address),
+	}
 }
 
 // Get an order by Id from the local state structure
