@@ -15,8 +15,7 @@ import (
 
 func Initialize() {
 	initializeLimitOrderRouterABI()
-	initializeActiveOrders()
-	initializeGasCreditBalances()
+	initializeStateStructures()
 }
 
 func initializeLimitOrderRouterABI() {
@@ -34,20 +33,7 @@ func initializeLimitOrderRouterABI() {
 	LimitOrderRouterABI = &_limitOrderRouterABI
 }
 
-func initializeGasCreditBalances() {
-
-	gasCreditMap, err := rpcClient.Call(LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "gasCreditBalance")
-
-	if err != nil {
-		//Panic because the program can not function if the gas credits can not be retrieved
-		panic("Issue fetching gas credit balances...")
-	}
-
-	//TODO:
-	fmt.Println(gasCreditMap...)
-}
-
-func initializeActiveOrders() {
+func initializeStateStructures() {
 
 	latestBlock, err := rpcClient.HTTPClient.BlockNumber(context.Background())
 
@@ -59,28 +45,56 @@ func initializeActiveOrders() {
 	currentBlockBigInt := big.NewInt(int64(latestBlock))
 	blockIncrement := big.NewInt(100000)
 
+	orderPlacedEventSignature := LimitOrderRouterABI.Events["OrderPlaced"].ID
+	gasCreditEventSignature := LimitOrderRouterABI.Events["GasCreditEvent"].ID
+
 	for i := config.Configuration.LimitOrderRouterCreationBlock; i.Cmp(currentBlockBigInt) < 0; i.Add(i, blockIncrement) {
 
 		toBlock := big.NewInt(0).Add(i, blockIncrement)
 
-		query := ethereum.FilterQuery{
+		//filter for order placed events
+		orderPlacedEventQuery := ethereum.FilterQuery{
 			FromBlock: i,
 			ToBlock:   toBlock,
 			Addresses: []common.Address{config.Configuration.LimitOrderRouterAddress},
-			Topics:    [][]common.Hash{{LimitOrderRouterABI.Events["OrderPlaced"].ID}},
+			Topics: [][]common.Hash{
+				{orderPlacedEventSignature},
+			},
 		}
 
-		eventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), query)
+		orderPlacedEventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), orderPlacedEventQuery)
 		if err != nil {
 			//TODO: handle errors
 			panic(err)
 		}
 
-		for _, eventLog := range eventLogs {
+		for _, eventLog := range orderPlacedEventLogs {
 			orderIds := parseOrderIdsFromEventData(eventLog.Data)
 			addOrderToOrderBook(orderIds)
-
 		}
+
+		//filter for order placed events
+		gasCreditEventQuery := ethereum.FilterQuery{
+			FromBlock: i,
+			ToBlock:   toBlock,
+			Addresses: []common.Address{config.Configuration.LimitOrderRouterAddress},
+			Topics: [][]common.Hash{
+				{gasCreditEventSignature},
+			},
+		}
+
+		gasCreditEventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), gasCreditEventQuery)
+		if err != nil {
+			//TODO: handle errors
+			panic(err)
+		}
+
+		for _, eventLog := range gasCreditEventLogs {
+			fmt.Println("here", eventLog.Topics[1])
+		}
+
+		//TODO: fixing gas credit events, also make the two filters into one filter
+		os.Exit(99)
 	}
 
 }

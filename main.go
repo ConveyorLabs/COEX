@@ -23,7 +23,7 @@ func main() {
 
 	log.Println("Initializing signer...")
 	wallet.Initialize()
-	
+
 	log.Println("Initializing limit orders...")
 	limitOrders.Initialize()
 

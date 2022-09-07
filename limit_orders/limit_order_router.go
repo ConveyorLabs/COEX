@@ -18,13 +18,9 @@ var GasCreditBalances = make(map[common.Address]*big.Int)
 var ExecutionPrices = make(map[common.Hash]map[float32][]common.Hash)
 var SortedExecutionPricesKeys = []float32{}
 
-func incrementGasCreditBalance(address common.Address, amount *big.Int) {
-	GasCreditBalances[address] = big.NewInt(0).Add(GasCreditBalances[address], amount)
+func updateGasCreditBalance(address common.Address, amount *big.Int) {
+	GasCreditBalances[address] = amount
 
-}
-
-func decrementGasCreditBalance(address common.Address, amount *big.Int) {
-	GasCreditBalances[address] = big.NewInt(0).Sub(GasCreditBalances[address], amount)
 }
 
 // Get an on-chain order by Id from the LimitOrderRouter contract

@@ -66,7 +66,7 @@ func ListenForEventLogs() {
 			case updateOrderEventSignature:
 				updateOrderInOrderBook(orderIds)
 			case gasCreditEventSignature:
-			//increment or decrement gas balance
+				// updateGasCreditBalance(eventLog.Topics[1].Hex(), eventLog.Topics[2])
 			case orderRefreshEventSignature:
 				//refresh order
 				refreshOrder(orderIds)
