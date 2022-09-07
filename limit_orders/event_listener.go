@@ -4,7 +4,6 @@ import (
 	rpcClient "beacon/rpc_client"
 	"context"
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -55,26 +54,26 @@ func ListenForEventLogs() {
 
 		//Handle logs from limit order router first
 		for _, eventLog := range eventLogs {
-			parseOrderIdsFromEventData(eventLog.Data)
+			orderIds := parseOrderIdsFromEventData(eventLog.Data)
 
-			// //Handle the event log signature
-			// switch eventLog.Topics[0] {
+			//Handle the event log signature
+			switch eventLog.Topics[0] {
 
-			// case placeOrderEventSignature:
-			// 	addOrderToOrderBook(eventLog.Topics[1])
-			// case cancelOrderEventSignature:
-			// 	removeOrderFromOrderBook(eventLog.Topics[1])
-			// case updateOrderEventSignature:
-			// 	updateOrderInOrderBook(eventLog.Topics[1])
-			// case gasCreditEventSignature:
-			// //increment or decrement gas balance
-			// case orderRefreshEventSignature:
-			// 	//refresh order
-			// 	refreshOrder(eventLog.Topics[1])
-			// case syncEventSignature:
-			// 	syncLogs = append(syncLogs, eventLog)
+			case placeOrderEventSignature:
+				addOrderToOrderBook(orderIds)
+			case cancelOrderEventSignature:
+				removeOrderFromOrderBook(orderIds)
+			case updateOrderEventSignature:
+				updateOrderInOrderBook(orderIds)
+			case gasCreditEventSignature:
+			//increment or decrement gas balance
+			case orderRefreshEventSignature:
+				//refresh order
+				refreshOrder(orderIds)
+			case syncEventSignature:
+				syncLogs = append(syncLogs, eventLog)
 
-			// }
+			}
 		}
 
 		//Handle sync log events
@@ -86,20 +85,4 @@ func ListenForEventLogs() {
 		}
 	}
 
-}
-
-func parseOrderIdsFromEventData(eventData []byte) []common.Hash {
-
-	orderIds := []common.Hash{}
-
-	orderIdsLengthBigInt := big.NewInt(0).SetBytes(eventData[0x20:0x40])
-	orderIdsLength := orderIdsLengthBigInt.Uint64()
-
-	for i := uint64(0); i < orderIdsLength; i++ {
-		start := 64 + 32*i
-		stop := start + 32
-		orderIds = append(orderIds, common.BytesToHash(eventData[start:stop]))
-	}
-
-	return orderIds
 }
