@@ -43,8 +43,8 @@ func getRemoteOrderById(orderId common.Hash) LimitOrder {
 		price:                order[7].(*big.Int),
 		amountOutMin:         order[8].(*big.Int),
 		quantity:             order[9].(*big.Int),
-		tokenIn:              order[11].(*common.Address),
-		tokenOut:             order[12].(*common.Address),
+		tokenIn:              order[11].(common.Address),
+		tokenOut:             order[12].(common.Address),
 	}
 }
 
