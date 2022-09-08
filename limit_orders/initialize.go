@@ -90,11 +90,11 @@ func initializeStateStructures() {
 		}
 
 		for _, eventLog := range gasCreditEventLogs {
-			fmt.Println("here", eventLog.Topics[1])
+			addr, updatedBalance := handleGasCreditEventLog(eventLog)
+			updateGasCreditBalance(addr, updatedBalance)
+
 		}
 
-		//TODO: fixing gas credit events, also make the two filters into one filter
-		os.Exit(99)
 	}
 
 }

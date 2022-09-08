@@ -4,6 +4,7 @@ import (
 	rpcClient "beacon/rpc_client"
 	"context"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -66,7 +67,8 @@ func ListenForEventLogs() {
 			case updateOrderEventSignature:
 				updateOrderInOrderBook(orderIds)
 			case gasCreditEventSignature:
-				// updateGasCreditBalance(eventLog.Topics[1].Hex(), eventLog.Topics[2])
+				addr, updatedBalance := handleGasCreditEventLog(eventLog)
+				updateGasCreditBalance(addr, updatedBalance)
 			case orderRefreshEventSignature:
 				//refresh order
 				refreshOrder(orderIds)
@@ -85,4 +87,8 @@ func ListenForEventLogs() {
 		}
 	}
 
+}
+
+func handleGasCreditEventLog(gasCreditEventLog types.Log) (common.Address, *big.Int) {
+	return common.BytesToAddress(gasCreditEventLog.Topics[1][:]), big.NewInt(0).SetBytes(gasCreditEventLog.Topics[2][:])
 }
