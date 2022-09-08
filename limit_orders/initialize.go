@@ -15,6 +15,7 @@ import (
 
 func Initialize() {
 	initializeLimitOrderRouterABI()
+	initializeEventLogSignatures()
 	initializeStateStructures()
 }
 
@@ -53,45 +54,32 @@ func initializeStateStructures() {
 		toBlock := big.NewInt(0).Add(i, blockIncrement)
 
 		//filter for order placed events
-		orderPlacedEventQuery := ethereum.FilterQuery{
+		eventLogsFilter := ethereum.FilterQuery{
 			FromBlock: i,
 			ToBlock:   toBlock,
 			Addresses: []common.Address{config.Configuration.LimitOrderRouterAddress},
 			Topics: [][]common.Hash{
-				{orderPlacedEventSignature},
+				{orderPlacedEventSignature, gasCreditEventSignature},
 			},
 		}
 
-		orderPlacedEventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), orderPlacedEventQuery)
+		eventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), eventLogsFilter)
 		if err != nil {
 			//TODO: handle errors
 			panic(err)
 		}
 
-		for _, eventLog := range orderPlacedEventLogs {
-			orderIds := parseOrderIdsFromEventData(eventLog.Data)
-			addOrderToOrderBook(orderIds)
-		}
+		for _, eventLog := range eventLogs {
 
-		//filter for order placed events
-		gasCreditEventQuery := ethereum.FilterQuery{
-			FromBlock: i,
-			ToBlock:   toBlock,
-			Addresses: []common.Address{config.Configuration.LimitOrderRouterAddress},
-			Topics: [][]common.Hash{
-				{gasCreditEventSignature},
-			},
-		}
+			if eventLog.Topics[0] == orderPlacedEventSignature {
+				orderIds := parseOrderIdsFromEventData(eventLog.Data)
+				addOrderToOrderBook(orderIds)
 
-		gasCreditEventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), gasCreditEventQuery)
-		if err != nil {
-			//TODO: handle errors
-			panic(err)
-		}
+			} else if eventLog.Topics[0] == gasCreditEventSignature {
+				addr, updatedBalance := handleGasCreditEventLog(eventLog)
+				updateGasCreditBalance(addr, updatedBalance)
 
-		for _, eventLog := range gasCreditEventLogs {
-			addr, updatedBalance := handleGasCreditEventLog(eventLog)
-			updateGasCreditBalance(addr, updatedBalance)
+			}
 
 		}
 

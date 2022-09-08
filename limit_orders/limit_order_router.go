@@ -82,19 +82,3 @@ func refreshOrder(orderIds []common.Hash) {
 func simulate_execute_orders() {}
 
 func execute_orders() {}
-
-func parseOrderIdsFromEventData(eventData []byte) []common.Hash {
-
-	orderIds := []common.Hash{}
-
-	orderIdsLengthBigInt := big.NewInt(0).SetBytes(eventData[0x20:0x40])
-	orderIdsLength := orderIdsLengthBigInt.Uint64()
-
-	for i := uint64(0); i < orderIdsLength; i++ {
-		start := 64 + 32*i
-		stop := start + 32
-		orderIds = append(orderIds, common.BytesToHash(eventData[start:stop]))
-	}
-
-	return orderIds
-}

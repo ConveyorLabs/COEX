@@ -11,12 +11,25 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-var placeOrderEventSignature = common.HexToHash("")
-var cancelOrderEventSignature = common.HexToHash("")
-var updateOrderEventSignature = common.HexToHash("")
-var gasCreditEventSignature = common.HexToHash("")
-var orderRefreshEventSignature = common.HexToHash("")
-var syncEventSignature = common.HexToHash("")
+var placeOrderEventSignature common.Hash
+var cancelOrderEventSignature common.Hash
+var updateOrderEventSignature common.Hash
+var gasCreditEventSignature common.Hash
+var orderRefreshEventSignature common.Hash
+var v2SyncEventSignature common.Hash
+var v3SyncEventSignature common.Hash
+
+func initializeEventLogSignatures() {
+	placeOrderEventSignature = LimitOrderRouterABI.Events["OrderPlaced"].ID
+	cancelOrderEventSignature = LimitOrderRouterABI.Events["OrderCancelled"].ID
+	updateOrderEventSignature = LimitOrderRouterABI.Events["OrderUpdated"].ID
+	gasCreditEventSignature = LimitOrderRouterABI.Events["GasCreditEvent"].ID
+	orderRefreshEventSignature = LimitOrderRouterABI.Events["OrderRefreshed"].ID
+
+	//TODO:
+	v2SyncEventSignature = common.HexToHash("")
+	v3SyncEventSignature = common.HexToHash("")
+}
 
 func ListenForEventLogs() {
 
@@ -72,9 +85,10 @@ func ListenForEventLogs() {
 			case orderRefreshEventSignature:
 				//refresh order
 				refreshOrder(orderIds)
-			case syncEventSignature:
+			case v2SyncEventSignature:
 				syncLogs = append(syncLogs, eventLog)
-
+			case v3SyncEventSignature:
+				syncLogs = append(syncLogs, eventLog)
 			}
 		}
 
@@ -87,6 +101,22 @@ func ListenForEventLogs() {
 		}
 	}
 
+}
+
+func parseOrderIdsFromEventData(eventData []byte) []common.Hash {
+
+	orderIds := []common.Hash{}
+
+	orderIdsLengthBigInt := big.NewInt(0).SetBytes(eventData[0x20:0x40])
+	orderIdsLength := orderIdsLengthBigInt.Uint64()
+
+	for i := uint64(0); i < orderIdsLength; i++ {
+		start := 64 + 32*i
+		stop := start + 32
+		orderIds = append(orderIds, common.BytesToHash(eventData[start:stop]))
+	}
+
+	return orderIds
 }
 
 func handleGasCreditEventLog(gasCreditEventLog types.Log) (common.Address, *big.Int) {
