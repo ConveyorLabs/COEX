@@ -1,10 +1,14 @@
 package swapRouter
 
 import (
+	"beacon/config"
+	rpcClient "beacon/rpc_client"
 	"fmt"
+	"math/big"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func Initialize() {
@@ -29,5 +33,21 @@ func initializeSwapRouterABI() {
 }
 
 func initializeDexes() {
+
+	dexesLength := config.Configuration.NumberOfDexes
+
+	for i := 0; i < dexesLength; i++ {
+
+		result, err := rpcClient.Call(SwapRouterABI, &config.Configuration.SwapRouterAddress, "dexes", big.NewInt(int64(i)))
+		if err != nil {
+			//TODO: handle errors
+		}
+
+		Dexes = append(Dexes, Dex{
+			result[0].(common.Address),
+			result[2].(bool),
+		})
+
+	}
 
 }

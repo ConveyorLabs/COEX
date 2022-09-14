@@ -13,6 +13,8 @@ import (
 
 var Configuration Config
 
+// TODO: split up the config into parts that are used on initialization and parts that are used often throughout the application
+// That way, we can cut down the amount of data that needs to be loaded when the config is used.
 type Config struct {
 	ChainName                     string
 	ChainID                       uint32
@@ -26,6 +28,7 @@ type Config struct {
 	LimitOrderRouterAddress       common.Address
 	LimitOrderRouterCreationBlock *big.Int
 	SwapRouterAddress             common.Address
+	NumberOfDexes                 int
 }
 
 func initializeConfig() {
@@ -76,6 +79,7 @@ func initializeChain(configuration *Config) {
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 		configuration.SwapRouterAddress = common.HexToAddress("")
+		configuration.NumberOfDexes = 3
 
 	} else if chainName == "polygon" {
 		configuration.ChainID = 137
@@ -86,6 +90,7 @@ func initializeChain(configuration *Config) {
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 		configuration.SwapRouterAddress = common.HexToAddress("")
+		configuration.NumberOfDexes = 3
 
 	} else if chainName == "optimism" {
 		configuration.ChainID = 10
@@ -96,6 +101,7 @@ func initializeChain(configuration *Config) {
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 		configuration.SwapRouterAddress = common.HexToAddress("")
+		configuration.NumberOfDexes = 3
 
 	} else if chainName == "arbitrum" {
 		configuration.ChainID = 42161
@@ -106,6 +112,7 @@ func initializeChain(configuration *Config) {
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 		configuration.SwapRouterAddress = common.HexToAddress("")
+		configuration.NumberOfDexes = 3
 
 	} else if chainName == "bsc" {
 		configuration.ChainID = 56
@@ -116,6 +123,7 @@ func initializeChain(configuration *Config) {
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 		configuration.SwapRouterAddress = common.HexToAddress("")
+		configuration.NumberOfDexes = 3
 
 	} else if chainName == "cronos" {
 		configuration.ChainID = 25
@@ -126,6 +134,7 @@ func initializeChain(configuration *Config) {
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
 		configuration.SwapRouterAddress = common.HexToAddress("")
+		configuration.NumberOfDexes = 3
 
 	} else if chainName == "goerli" {
 		configuration.ChainID = 5
@@ -135,6 +144,7 @@ func initializeChain(configuration *Config) {
 		configuration.LimitOrderRouterAddress = common.HexToAddress("0x30A16E3ECA716874E50EE4D035bCFDCE32b99796")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(7579403)
 		configuration.SwapRouterAddress = common.HexToAddress("0xcFb3cFccb4Ea7c2a58c856d6c27d35e54B9A70d0")
+		configuration.NumberOfDexes = 1
 
 	} else {
 		log.Fatal("Unrecognized chain name")
