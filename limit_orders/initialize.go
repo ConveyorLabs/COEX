@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"sync"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -17,6 +18,7 @@ func Initialize() {
 	initializeLimitOrderRouterABI()
 	initializeEventLogSignatures()
 	initializeStateStructures()
+	initializeMarkets()
 }
 
 func initializeLimitOrderRouterABI() {
@@ -83,6 +85,19 @@ func initializeStateStructures() {
 
 		}
 
+	}
+
+}
+
+// Note: Must be initialized after active orders
+func initializeMarkets() {
+
+	Markets = make(map[common.Address]Market)
+	MarketsMutex = &sync.Mutex{}
+
+	for _, order := range ActiveOrders {
+		addMarketIfNotExist(order.tokenIn)
+		addMarketIfNotExist(order.tokenOut)
 	}
 
 }

@@ -1,10 +1,12 @@
 package limitOrders
 
 import (
+	"beacon/config"
 	rpcClient "beacon/rpc_client"
 	"context"
 	"fmt"
 	"math/big"
+	"os"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -17,7 +19,7 @@ var updateOrderEventSignature common.Hash
 var gasCreditEventSignature common.Hash
 var orderRefreshEventSignature common.Hash
 var v2SyncEventSignature common.Hash
-var v3SyncEventSignature common.Hash
+var v3SwapEventSignature common.Hash
 
 func initializeEventLogSignatures() {
 	placeOrderEventSignature = LimitOrderRouterABI.Events["OrderPlaced"].ID
@@ -25,10 +27,8 @@ func initializeEventLogSignatures() {
 	updateOrderEventSignature = LimitOrderRouterABI.Events["OrderUpdated"].ID
 	gasCreditEventSignature = LimitOrderRouterABI.Events["GasCreditEvent"].ID
 	orderRefreshEventSignature = LimitOrderRouterABI.Events["OrderRefreshed"].ID
-
-	//TODO:
-	v2SyncEventSignature = common.HexToHash("")
-	v3SyncEventSignature = common.HexToHash("")
+	v2SyncEventSignature = common.HexToHash("0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1")
+	v3SwapEventSignature = common.HexToHash("0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67")
 }
 
 func ListenForEventLogs() {
@@ -39,12 +39,16 @@ func ListenForEventLogs() {
 	//create a topic filter
 
 	eventLogsFilter := ethereum.FilterQuery{
-		ToBlock: nil,
-		Topics:  [][]common.Hash{
-			//add sync events to update price
-
-			//add conveyor contract events (place order, update order, cancel order, gas credit events, order refresh events ect)
-
+		Topics: [][]common.Hash{
+			{
+				placeOrderEventSignature,
+				cancelOrderEventSignature,
+				updateOrderEventSignature,
+				gasCreditEventSignature,
+				orderRefreshEventSignature,
+				v2SyncEventSignature,
+				v3SwapEventSignature,
+			},
 		},
 	}
 
@@ -53,6 +57,8 @@ func ListenForEventLogs() {
 	if err != nil {
 		fmt.Println("Error when subscribing to block headers", err)
 	}
+
+	limitOrderRouterAddress := config.Configuration.LimitOrderRouterAddress
 
 	for {
 
@@ -64,39 +70,47 @@ func ListenForEventLogs() {
 			//TODO: handle the error
 		}
 
-		syncLogs := []types.Log{}
+		lpLogs := []types.Log{}
 
 		//Handle logs from limit order router first
 		for _, eventLog := range eventLogs {
 			orderIds := parseOrderIdsFromEventData(eventLog.Data)
 
-			//Handle the event log signature
-			switch eventLog.Topics[0] {
+			if eventLog.Address == limitOrderRouterAddress {
+				switch eventLog.Topics[0] {
+				case placeOrderEventSignature:
+					addOrderToOrderBook(orderIds)
+				case cancelOrderEventSignature:
+					removeOrderFromOrderBook(orderIds)
+				case updateOrderEventSignature:
+					updateOrderInOrderBook(orderIds)
+				case gasCreditEventSignature:
+					addr, updatedBalance := handleGasCreditEventLog(eventLog)
+					updateGasCreditBalance(addr, updatedBalance)
+				case orderRefreshEventSignature:
+					refreshOrder(orderIds)
 
-			case placeOrderEventSignature:
-				addOrderToOrderBook(orderIds)
-			case cancelOrderEventSignature:
-				removeOrderFromOrderBook(orderIds)
-			case updateOrderEventSignature:
-				updateOrderInOrderBook(orderIds)
-			case gasCreditEventSignature:
-				addr, updatedBalance := handleGasCreditEventLog(eventLog)
-				updateGasCreditBalance(addr, updatedBalance)
-			case orderRefreshEventSignature:
-				//refresh order
-				refreshOrder(orderIds)
-			case v2SyncEventSignature:
-				syncLogs = append(syncLogs, eventLog)
-			case v3SyncEventSignature:
-				syncLogs = append(syncLogs, eventLog)
+				}
+			} else {
+				switch eventLog.Topics[0] {
+				case v2SyncEventSignature:
+					lpLogs = append(lpLogs, eventLog)
+				case v3SwapEventSignature:
+					lpLogs = append(lpLogs, eventLog)
+				}
 			}
 		}
 
+		// affectedMarkets := []common.Address{}
+
 		//Handle sync log events
-		for _, syncLog := range syncLogs {
+		for _, lpLog := range lpLogs {
+
 			//update prices
 			//check if execution prices are met and handle from there
-			fmt.Println(syncLog)
+			fmt.Println(lpLog)
+
+			os.Exit(99)
 
 		}
 	}

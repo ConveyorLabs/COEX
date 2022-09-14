@@ -25,6 +25,7 @@ type Config struct {
 	PrivateKey                    string
 	LimitOrderRouterAddress       common.Address
 	LimitOrderRouterCreationBlock *big.Int
+	SwapRouterAddress             common.Address
 }
 
 func initializeConfig() {
@@ -74,6 +75,7 @@ func initializeChain(configuration *Config) {
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
+		configuration.SwapRouterAddress = common.HexToAddress("")
 
 	} else if chainName == "polygon" {
 		configuration.ChainID = 137
@@ -83,6 +85,7 @@ func initializeChain(configuration *Config) {
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
+		configuration.SwapRouterAddress = common.HexToAddress("")
 
 	} else if chainName == "optimism" {
 		configuration.ChainID = 10
@@ -92,6 +95,7 @@ func initializeChain(configuration *Config) {
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
+		configuration.SwapRouterAddress = common.HexToAddress("")
 
 	} else if chainName == "arbitrum" {
 		configuration.ChainID = 42161
@@ -101,6 +105,7 @@ func initializeChain(configuration *Config) {
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
+		configuration.SwapRouterAddress = common.HexToAddress("")
 
 	} else if chainName == "bsc" {
 		configuration.ChainID = 56
@@ -110,6 +115,7 @@ func initializeChain(configuration *Config) {
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
+		configuration.SwapRouterAddress = common.HexToAddress("")
 
 	} else if chainName == "cronos" {
 		configuration.ChainID = 25
@@ -119,14 +125,16 @@ func initializeChain(configuration *Config) {
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
+		configuration.SwapRouterAddress = common.HexToAddress("")
 
 	} else if chainName == "goerli" {
 		configuration.ChainID = 5
 		configuration.NativeToken = "ETH"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6")
 		configuration.USDPeggedTokenAddress = common.HexToAddress("0x2f3A40A3db8a7e3D09B0adfEfbCe4f6F81927557")
-		configuration.LimitOrderRouterAddress = common.HexToAddress("0x5dB0654E443d7e542932519Cec53C1c2B34B1554")
-		configuration.LimitOrderRouterCreationBlock = big.NewInt(7543328)
+		configuration.LimitOrderRouterAddress = common.HexToAddress("0x30A16E3ECA716874E50EE4D035bCFDCE32b99796")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(7579403)
+		configuration.SwapRouterAddress = common.HexToAddress("0xcFb3cFccb4Ea7c2a58c856d6c27d35e54B9A70d0")
 
 	} else {
 		log.Fatal("Unrecognized chain name")
