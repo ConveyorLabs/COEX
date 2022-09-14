@@ -1,6 +1,8 @@
 package limitOrders
 
 import (
+	"beacon/config"
+	swapRouter "beacon/swap_router"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -29,6 +31,19 @@ func addMarketIfNotExist(token common.Address) {
 }
 
 func addMarket(token common.Address) {
+
+	bestBuyLPAddress, bestBuyPrice, bestSellLPAddress, bestSellPrice := swapRouter.GetBestPricesForNewMarket(token, config.Configuration.WrappedNativeTokenAddress)
+
+	Markets[token] = Market{
+		bestBuy: Pool{
+			lpAddress:         bestBuyLPAddress,
+			tokenPricePerWeth: bestBuyPrice,
+		},
+		bestSell: Pool{
+			lpAddress:         bestSellLPAddress,
+			tokenPricePerWeth: bestSellPrice,
+		},
+	}
 
 }
 
