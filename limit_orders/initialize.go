@@ -15,10 +15,17 @@ import (
 )
 
 func Initialize() {
+
+	//Initialize ABIs
 	initializeLimitOrderRouterABI()
-	initializeEventLogSignatures()
-	initializeStateStructures()
 	initializeSwapRouterABI()
+	initializeUniswapV2PairABI()
+	initializeUniswapV3PoolABI()
+
+	initializeEventLogSignatures()
+
+	//Initialize state structures
+	initializeActiveOrdersAndGasCreditsFromLogs()
 	initializeDexes()
 	initializeMarkets()
 	initializeTokenToAffectedOrders()
@@ -69,7 +76,7 @@ func initializeUniswapV3PoolABI() {
 	LimitOrderRouterABI = &_limitOrderRouterABI
 }
 
-func initializeStateStructures() {
+func initializeActiveOrdersAndGasCreditsFromLogs() {
 
 	latestBlock, err := rpcClient.HTTPClient.BlockNumber(context.Background())
 
