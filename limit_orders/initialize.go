@@ -16,12 +16,45 @@ import (
 
 func Initialize() {
 	initializeLimitOrderRouterABI()
+
 	initializeEventLogSignatures()
 	initializeStateStructures()
+	initializeSwapRouterABI()
+	initializeDexes()
 	initializeMarkets()
+
 }
 
 func initializeLimitOrderRouterABI() {
+	file, err := os.Open("limit_orders/limit_order_router_abi.json")
+	if err != nil {
+		fmt.Println("Error when trying to open arb contract abi", err)
+		os.Exit(1)
+	}
+	_limitOrderRouterABI, err := abi.JSON(file)
+	if err != nil {
+		fmt.Println("Error when converting abi json to abi.ABI", err)
+		os.Exit(1)
+
+	}
+	LimitOrderRouterABI = &_limitOrderRouterABI
+}
+
+func initializeUniswapV2PairABI() {
+	file, err := os.Open("limit_orders/limit_order_router_abi.json")
+	if err != nil {
+		fmt.Println("Error when trying to open arb contract abi", err)
+		os.Exit(1)
+	}
+	_limitOrderRouterABI, err := abi.JSON(file)
+	if err != nil {
+		fmt.Println("Error when converting abi json to abi.ABI", err)
+		os.Exit(1)
+
+	}
+	LimitOrderRouterABI = &_limitOrderRouterABI
+}
+func initializeUniswapV3PoolABI() {
 	file, err := os.Open("limit_orders/limit_order_router_abi.json")
 	if err != nil {
 		fmt.Println("Error when trying to open arb contract abi", err)
@@ -89,11 +122,57 @@ func initializeStateStructures() {
 
 }
 
-// Note: Must be initialized after active orders
+func initializeSwapRouterABI() {
+	file, err := os.Open("swap_router/swap_router_abi.json")
+	if err != nil {
+		fmt.Println("Error when trying to open arb contract abi", err)
+		os.Exit(1)
+	}
+	_swapRouterABI, err := abi.JSON(file)
+	if err != nil {
+		fmt.Println("Error when converting abi json to abi.ABI", err)
+		os.Exit(1)
+
+	}
+	SwapRouterABI = &_swapRouterABI
+}
+
+func initializeDexes() {
+
+	dexesLength := config.Configuration.NumberOfDexes
+
+	for i := 0; i < dexesLength; i++ {
+
+		result, err := rpcClient.Call(SwapRouterABI, &config.Configuration.SwapRouterAddress, "dexes", big.NewInt(int64(i)))
+		if err != nil {
+			//TODO: handle errors
+		}
+
+		Dexes = append(Dexes, Dex{
+			result[0].(common.Address),
+			result[2].(bool),
+		})
+
+	}
+
+}
+
 func initializeMarkets() {
 
-	Markets = make(map[common.Address]Market)
+	Markets = make(map[common.Address][]Pool)
 	MarketsMutex = &sync.Mutex{}
+
+	for _, order := range ActiveOrders {
+		addMarketIfNotExist(order.tokenIn)
+		addMarketIfNotExist(order.tokenOut)
+	}
+
+}
+
+func initializePendingExecution() {
+
+	PendingExecution = make(map[common.Hash]bool)
+	PendingExecutionMutex = &sync.Mutex{}
 
 	for _, order := range ActiveOrders {
 		addMarketIfNotExist(order.tokenIn)

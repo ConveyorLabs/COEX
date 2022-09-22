@@ -2,22 +2,29 @@ package limitOrders
 
 import (
 	"beacon/config"
-	swapRouter "beacon/swap_router"
+	"math/big"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var Markets map[common.Address]Market
+var Markets map[common.Address][]Pool
 var MarketsMutex *sync.Mutex
 
-type Market struct {
-	bestBuy  Pool
-	bestSell Pool
+var Dexes []Dex
+
+// Contract address is the
+type Dex struct {
+	FactoryAddress common.Address
+	IsUniv2        bool
 }
 
 type Pool struct {
 	lpAddress         common.Address
+	tokenReserves     *big.Int //token will always be the variable token
+	tokenDecimals     uint8
+	wethReserves      *big.Int
+	tokenToWeth       bool // Token => Weth if true, Weth => Token if false
 	tokenPricePerWeth float64
 }
 
@@ -32,21 +39,63 @@ func addMarketIfNotExist(token common.Address) {
 
 func addMarket(token common.Address) {
 
-	bestBuyLPAddress, bestBuyPrice, bestSellLPAddress, bestSellPrice := swapRouter.GetBestPricesForNewMarket(token, config.Configuration.WrappedNativeTokenAddress)
+	//for each dex
+	for _, dex := range Dexes {
 
-	Markets[token] = Market{
-		bestBuy: Pool{
-			lpAddress:         bestBuyLPAddress,
-			tokenPricePerWeth: bestBuyPrice,
-		},
-		bestSell: Pool{
-			lpAddress:         bestSellLPAddress,
-			tokenPricePerWeth: bestSellPrice,
-		},
+		poolABI := UniswapV2PairABI
+		if !dex.IsUniv2 {
+			poolABI = UniswapV3PoolABI
+
+		}
+
+		//Get the pool address
+		lpAddress := dex.getPool(token, config.Configuration.WrappedNativeTokenAddress)
+
+		token0 := getLPToken0(poolABI, lpAddress)
+
+		var tokenReserves *big.Int
+		var wethReserves *big.Int
+
+		tokenToWeth := false
+		if token0 == token {
+			tokenToWeth = true
+			tokenReserves, wethReserves = getLPReserves(poolABI, lpAddress)
+		} else {
+			tokenToWeth = false
+			wethReserves, tokenReserves = getLPReserves(poolABI, lpAddress)
+
+		}
+		tokenDecimals := getTokenDecimals(token)
+
+		//TODO: token price per weth
+		tokenPricePerWeth := float64(0)
+
+		pool := Pool{
+			lpAddress:         lpAddress,
+			tokenReserves:     tokenReserves,
+			tokenDecimals:     tokenDecimals,
+			wethReserves:      wethReserves,
+			tokenToWeth:       tokenToWeth,
+			tokenPricePerWeth: tokenPricePerWeth,
+		}
+
+		//append the pool to the market
+		Markets[token] = append(Markets[token], pool)
 	}
 
 }
 
-func getBestMarketPrice() {
+func (d *Dex) getPool(tokenIn common.Address, tokenOut common.Address) common.Address {
+	if d.IsUniv2 {
+
+		//TODO:
+		return common.HexToAddress("0x")
+
+	} else {
+
+		//TODO:
+		return common.HexToAddress("0x")
+
+	}
 
 }
