@@ -106,9 +106,26 @@ func ListenForEventLogs() {
 		//Handle sync log events
 		for _, lpLog := range lpLogs {
 
-			//update prices
-			//check if execution prices are met and handle from there
-			fmt.Println(lpLog)
+			switch lpLog.Topics[0] {
+			case v2SyncEventSignature:
+				//check if token to weth or weth to token
+
+				//check if token in markets
+
+				//update price
+
+				//check if affected orders are at execution price
+			case v3SwapEventSignature:
+
+				//check if token to weth or weth to token
+
+				//check if token in markets
+
+				//update price
+
+				//check if affected orders are at execution price
+
+			}
 
 			os.Exit(99)
 

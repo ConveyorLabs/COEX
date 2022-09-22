@@ -22,6 +22,7 @@ func Initialize() {
 	initializeUniswapV2PairABI()
 	initializeUniswapV3PoolABI()
 
+	//Initialize event log signatures to listen for updates
 	initializeEventLogSignatures()
 
 	//Initialize state structures
@@ -30,6 +31,7 @@ func Initialize() {
 	initializeMarkets()
 	initializeTokenToAffectedOrders()
 	initializePendingExecution()
+
 }
 
 func initializeLimitOrderRouterABI() {
