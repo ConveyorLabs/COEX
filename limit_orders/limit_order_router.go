@@ -12,6 +12,7 @@ import (
 
 var LimitOrderRouterABI *abi.ABI
 var ActiveOrders = make(map[common.Hash]*LimitOrder)
+var TokenToAffectedOrders = make(map[common.Address][]common.Hash)
 var GasCreditBalances = make(map[common.Address]*big.Int)
 
 // Hash TokenIn and TokenOut for the key. Values are a map of prices to order Ids.

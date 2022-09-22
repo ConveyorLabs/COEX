@@ -16,13 +16,13 @@ import (
 
 func Initialize() {
 	initializeLimitOrderRouterABI()
-
 	initializeEventLogSignatures()
 	initializeStateStructures()
 	initializeSwapRouterABI()
 	initializeDexes()
 	initializeMarkets()
-
+	initializeTokenToAffectedOrders()
+	initializePendingExecution()
 }
 
 func initializeLimitOrderRouterABI() {
@@ -166,6 +166,32 @@ func initializeMarkets() {
 		addMarketIfNotExist(order.tokenIn)
 		addMarketIfNotExist(order.tokenOut)
 	}
+
+}
+
+func initializeTokenToAffectedOrders() {
+
+	tokenToAffectedOrders := make(map[common.Address][]common.Hash)
+
+	for orderId, order := range ActiveOrders {
+
+		if order.tokenIn != config.Configuration.WrappedNativeTokenAddress {
+			if _, ok := tokenToAffectedOrders[order.tokenIn]; !ok {
+				tokenToAffectedOrders[order.tokenIn] = []common.Hash{}
+			}
+			tokenToAffectedOrders[order.tokenIn] = append(tokenToAffectedOrders[order.tokenIn], orderId)
+		}
+
+		if order.tokenOut != config.Configuration.WrappedNativeTokenAddress {
+			if _, ok := tokenToAffectedOrders[order.tokenIn]; !ok {
+				tokenToAffectedOrders[order.tokenIn] = []common.Hash{}
+			}
+			tokenToAffectedOrders[order.tokenIn] = append(tokenToAffectedOrders[order.tokenIn], orderId)
+		}
+
+	}
+
+	TokenToAffectedOrders = tokenToAffectedOrders
 
 }
 
