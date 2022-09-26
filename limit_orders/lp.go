@@ -22,6 +22,12 @@ func getLPReserves(abi *abi.ABI, lpAddress common.Address) (*big.Int, *big.Int) 
 
 }
 
+// TODO: either convert decimals and pass in or assume that all decimals are 18
+func getPriceOfAPerB(reserve0 *big.Int, reserve1 *big.Int) float64 {
+
+	return 0
+}
+
 func getLPToken0(abi *abi.ABI, lpAddress *common.Address) common.Address {
 	result, err := rpcClient.Call(contractAbis.UniswapV2PairABI, lpAddress, "token0")
 	if err != nil {

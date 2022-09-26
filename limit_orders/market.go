@@ -53,6 +53,7 @@ func addMarket(token common.Address, fee *big.Int) {
 		lpAddress := dex.getPool(token, config.Configuration.WrappedNativeTokenAddress, fee)
 
 		token0 := getLPToken0(poolABI, &lpAddress)
+		tokenDecimals := getTokenDecimals(&token)
 
 		var tokenReserves *big.Int
 		var wethReserves *big.Int
@@ -66,10 +67,9 @@ func addMarket(token common.Address, fee *big.Int) {
 			wethReserves, tokenReserves = getLPReserves(poolABI, lpAddress)
 
 		}
-		tokenDecimals := getTokenDecimals(&token)
 
-		//TODO: token price per weth
-		tokenPricePerWeth := float64(0)
+		//Get tokenPerWethPrice
+		tokenPricePerWeth := getPriceOfAPerB(tokenReserves, wethReserves)
 
 		pool := Pool{
 			lpAddress:         lpAddress,
