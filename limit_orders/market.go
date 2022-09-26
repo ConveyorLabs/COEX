@@ -61,9 +61,9 @@ func addMarket(token common.Address, fee *big.Int) {
 		}
 
 		//Set the reserve values
-		pool.setLPReserves()
+		pool.initializeLPReserves()
 		//set the price of token per weth
-		pool.setPriceOfTokenPerWeth()
+		pool.updatePriceOfTokenPerWeth()
 
 		//append the pool to the market
 		Markets[token] = append(Markets[token], pool)

@@ -19,8 +19,7 @@ type Pool struct {
 	tokenPricePerWeth float64
 }
 
-func (p *Pool) setLPReserves() (*big.Int, *big.Int) {
-	//TODO:
+func (p *Pool) initializeLPReserves() (*big.Int, *big.Int) {
 	reserve0, reserve1 := getLPReserves(p.IsUniv2, &p.lpAddress)
 
 	if p.tokenToWeth {
@@ -31,8 +30,7 @@ func (p *Pool) setLPReserves() (*big.Int, *big.Int) {
 		p.wethReserves = reserve0
 	}
 
-	//TODO:
-	return big.NewInt(0), big.NewInt(0)
+	return reserve0, reserve1
 
 }
 
@@ -79,7 +77,13 @@ func getUniV3LPReserves(lpAddress *common.Address) (*big.Int, *big.Int) {
 
 }
 
-func (p *Pool) setPriceOfTokenPerWeth() float64 {
+func (p *Pool) setReservesAndUpdatePriceOfTokenPerWeth(tokenReserves *big.Int, wethReserves *big.Int) {
+	p.tokenReserves = tokenReserves
+	p.wethReserves = wethReserves
+	p.updatePriceOfTokenPerWeth()
+}
+
+func (p *Pool) updatePriceOfTokenPerWeth() float64 {
 
 	if p.IsUniv2 {
 		reserveACommonDecimals, reserveBCommonDecimals := ConvertAmountsToCommonDecmials(p.tokenReserves, p.tokenDecimals, p.wethReserves, config.Configuration.WrappedNativeTokenDecimals)
