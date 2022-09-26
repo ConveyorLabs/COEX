@@ -25,6 +25,8 @@ func Initialize() {
 	initializeTokenToAffectedOrders()
 	initializePendingExecution()
 
+	//Execute any orders that are ready
+
 }
 
 func initializeActiveOrdersAndGasCreditsFromLogs() {

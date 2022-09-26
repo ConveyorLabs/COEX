@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"os"
+	"sync"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -102,33 +102,33 @@ func ListenForEventLogs() {
 			}
 		}
 
-		// affectedMarkets := []common.Address{}
+		affectedMarkets := []common.Address{}
+		affectedMarketsMutex := &sync.Mutex{}
+		wg := &sync.WaitGroup{}
 
 		//Handle sync log events
 		for _, lpLog := range lpLogs {
 
 			switch lpLog.Topics[0] {
 			case v2SyncEventSignature:
-				//check if token to weth or weth to token
+				wg.Add(1)
+				go handleUniv2SyncLog(&lpLog, &affectedMarkets, affectedMarketsMutex, wg)
 
-				//check if token in markets
-
-				//update price
-
-				//check if affected orders are at execution price
 			case v3SwapEventSignature:
-
-				//check if token to weth or weth to token
-
-				//check if token in markets
-
-				//update price
-
-				//check if affected orders are at execution price
+				wg.Add(1)
+				go handleUniv3SwapLog(&lpLog, &affectedMarkets, affectedMarketsMutex, wg)
 
 			}
 
-			os.Exit(99)
+		}
+
+		//Wait for all prices to be updated and affected markets to be populated
+		wg.Wait()
+
+		//Check all affected orders
+		for _, affectedMarket := range affectedMarkets {
+			affectedOrders := TokenToAffectedOrders[affectedMarket]
+			fmt.Println(affectedOrders)
 
 		}
 	}
@@ -153,4 +153,150 @@ func parseOrderIdsFromEventData(eventData []byte) []common.Hash {
 
 func handleGasCreditEventLog(gasCreditEventLog types.Log) (common.Address, *big.Int) {
 	return common.BytesToAddress(gasCreditEventLog.Topics[1][:]), big.NewInt(0).SetBytes(gasCreditEventLog.Topics[2][:])
+}
+
+// Returns affected market address
+func handleUniv2SyncLog(eventLog *types.Log, affectedMarkets *[]common.Address, affectedMarketsMutex *sync.Mutex, wg *sync.WaitGroup) {
+	//check if token to weth or weth to token
+	token0 := getLPToken0(&eventLog.Address)
+	token1 := getLPToken1(&eventLog.Address)
+
+	wethPair := token0 == config.Configuration.WrappedNativeTokenAddress || token1 == config.Configuration.WrappedNativeTokenAddress
+
+	if wethPair {
+		var tokenToWeth bool
+		if token0 == config.Configuration.WrappedNativeTokenAddress {
+			tokenToWeth = false
+		} else {
+			tokenToWeth = true
+		}
+
+		if tokenToWeth {
+			//check if token in markets
+			if pools, ok := Markets[token0]; ok {
+				for _, pool := range pools {
+					if pool.lpAddress == eventLog.Address {
+						//update price
+						pool.setReservesAndUpdatePriceOfTokenPerWeth(eventLog.Topics[1].Big(), eventLog.Topics[2].Big())
+
+						//add affected market
+						affectedMarketsMutex.Lock()
+						*affectedMarkets = append(*affectedMarkets, token0)
+						affectedMarketsMutex.Unlock()
+						break
+
+					}
+
+				}
+
+			}
+		} else {
+			//check if token in markets
+			if pools, ok := Markets[token1]; ok {
+				for _, pool := range pools {
+					if pool.lpAddress == eventLog.Address {
+						//update price
+						pool.setReservesAndUpdatePriceOfTokenPerWeth(eventLog.Topics[1].Big(), eventLog.Topics[2].Big())
+						//add affected market
+						affectedMarketsMutex.Lock()
+						*affectedMarkets = append(*affectedMarkets, token1)
+						affectedMarketsMutex.Unlock()
+						break
+					}
+
+				}
+
+			}
+
+		}
+
+	}
+
+	wg.Done()
+
+}
+
+// Returns affected market address
+func handleUniv3SwapLog(eventLog *types.Log, affectedMarkets *[]common.Address, affectedMarketsMutex *sync.Mutex, wg *sync.WaitGroup) {
+	//check if token to weth or weth to token
+	token0 := getLPToken0(&eventLog.Address)
+	token1 := getLPToken1(&eventLog.Address)
+
+	wethPair := token0 == config.Configuration.WrappedNativeTokenAddress || token1 == config.Configuration.WrappedNativeTokenAddress
+
+	if wethPair {
+		var tokenToWeth bool
+		if token0 == config.Configuration.WrappedNativeTokenAddress {
+			tokenToWeth = false
+		} else {
+			tokenToWeth = true
+		}
+
+		if tokenToWeth {
+			//check if token in markets
+			if pools, ok := Markets[token0]; ok {
+				for _, pool := range pools {
+					if pool.lpAddress == eventLog.Address {
+
+						unpackedEventLogData, err := contractAbis.UniswapV3PoolABI.Unpack("Swap", eventLog.Data)
+						if err != nil {
+							//TODO: handle error
+						}
+
+						sqrtPriceX96 := unpackedEventLogData[4].(*big.Int)
+						liquidity := unpackedEventLogData[5].(*big.Int)
+
+						wethReserves := big.NewInt(0).Div(liquidity, sqrtPriceX96)
+						tokenReserves := big.NewInt(0).Div(big.NewInt(0).Exp(liquidity, big.NewInt(2), nil), wethReserves)
+
+						pool.setReservesAndUpdatePriceOfTokenPerWeth(tokenReserves, wethReserves)
+
+						//add affected market
+						affectedMarketsMutex.Lock()
+						*affectedMarkets = append(*affectedMarkets, token0)
+						affectedMarketsMutex.Unlock()
+						break
+
+					}
+
+				}
+
+			}
+		} else {
+			//check if token in markets
+			if pools, ok := Markets[token1]; ok {
+				for _, pool := range pools {
+					if pool.lpAddress == eventLog.Address {
+
+						unpackedEventLogData, err := contractAbis.UniswapV3PoolABI.Unpack("Swap", eventLog.Data)
+						if err != nil {
+							//TODO: handle error
+						}
+
+						sqrtPriceX96 := unpackedEventLogData[4].(*big.Int)
+						liquidity := unpackedEventLogData[5].(*big.Int)
+
+						tokenReserves := big.NewInt(0).Div(liquidity, sqrtPriceX96)
+						wethReserves := big.NewInt(0).Div(big.NewInt(0).Exp(liquidity, big.NewInt(2), nil), tokenReserves)
+
+						pool.setReservesAndUpdatePriceOfTokenPerWeth(tokenReserves, wethReserves)
+
+						//add affected market
+						affectedMarketsMutex.Lock()
+						*affectedMarkets = append(*affectedMarkets, token0)
+						affectedMarketsMutex.Unlock()
+						break
+
+					}
+
+				}
+
+			}
+
+		}
+
+	}
+
+	wg.Done()
+
 }

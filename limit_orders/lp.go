@@ -77,26 +77,24 @@ func getUniV3LPReserves(lpAddress *common.Address) (*big.Int, *big.Int) {
 
 }
 
-func (p *Pool) setReservesAndUpdatePriceOfTokenPerWeth(tokenReserves *big.Int, wethReserves *big.Int) {
+func (p *Pool) setReserves(tokenReserves *big.Int, wethReserves *big.Int) {
 	p.tokenReserves = tokenReserves
 	p.wethReserves = wethReserves
+}
+
+func (p *Pool) setReservesAndUpdatePriceOfTokenPerWeth(tokenReserves *big.Int, wethReserves *big.Int) {
+	p.setReserves(tokenReserves, wethReserves)
 	p.updatePriceOfTokenPerWeth()
 }
 
 func (p *Pool) updatePriceOfTokenPerWeth() float64 {
+	reserveACommonDecimals, reserveBCommonDecimals := ConvertAmountsToCommonDecmials(p.tokenReserves, p.tokenDecimals, p.wethReserves, config.Configuration.WrappedNativeTokenDecimals)
+	priceOfTokenPerB := big.NewInt(0).Div(reserveACommonDecimals, reserveBCommonDecimals)
+	priceOfTokenPerBFloat64, _ := new(big.Float).SetInt(priceOfTokenPerB).Float64()
 
-	if p.IsUniv2 {
-		reserveACommonDecimals, reserveBCommonDecimals := ConvertAmountsToCommonDecmials(p.tokenReserves, p.tokenDecimals, p.wethReserves, config.Configuration.WrappedNativeTokenDecimals)
-		priceOfTokenPerB := big.NewInt(0).Div(reserveACommonDecimals, reserveBCommonDecimals)
-		priceOfTokenPerBFloat64, _ := new(big.Float).SetInt(priceOfTokenPerB).Float64()
+	p.tokenPricePerWeth = priceOfTokenPerBFloat64
 
-		p.tokenPricePerWeth = priceOfTokenPerBFloat64
-
-		return priceOfTokenPerBFloat64
-	} else {
-		//TODO: for univ3
-		return 0
-	}
+	return priceOfTokenPerBFloat64
 
 }
 

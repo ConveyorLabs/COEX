@@ -27,7 +27,6 @@ func addMarketIfNotExist(token common.Address, fee *big.Int) {
 		addMarket(token, fee)
 	}
 	MarketsMutex.Unlock()
-
 }
 
 func addMarket(token common.Address, fee *big.Int) {
