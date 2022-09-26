@@ -1,21 +1,18 @@
 package limitOrders
 
 import (
+	contractAbis "beacon/contract_abis"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var UniswapV2PairABI *abi.ABI
-var UniswapV3PoolABI *abi.ABI
-var ERC20ABI *abi.ABI
-
 func getLPReserves(abi *abi.ABI, lpAddress common.Address) (*big.Int, *big.Int) {
 
-	if abi == UniswapV2PairABI {
+	if abi == contractAbis.UniswapV2PairABI {
 
-	} else if abi == UniswapV3PoolABI {
+	} else if abi == contractAbis.UniswapV3PoolABI {
 
 	}
 

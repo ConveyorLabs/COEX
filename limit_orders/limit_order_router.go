@@ -2,15 +2,14 @@ package limitOrders
 
 import (
 	"beacon/config"
+	contractAbis "beacon/contract_abis"
 	rpcClient "beacon/rpc_client"
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var LimitOrderRouterABI *abi.ABI
 var ActiveOrders = make(map[common.Hash]*LimitOrder)
 var TokenToAffectedOrders = make(map[common.Address][]common.Hash)
 var GasCreditBalances = make(map[common.Address]*big.Int)
@@ -26,7 +25,7 @@ func updateGasCreditBalance(address common.Address, amount *big.Int) {
 
 // Get an on-chain order by Id from the LimitOrderRouter contract
 func getRemoteOrderById(orderId common.Hash) LimitOrder {
-	order, err := rpcClient.Call(LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "orderIdToOrder", orderId)
+	order, err := rpcClient.Call(contractAbis.LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "orderIdToOrder", orderId)
 
 	if err != nil {
 		//TODO: handle error

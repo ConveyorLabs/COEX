@@ -2,6 +2,7 @@ package limitOrders
 
 import (
 	"beacon/config"
+	contractAbis "beacon/contract_abis"
 	"math/big"
 	"sync"
 
@@ -28,28 +29,28 @@ type Pool struct {
 	tokenPricePerWeth float64
 }
 
-func addMarketIfNotExist(token common.Address) {
+func addMarketIfNotExist(token common.Address, fee *big.Int) {
 	MarketsMutex.Lock()
 	if _, ok := Markets[token]; !ok {
-		addMarket(token)
+		addMarket(token, fee)
 	}
 	MarketsMutex.Unlock()
 
 }
 
-func addMarket(token common.Address) {
+func addMarket(token common.Address, fee *big.Int) {
 
 	//for each dex
 	for _, dex := range Dexes {
 
-		poolABI := UniswapV2PairABI
+		poolABI := contractAbis.UniswapV2PairABI
 		if !dex.IsUniv2 {
-			poolABI = UniswapV3PoolABI
+			poolABI = contractAbis.UniswapV3PoolABI
 
 		}
 
 		//Get the pool address
-		lpAddress := dex.getPool(token, config.Configuration.WrappedNativeTokenAddress)
+		lpAddress := dex.getPool(token, config.Configuration.WrappedNativeTokenAddress, fee)
 
 		token0 := getLPToken0(poolABI, lpAddress)
 
@@ -85,8 +86,10 @@ func addMarket(token common.Address) {
 
 }
 
-func (d *Dex) getPool(tokenIn common.Address, tokenOut common.Address) common.Address {
+func (d *Dex) getPool(tokenIn common.Address, tokenOut common.Address, fee *big.Int) common.Address {
 	if d.IsUniv2 {
+
+		// rpcClient.Call()
 
 		//TODO:
 		return common.HexToAddress("0x")

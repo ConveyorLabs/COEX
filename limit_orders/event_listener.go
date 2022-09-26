@@ -2,6 +2,7 @@ package limitOrders
 
 import (
 	"beacon/config"
+	contractAbis "beacon/contract_abis"
 	rpcClient "beacon/rpc_client"
 	"context"
 	"fmt"
@@ -22,11 +23,11 @@ var v2SyncEventSignature common.Hash
 var v3SwapEventSignature common.Hash
 
 func initializeEventLogSignatures() {
-	placeOrderEventSignature = LimitOrderRouterABI.Events["OrderPlaced"].ID
-	cancelOrderEventSignature = LimitOrderRouterABI.Events["OrderCancelled"].ID
-	updateOrderEventSignature = LimitOrderRouterABI.Events["OrderUpdated"].ID
-	gasCreditEventSignature = LimitOrderRouterABI.Events["GasCreditEvent"].ID
-	orderRefreshEventSignature = LimitOrderRouterABI.Events["OrderRefreshed"].ID
+	placeOrderEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderPlaced"].ID
+	cancelOrderEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderCancelled"].ID
+	updateOrderEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderUpdated"].ID
+	gasCreditEventSignature = contractAbis.LimitOrderRouterABI.Events["GasCreditEvent"].ID
+	orderRefreshEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderRefreshed"].ID
 	v2SyncEventSignature = common.HexToHash("0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1")
 	v3SwapEventSignature = common.HexToHash("0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67")
 }

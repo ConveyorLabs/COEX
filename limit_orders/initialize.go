@@ -2,25 +2,18 @@ package limitOrders
 
 import (
 	"beacon/config"
+	contractAbis "beacon/contract_abis"
 	rpcClient "beacon/rpc_client"
 	"context"
 	"fmt"
 	"math/big"
-	"os"
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 func Initialize() {
-
-	//Initialize ABIs
-	initializeLimitOrderRouterABI()
-	initializeSwapRouterABI()
-	initializeUniswapV2PairABI()
-	initializeUniswapV3PoolABI()
 
 	//Initialize event log signatures to listen for updates
 	initializeEventLogSignatures()
@@ -32,50 +25,6 @@ func Initialize() {
 	initializeTokenToAffectedOrders()
 	initializePendingExecution()
 
-}
-
-func initializeLimitOrderRouterABI() {
-	file, err := os.Open("limit_orders/limit_order_router_abi.json")
-	if err != nil {
-		fmt.Println("Error when trying to open arb contract abi", err)
-		os.Exit(1)
-	}
-	_limitOrderRouterABI, err := abi.JSON(file)
-	if err != nil {
-		fmt.Println("Error when converting abi json to abi.ABI", err)
-		os.Exit(1)
-
-	}
-	LimitOrderRouterABI = &_limitOrderRouterABI
-}
-
-func initializeUniswapV2PairABI() {
-	file, err := os.Open("limit_orders/limit_order_router_abi.json")
-	if err != nil {
-		fmt.Println("Error when trying to open arb contract abi", err)
-		os.Exit(1)
-	}
-	_limitOrderRouterABI, err := abi.JSON(file)
-	if err != nil {
-		fmt.Println("Error when converting abi json to abi.ABI", err)
-		os.Exit(1)
-
-	}
-	LimitOrderRouterABI = &_limitOrderRouterABI
-}
-func initializeUniswapV3PoolABI() {
-	file, err := os.Open("limit_orders/limit_order_router_abi.json")
-	if err != nil {
-		fmt.Println("Error when trying to open arb contract abi", err)
-		os.Exit(1)
-	}
-	_limitOrderRouterABI, err := abi.JSON(file)
-	if err != nil {
-		fmt.Println("Error when converting abi json to abi.ABI", err)
-		os.Exit(1)
-
-	}
-	LimitOrderRouterABI = &_limitOrderRouterABI
 }
 
 func initializeActiveOrdersAndGasCreditsFromLogs() {
@@ -90,8 +39,8 @@ func initializeActiveOrdersAndGasCreditsFromLogs() {
 	currentBlockBigInt := big.NewInt(int64(latestBlock))
 	blockIncrement := big.NewInt(100000)
 
-	orderPlacedEventSignature := LimitOrderRouterABI.Events["OrderPlaced"].ID
-	gasCreditEventSignature := LimitOrderRouterABI.Events["GasCreditEvent"].ID
+	orderPlacedEventSignature := contractAbis.LimitOrderRouterABI.Events["OrderPlaced"].ID
+	gasCreditEventSignature := contractAbis.LimitOrderRouterABI.Events["GasCreditEvent"].ID
 
 	for i := config.Configuration.LimitOrderRouterCreationBlock; i.Cmp(currentBlockBigInt) < 0; i.Add(i, blockIncrement) {
 
@@ -131,28 +80,13 @@ func initializeActiveOrdersAndGasCreditsFromLogs() {
 
 }
 
-func initializeSwapRouterABI() {
-	file, err := os.Open("swap_router/swap_router_abi.json")
-	if err != nil {
-		fmt.Println("Error when trying to open arb contract abi", err)
-		os.Exit(1)
-	}
-	_swapRouterABI, err := abi.JSON(file)
-	if err != nil {
-		fmt.Println("Error when converting abi json to abi.ABI", err)
-		os.Exit(1)
-
-	}
-	SwapRouterABI = &_swapRouterABI
-}
-
 func initializeDexes() {
 
 	dexesLength := config.Configuration.NumberOfDexes
 
 	for i := 0; i < dexesLength; i++ {
 
-		result, err := rpcClient.Call(SwapRouterABI, &config.Configuration.SwapRouterAddress, "dexes", big.NewInt(int64(i)))
+		result, err := rpcClient.Call(contractAbis.SwapRouterABI, &config.Configuration.SwapRouterAddress, "dexes", big.NewInt(int64(i)))
 		if err != nil {
 			//TODO: handle errors
 		}
@@ -172,8 +106,8 @@ func initializeMarkets() {
 	MarketsMutex = &sync.Mutex{}
 
 	for _, order := range ActiveOrders {
-		addMarketIfNotExist(order.tokenIn)
-		addMarketIfNotExist(order.tokenOut)
+		addMarketIfNotExist(order.tokenIn, order.fee)
+		addMarketIfNotExist(order.tokenOut, order.fee)
 	}
 
 }
@@ -210,8 +144,8 @@ func initializePendingExecution() {
 	PendingExecutionMutex = &sync.Mutex{}
 
 	for _, order := range ActiveOrders {
-		addMarketIfNotExist(order.tokenIn)
-		addMarketIfNotExist(order.tokenOut)
+		addMarketIfNotExist(order.tokenIn, order.fee)
+		addMarketIfNotExist(order.tokenOut, order.fee)
 	}
 
 }
