@@ -2,6 +2,7 @@ package main
 
 import (
 	"beacon/config"
+	contractAbis "beacon/contract_abis"
 	limitOrders "beacon/limit_orders"
 	rpcClient "beacon/rpc_client"
 	"beacon/wallet"
@@ -17,6 +18,9 @@ func main() {
 	//Initalize packages
 	log.Println("Initializing configuration...")
 	config.Initialize()
+
+	log.Println("Initializing Contract ABIs...")
+	contractAbis.Initialize()
 
 	log.Println("Initializing RPC client...")
 	rpcClient.Initialize()

@@ -46,7 +46,6 @@ func addMarket(token common.Address, fee *big.Int) {
 		poolABI := contractAbis.UniswapV2PairABI
 		if !dex.IsUniv2 {
 			poolABI = contractAbis.UniswapV3PoolABI
-
 		}
 
 		//Get the pool address
@@ -89,7 +88,7 @@ func addMarket(token common.Address, fee *big.Int) {
 func (d *Dex) getPool(tokenIn common.Address, tokenOut common.Address, fee *big.Int) common.Address {
 	if d.IsUniv2 {
 
-		// rpcClient.Call()
+		// rpcClient.Call(contractAbis.uni)
 
 		//TODO:
 		return common.HexToAddress("0x")
