@@ -33,7 +33,7 @@ func main() {
 
 	log.Println("Listening for event logs...")
 	//Start listening for events
-	limitOrders.ListenForEventLogs()
+	go limitOrders.ListenForEventLogs()
 
 	wg.Wait()
 
