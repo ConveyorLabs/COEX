@@ -20,6 +20,7 @@ type Config struct {
 	ChainID                       uint32
 	NativeToken                   string
 	WrappedNativeTokenAddress     common.Address
+	WrappedNativeTokenDecimals    uint8
 	USDPeggedTokenAddress         common.Address
 	NodeHttpEndpoint              string
 	NodeWebsocketsEndpoint        string
@@ -74,6 +75,7 @@ func initializeChain(configuration *Config) {
 		configuration.ChainID = 1
 		configuration.NativeToken = "ETH"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
+		configuration.WrappedNativeTokenDecimals = 18
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
@@ -85,6 +87,8 @@ func initializeChain(configuration *Config) {
 		configuration.ChainID = 137
 		configuration.NativeToken = "MATIC"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270")
+		configuration.WrappedNativeTokenDecimals = 18
+
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
@@ -96,6 +100,8 @@ func initializeChain(configuration *Config) {
 		configuration.ChainID = 10
 		configuration.NativeToken = "ETH"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0x4200000000000000000000000000000000000006")
+		configuration.WrappedNativeTokenDecimals = 18
+
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
@@ -107,6 +113,8 @@ func initializeChain(configuration *Config) {
 		configuration.ChainID = 42161
 		configuration.NativeToken = "ETH"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1")
+		configuration.WrappedNativeTokenDecimals = 18
+
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
@@ -118,6 +126,8 @@ func initializeChain(configuration *Config) {
 		configuration.ChainID = 56
 		configuration.NativeToken = "BNB"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c")
+		configuration.WrappedNativeTokenDecimals = 18
+
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
@@ -129,6 +139,8 @@ func initializeChain(configuration *Config) {
 		configuration.ChainID = 25
 		configuration.NativeToken = "CRO"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23")
+		configuration.WrappedNativeTokenDecimals = 18
+
 		//TODO:
 		configuration.USDPeggedTokenAddress = common.HexToAddress("")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("")
@@ -140,6 +152,7 @@ func initializeChain(configuration *Config) {
 		configuration.ChainID = 5
 		configuration.NativeToken = "ETH"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6")
+		configuration.WrappedNativeTokenDecimals = 18
 		configuration.USDPeggedTokenAddress = common.HexToAddress("0x2f3A40A3db8a7e3D09B0adfEfbCe4f6F81927557")
 		configuration.LimitOrderRouterAddress = common.HexToAddress("0x30A16E3ECA716874E50EE4D035bCFDCE32b99796")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(7579403)

@@ -21,15 +21,6 @@ type Dex struct {
 	IsUniv2        bool
 }
 
-type Pool struct {
-	lpAddress         common.Address
-	tokenReserves     *big.Int //token will always be the variable token
-	tokenDecimals     uint8
-	wethReserves      *big.Int
-	tokenToWeth       bool // Token => Weth if true, Weth => Token if false
-	tokenPricePerWeth float64
-}
-
 func addMarketIfNotExist(token common.Address, fee *big.Int) {
 	MarketsMutex.Lock()
 	if _, ok := Markets[token]; !ok {
@@ -50,7 +41,7 @@ func addMarket(token common.Address, fee *big.Int) {
 		}
 
 		//Get the pool address
-		lpAddress := dex.getPool(token, config.Configuration.WrappedNativeTokenAddress, fee)
+		lpAddress := dex.getPoolAddress(token, config.Configuration.WrappedNativeTokenAddress, fee)
 
 		token0 := getLPToken0(poolABI, &lpAddress)
 		tokenDecimals := getTokenDecimals(&token)
@@ -69,7 +60,7 @@ func addMarket(token common.Address, fee *big.Int) {
 		}
 
 		//Get tokenPerWethPrice
-		tokenPricePerWeth := getPriceOfAPerB(tokenReserves, wethReserves)
+		tokenPricePerWeth := getPriceOfAPerB(tokenReserves, tokenDecimals, wethReserves, config.Configuration.WrappedNativeTokenDecimals)
 
 		pool := Pool{
 			lpAddress:         lpAddress,
@@ -86,7 +77,7 @@ func addMarket(token common.Address, fee *big.Int) {
 
 }
 
-func (d *Dex) getPool(tokenIn common.Address, tokenOut common.Address, fee *big.Int) common.Address {
+func (d *Dex) getPoolAddress(tokenIn common.Address, tokenOut common.Address, fee *big.Int) common.Address {
 	if d.IsUniv2 {
 
 		result, err := rpcClient.Call(contractAbis.UniswapV2FactoryABI, &d.FactoryAddress, "getPair", tokenIn, tokenOut)

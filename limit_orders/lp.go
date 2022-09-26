@@ -9,6 +9,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+type Pool struct {
+	lpAddress         common.Address
+	tokenReserves     *big.Int //token will always be the variable token
+	tokenDecimals     uint8
+	wethReserves      *big.Int
+	tokenToWeth       bool // Token => Weth if true, Weth => Token if false
+	tokenPricePerWeth float64
+}
+
 func getLPReserves(abi *abi.ABI, lpAddress common.Address) (*big.Int, *big.Int) {
 
 	if abi == contractAbis.UniswapV2PairABI {
@@ -22,10 +31,26 @@ func getLPReserves(abi *abi.ABI, lpAddress common.Address) (*big.Int, *big.Int) 
 
 }
 
-// TODO: either convert decimals and pass in or assume that all decimals are 18
-func getPriceOfAPerB(reserve0 *big.Int, reserve1 *big.Int) float64 {
+func getPriceOfAPerB(reserveA *big.Int, reserveADecimals uint8, reserveB *big.Int, reserveBDecimals uint8) float64 {
+	reserveACommonDecimals, reserveBCommonDecimals := ConvertAmountsToCommonDecmials(reserveA, reserveADecimals, reserveB, reserveBDecimals)
+	priceOfAPerB := big.NewInt(0).Div(reserveACommonDecimals, reserveBCommonDecimals)
+	priceOfAPerBFloat64, _ := new(big.Float).SetInt(priceOfAPerB).Float64()
+	return priceOfAPerBFloat64
+}
 
-	return 0
+// Helper function to convert token reserves into a common base
+func ConvertAmountsToCommonDecmials(reserveA *big.Int, decimalsA uint8, reserveB *big.Int, decimalsB uint8) (*big.Int, *big.Int) {
+
+	if decimalsA > decimalsB {
+		multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(decimalsA-decimalsB)), nil)
+		return reserveA, big.NewInt(0).Mul(reserveB, multiplier)
+
+	} else if decimalsB > decimalsA {
+		multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(decimalsB-decimalsA)), nil)
+		return big.NewInt(0).Mul(reserveA, multiplier), reserveB
+	} else {
+		return reserveA, reserveB
+	}
 }
 
 func getLPToken0(abi *abi.ABI, lpAddress *common.Address) common.Address {
