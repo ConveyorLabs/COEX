@@ -3,6 +3,7 @@ package limitOrders
 import (
 	"beacon/config"
 	contractAbis "beacon/contract_abis"
+	rpcClient "beacon/rpc_client"
 	"math/big"
 	"sync"
 
@@ -51,7 +52,7 @@ func addMarket(token common.Address, fee *big.Int) {
 		//Get the pool address
 		lpAddress := dex.getPool(token, config.Configuration.WrappedNativeTokenAddress, fee)
 
-		token0 := getLPToken0(poolABI, lpAddress)
+		token0 := getLPToken0(poolABI, &lpAddress)
 
 		var tokenReserves *big.Int
 		var wethReserves *big.Int
@@ -65,7 +66,7 @@ func addMarket(token common.Address, fee *big.Int) {
 			wethReserves, tokenReserves = getLPReserves(poolABI, lpAddress)
 
 		}
-		tokenDecimals := getTokenDecimals(token)
+		tokenDecimals := getTokenDecimals(&token)
 
 		//TODO: token price per weth
 		tokenPricePerWeth := float64(0)
@@ -88,15 +89,24 @@ func addMarket(token common.Address, fee *big.Int) {
 func (d *Dex) getPool(tokenIn common.Address, tokenOut common.Address, fee *big.Int) common.Address {
 	if d.IsUniv2 {
 
-		// rpcClient.Call(contractAbis.uni)
+		result, err := rpcClient.Call(contractAbis.UniswapV2FactoryABI, &d.FactoryAddress, "getPair", tokenIn, tokenOut)
+		if err != nil {
+			//TODO: handle error
+		}
 
-		//TODO:
-		return common.HexToAddress("0x")
+		pairAddress := result[0].(common.Address)
+		return pairAddress
 
 	} else {
 
-		//TODO:
-		return common.HexToAddress("0x")
+		result, err := rpcClient.Call(contractAbis.UniswapV3FactoryABI, &d.FactoryAddress, "getPool", tokenIn, tokenOut, fee)
+		if err != nil {
+			//TODO: handle error
+		}
+
+		pairAddress := result[0].(common.Address)
+
+		return pairAddress
 
 	}
 

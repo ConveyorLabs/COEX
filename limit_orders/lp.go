@@ -2,6 +2,7 @@ package limitOrders
 
 import (
 	contractAbis "beacon/contract_abis"
+	rpcClient "beacon/rpc_client"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -21,22 +22,35 @@ func getLPReserves(abi *abi.ABI, lpAddress common.Address) (*big.Int, *big.Int) 
 
 }
 
-func getLPToken0(abi *abi.ABI, lpAddress common.Address) common.Address {
+func getLPToken0(abi *abi.ABI, lpAddress *common.Address) common.Address {
+	result, err := rpcClient.Call(contractAbis.UniswapV2PairABI, lpAddress, "token0")
+	if err != nil {
+		//TODO: handle error
+	}
 
-	//TODO:
-	return common.HexToAddress("0x00")
-
-}
-
-func getLPToken1(abi *abi.ABI) common.Address {
-
-	//TODO:
-	return common.HexToAddress("0x00")
+	token0 := result[0].(common.Address)
+	return token0
 
 }
 
-func getTokenDecimals(lpAddress common.Address) uint8 {
+func getLPToken1(abi *abi.ABI, lpAddress *common.Address) common.Address {
+	result, err := rpcClient.Call(contractAbis.UniswapV2PairABI, lpAddress, "token1")
+	if err != nil {
+		//TODO: handle error
+	}
 
-	return 0
+	token1 := result[0].(common.Address)
+	return token1
+
+}
+
+func getTokenDecimals(tokenAddress *common.Address) uint8 {
+
+	result, err := rpcClient.Call(contractAbis.ERC20ABI, tokenAddress, "decimals")
+	if err != nil {
+		//TODO: handle error
+	}
+
+	return result[0].(uint8)
 
 }
