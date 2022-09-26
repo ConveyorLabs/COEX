@@ -35,15 +35,10 @@ func addMarket(token common.Address, fee *big.Int) {
 	//for each dex
 	for _, dex := range Dexes {
 
-		poolABI := contractAbis.UniswapV2PairABI
-		if !dex.IsUniv2 {
-			poolABI = contractAbis.UniswapV3PoolABI
-		}
-
 		//Get the pool address
 		lpAddress := dex.getPoolAddress(token, config.Configuration.WrappedNativeTokenAddress, fee)
 
-		token0 := getLPToken0(poolABI, &lpAddress)
+		token0 := getLPToken0(&lpAddress)
 		tokenDecimals := getTokenDecimals(&token)
 
 		var tokenReserves *big.Int
@@ -52,24 +47,23 @@ func addMarket(token common.Address, fee *big.Int) {
 		tokenToWeth := false
 		if token0 == token {
 			tokenToWeth = true
-			tokenReserves, wethReserves = getLPReserves(poolABI, lpAddress)
 		} else {
 			tokenToWeth = false
-			wethReserves, tokenReserves = getLPReserves(poolABI, lpAddress)
 
 		}
-
-		//Get tokenPerWethPrice
-		tokenPricePerWeth := getPriceOfAPerB(tokenReserves, tokenDecimals, wethReserves, config.Configuration.WrappedNativeTokenDecimals)
 
 		pool := Pool{
-			lpAddress:         lpAddress,
-			tokenReserves:     tokenReserves,
-			tokenDecimals:     tokenDecimals,
-			wethReserves:      wethReserves,
-			tokenToWeth:       tokenToWeth,
-			tokenPricePerWeth: tokenPricePerWeth,
+			lpAddress:     lpAddress,
+			tokenReserves: tokenReserves,
+			tokenDecimals: tokenDecimals,
+			wethReserves:  wethReserves,
+			tokenToWeth:   tokenToWeth,
 		}
+
+		//Set the reserve values
+		pool.setLPReserves()
+		//set the price of token per weth
+		pool.setPriceOfTokenPerWeth()
 
 		//append the pool to the market
 		Markets[token] = append(Markets[token], pool)
