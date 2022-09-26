@@ -128,7 +128,15 @@ func ListenForEventLogs() {
 		//Check all affected orders
 		for _, affectedMarket := range affectedMarkets {
 			affectedOrders := TokenToAffectedOrders[affectedMarket]
-			fmt.Println(affectedOrders)
+
+			//Batches orders ready for execution
+			batchedOrders := batchOrdersForExecution(affectedOrders)
+
+			if len(batchedOrders) > 0 {
+				for _, batch := range batchedOrders {
+					executeOrders(batch)
+				}
+			}
 
 		}
 	}

@@ -9,7 +9,7 @@ import (
 var PendingExecution map[common.Hash]bool
 var PendingExecutionMutex *sync.Mutex
 
-func executeOrders() {
+func executeOrders(orderIds []common.Hash) {
 
 }
 

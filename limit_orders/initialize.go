@@ -25,6 +25,7 @@ func Initialize() {
 	initializeTokenToAffectedOrders()
 	initializePendingExecution()
 
+	//TODO:
 	//Execute any orders that are ready
 
 }
