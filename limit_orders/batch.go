@@ -34,6 +34,9 @@ func groupOrdersByRoute(orderIds []common.Hash) map[common.Hash][]LimitOrder {
 			order := ActiveOrders[orderId]
 			ordersBatchedByRoute[key] = append(ordersBatchedByRoute[key], *order)
 
+		} else {
+			ordersBatchedByRoute[key] = []LimitOrder{}
+			ordersBatchedByRoute[key] = append(ordersBatchedByRoute[key], *order)
 		}
 
 	}
@@ -45,9 +48,42 @@ func groupOrdersByRoute(orderIds []common.Hash) map[common.Hash][]LimitOrder {
 // Filters out orders that are not ready for execution
 func filterOrdersReadyForExectuion(orderGroups map[common.Hash][]LimitOrder) {
 
+	filteredOrders := make(map[common.Hash][]LimitOrder)
+
 	for _, group := range orderGroups {
 		for _, order := range group {
-			fmt.Println(order)
+
+			tokenInMarkets := Markets[order.tokenIn]
+			tokenOutMarkets := Markets[order.tokenOut]
+
+			firstHopPrice := getBestMarketPrice(tokenInMarkets, order.buy)
+			secondHopPrice := getBestMarketPrice(tokenOutMarkets, order.buy)
+
+			currentPrice := firstHopPrice / secondHopPrice
+
+			if order.buy {
+				if order.price >= currentPrice {
+					key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
+					if _, ok := filteredOrders[key]; ok {
+						filteredOrders[key] = append(filteredOrders[key], order)
+					} else {
+						filteredOrders[key] = []LimitOrder{}
+						filteredOrders[key] = append(filteredOrders[key], order)
+					}
+				}
+
+			} else {
+				if order.price <= currentPrice {
+					key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
+					if _, ok := filteredOrders[key]; ok {
+						filteredOrders[key] = append(filteredOrders[key], order)
+					} else {
+						filteredOrders[key] = []LimitOrder{}
+						filteredOrders[key] = append(filteredOrders[key], order)
+					}
+				}
+			}
+
 		}
 
 	}
