@@ -9,6 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+var USDWETHPool *Pool
+
 type Pool struct {
 	lpAddress         common.Address
 	IsUniv2           bool

@@ -99,9 +99,17 @@ func filterOrdersAtExectuionPrice(orderGroups map[common.Hash][]LimitOrder) map[
 	return filteredOrders
 }
 
-func orderGroupsByValue(map[common.Hash][]LimitOrder) [][]LimitOrder {
+func orderGroupsByValue(orderGroups map[common.Hash][]LimitOrder) [][]LimitOrder {
 
 	orderedOrderGroups := [][]LimitOrder{}
+
+	orderGroupValues := make(map[common.Hash]int64)
+	for _, orderGroup := range orderGroups {
+
+		for _, order := range orderGroup {
+
+		}
+	}
 
 	return orderedOrderGroups
 }

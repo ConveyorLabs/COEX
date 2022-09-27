@@ -25,6 +25,8 @@ func Initialize() {
 	initializeTokenToAffectedOrders()
 	initializePendingExecution()
 
+	initializeUSDWETHPool()
+
 	//TODO:
 	//Execute any orders that are ready
 
@@ -150,5 +152,23 @@ func initializePendingExecution() {
 		addMarketIfNotExist(order.tokenIn, order.fee)
 		addMarketIfNotExist(order.tokenOut, order.fee)
 	}
+
+}
+
+func initializeUSDWETHPool() {
+	USDWETHPool = &Pool{}
+	token0 := getLPToken0(&USDWETHPool.lpAddress)
+	if token0 == config.Configuration.WrappedNativeTokenAddress {
+		USDWETHPool.tokenToWeth = true
+		USDWETHPool.tokenDecimals = getTokenDecimals(&token0)
+
+	} else {
+		USDWETHPool.tokenToWeth = false
+		token1 := getLPToken1(&USDWETHPool.lpAddress)
+		USDWETHPool.tokenDecimals = getTokenDecimals(&token1)
+	}
+
+	reserve0, reserve1 := getLPReserves(USDWETHPool.IsUniv2, &USDWETHPool.lpAddress)
+	USDWETHPool.setReservesAndUpdatePriceOfTokenPerWeth(reserve0, reserve1)
 
 }
