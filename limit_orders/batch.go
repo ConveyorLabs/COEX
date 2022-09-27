@@ -3,6 +3,7 @@ package limitOrders
 import (
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -18,6 +19,7 @@ func batchOrdersForExecution(orderIds []common.Hash) [][]common.Hash {
 	// filter orders by execution price, dropping orders that are not ready for execution
 	orderGroupsAtExecutionPrice := filterOrdersAtExectuionPrice(ordersGroupedByRoute)
 
+	//TODO: check this
 	groupsOrderedByValue := orderGroupsByValue(orderGroupsAtExecutionPrice)
 	fmt.Println(groupsOrderedByValue)
 
@@ -114,9 +116,12 @@ func orderGroupsByValue(orderGroups map[common.Hash][]LimitOrder) [][]LimitOrder
 	orderedOrderGroups := [][]LimitOrder{}
 
 	orderGroupValues := make(map[common.Hash]float64)
+	orderGroupKeys := []common.Hash{}
 
 	//Get value of all orders in order groups
 	for key, orderGroup := range orderGroups {
+		orderGroupKeys = append(orderGroupKeys, key)
+
 		orderGroupUSDValue := float64(0)
 		for _, order := range orderGroup {
 			market := Markets[order.tokenIn]
@@ -144,9 +149,13 @@ func orderGroupsByValue(orderGroups map[common.Hash][]LimitOrder) [][]LimitOrder
 		orderGroupValues[key] = orderGroupUSDValue
 	}
 
-	//Sort order groups by value
-	//TODO:
-	fmt.Println(orderGroupValues)
+	sort.SliceStable(orderGroupKeys, func(i, j int) bool {
+		return orderGroupValues[orderGroupKeys[i]] < orderGroupValues[orderGroupKeys[j]]
+	})
+
+	for _, key := range orderGroupKeys {
+		orderedOrderGroups = append(orderedOrderGroups, orderGroups[key])
+	}
 
 	return orderedOrderGroups
 }
