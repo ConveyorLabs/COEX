@@ -67,30 +67,28 @@ func filterOrdersReadyForExectuion(orderGroups map[common.Hash][]LimitOrder) {
 			secondHopPrice := getBestMarketPrice(tokenOutMarkets, order.buy)
 
 			currentPrice := firstHopPrice / secondHopPrice
-			fmt.Println(currentPrice)
-			fmt.Println(filteredOrders)
 
 			if order.buy {
-				// if order.price >= currentPrice {
-				// 	key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
-				// 	if _, ok := filteredOrders[key]; ok {
-				// 		filteredOrders[key] = append(filteredOrders[key], order)
-				// 	} else {
-				// 		filteredOrders[key] = []LimitOrder{}
-				// 		filteredOrders[key] = append(filteredOrders[key], order)
-				// 	}
-				// }
+				if order.price >= currentPrice {
+					key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
+					if _, ok := filteredOrders[key]; ok {
+						filteredOrders[key] = append(filteredOrders[key], order)
+					} else {
+						filteredOrders[key] = []LimitOrder{}
+						filteredOrders[key] = append(filteredOrders[key], order)
+					}
+				}
 
 			} else {
-				// if order.price <= currentPrice {
-				// 	key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
-				// 	if _, ok := filteredOrders[key]; ok {
-				// 		filteredOrders[key] = append(filteredOrders[key], order)
-				// 	} else {
-				// 		filteredOrders[key] = []LimitOrder{}
-				// 		filteredOrders[key] = append(filteredOrders[key], order)
-				// 	}
-				// }
+				if order.price <= currentPrice {
+					key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
+					if _, ok := filteredOrders[key]; ok {
+						filteredOrders[key] = append(filteredOrders[key], order)
+					} else {
+						filteredOrders[key] = []LimitOrder{}
+						filteredOrders[key] = append(filteredOrders[key], order)
+					}
+				}
 			}
 
 		}

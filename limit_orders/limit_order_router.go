@@ -31,12 +31,16 @@ func getRemoteOrderById(orderId common.Hash) LimitOrder {
 		//TODO: handle error
 	}
 
+	priceBigInt := big.NewInt(0).Rsh(order[7].(*big.Int), 64)
+	priceBigFloat := new(big.Float).SetInt(priceBigInt)
+	price, _ := priceBigFloat.Float64()
+
 	return LimitOrder{
 		buy:                  order[0].(bool),
 		taxed:                order[1].(bool),
 		lastRefreshTimestamp: order[2].(uint32),
 		expirationTimestamp:  order[3].(uint32),
-		price:                order[7].(*big.Int),
+		price:                price,
 		amountOutMin:         order[8].(*big.Int),
 		quantity:             order[9].(*big.Int),
 		tokenIn:              order[11].(common.Address),

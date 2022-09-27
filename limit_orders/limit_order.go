@@ -11,7 +11,7 @@ type LimitOrder struct {
 	taxed                bool
 	lastRefreshTimestamp uint32
 	expirationTimestamp  uint32
-	price                *big.Int
+	price                float64
 	amountOutMin         *big.Int
 	quantity             *big.Int
 	tokenIn              common.Address
