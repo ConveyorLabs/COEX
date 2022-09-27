@@ -2,6 +2,7 @@ package limitOrders
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -54,7 +55,8 @@ func groupOrdersByRoute(orderIds []common.Hash) map[common.Hash][]LimitOrder {
 
 }
 
-// Filters out orders that are not ready for execution
+// Filters out orders that are not ready for execution. Orders are grouped by tokenIn, tokenOut and buy status
+// ie Buy and sell orders on the same path are grouped in separate groups
 func filterOrdersAtExectuionPrice(orderGroups map[common.Hash][]LimitOrder) map[common.Hash][]LimitOrder {
 
 	filteredOrders := make(map[common.Hash][]LimitOrder)
@@ -72,7 +74,11 @@ func filterOrdersAtExectuionPrice(orderGroups map[common.Hash][]LimitOrder) map[
 
 			if order.buy {
 				if order.price >= currentPrice {
-					key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
+
+					//Key is generated from order tokenIn, tokenOut and buy status
+					keyBytes := strconv.AppendBool(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...), order.buy)
+					key := common.BytesToHash(keyBytes)
+
 					if _, ok := filteredOrders[key]; ok {
 						filteredOrders[key] = append(filteredOrders[key], order)
 					} else {
@@ -83,7 +89,10 @@ func filterOrdersAtExectuionPrice(orderGroups map[common.Hash][]LimitOrder) map[
 
 			} else {
 				if order.price <= currentPrice {
-					key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
+					// Key is generated from order tokenIn, tokenOut and buy status
+					keyBytes := strconv.AppendBool(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...), order.buy)
+					key := common.BytesToHash(keyBytes)
+
 					if _, ok := filteredOrders[key]; ok {
 						filteredOrders[key] = append(filteredOrders[key], order)
 					} else {
@@ -104,12 +113,16 @@ func orderGroupsByValue(orderGroups map[common.Hash][]LimitOrder) [][]LimitOrder
 	orderedOrderGroups := [][]LimitOrder{}
 
 	orderGroupValues := make(map[common.Hash]int64)
+
+	//Get value of all orders in order groups
 	for _, orderGroup := range orderGroups {
-
 		for _, order := range orderGroup {
-
+			fmt.Println(order)
 		}
 	}
+
+	//Sort order groups by value
+	fmt.Println(orderGroupValues)
 
 	return orderedOrderGroups
 }

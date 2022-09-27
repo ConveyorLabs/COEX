@@ -119,3 +119,26 @@ func getBestMarketPrice(markets []Pool, buy bool) float64 {
 	}
 
 }
+
+func getMostLiquidPool(tokenIn common.Address, tokenOut common.Address, fee *big.Int) (common.Address, bool) {
+
+	bestLiquidity := big.NewInt(0)
+	bestPoolAddress := common.HexToAddress("0x")
+	poolIsUniv2 := false
+
+	for _, dex := range Dexes {
+
+		poolAddress := dex.getPoolAddress(tokenIn, tokenOut, fee)
+		reserve0, reserve1 := getLPReserves(dex.IsUniv2, &poolAddress)
+		liquidity := big.NewInt(0).Add(reserve0, reserve1)
+
+		if liquidity.Cmp(bestLiquidity) > 0 {
+			bestLiquidity = liquidity
+			bestPoolAddress = poolAddress
+			poolIsUniv2 = dex.IsUniv2
+		}
+
+	}
+
+	return bestPoolAddress, poolIsUniv2
+}

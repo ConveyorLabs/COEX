@@ -156,8 +156,16 @@ func initializePendingExecution() {
 }
 
 func initializeUSDWETHPool() {
-	USDWETHPool = &Pool{}
+
+	usdWethPoolAddress, isUniv2 := getMostLiquidPool(
+		config.Configuration.USDPeggedTokenAddress,
+		config.Configuration.WrappedNativeTokenAddress,
+		config.Configuration.USDWethPoolFee)
+
+	USDWETHPool = &Pool{lpAddress: usdWethPoolAddress, IsUniv2: isUniv2}
+
 	token0 := getLPToken0(&USDWETHPool.lpAddress)
+
 	if token0 == config.Configuration.WrappedNativeTokenAddress {
 		USDWETHPool.tokenToWeth = true
 		USDWETHPool.tokenDecimals = getTokenDecimals(&token0)

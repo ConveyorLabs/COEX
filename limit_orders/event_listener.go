@@ -112,10 +112,12 @@ func ListenForEventLogs() {
 			switch lpLog.Topics[0] {
 			case v2SyncEventSignature:
 				wg.Add(1)
+				handleUSDWETHUpdate(&lpLog, v2SyncEventSignature)
 				go handleUniv2SyncLog(&lpLog, &affectedMarkets, affectedMarketsMutex, wg)
 
 			case v3SwapEventSignature:
 				wg.Add(1)
+				handleUSDWETHUpdate(&lpLog, v3SwapEventSignature)
 				go handleUniv3SwapLog(&lpLog, &affectedMarkets, affectedMarketsMutex, wg)
 
 			}
@@ -204,7 +206,7 @@ func handleUniv2SyncLog(eventLog *types.Log, affectedMarkets *[]common.Address, 
 				for _, pool := range pools {
 					if pool.lpAddress == eventLog.Address {
 						//update price
-						pool.setReservesAndUpdatePriceOfTokenPerWeth(eventLog.Topics[1].Big(), eventLog.Topics[2].Big())
+						pool.setReservesAndUpdatePriceOfTokenPerWeth(eventLog.Topics[2].Big(), eventLog.Topics[1].Big())
 						//add affected market
 						affectedMarketsMutex.Lock()
 						*affectedMarkets = append(*affectedMarkets, token1)
@@ -307,4 +309,41 @@ func handleUniv3SwapLog(eventLog *types.Log, affectedMarkets *[]common.Address, 
 
 	wg.Done()
 
+}
+
+func handleUSDWETHUpdate(eventLog *types.Log, eventSignature common.Hash) {
+
+	if eventLog.Address == USDWETHPool.lpAddress {
+		switch eventSignature {
+		case v2SyncEventSignature:
+			if USDWETHPool.tokenToWeth {
+				USDWETHPool.setReservesAndUpdatePriceOfTokenPerWeth(eventLog.Topics[1].Big(), eventLog.Topics[2].Big())
+			} else {
+				USDWETHPool.setReservesAndUpdatePriceOfTokenPerWeth(eventLog.Topics[2].Big(), eventLog.Topics[1].Big())
+			}
+
+		case v3SwapEventSignature:
+			unpackedEventLogData, err := contractAbis.UniswapV3PoolABI.Unpack("Swap", eventLog.Data)
+			if err != nil {
+				//TODO: handle error
+			}
+
+			sqrtPriceX96 := unpackedEventLogData[4].(*big.Int)
+			liquidity := unpackedEventLogData[5].(*big.Int)
+
+			var wethReserves *big.Int
+			var tokenReserves *big.Int
+
+			if USDWETHPool.tokenToWeth {
+				wethReserves = big.NewInt(0).Div(liquidity, sqrtPriceX96)
+				tokenReserves = big.NewInt(0).Div(big.NewInt(0).Exp(liquidity, big.NewInt(2), nil), wethReserves)
+			} else {
+				tokenReserves = big.NewInt(0).Div(liquidity, sqrtPriceX96)
+				wethReserves = big.NewInt(0).Div(big.NewInt(0).Exp(liquidity, big.NewInt(2), nil), wethReserves)
+			}
+
+			USDWETHPool.setReservesAndUpdatePriceOfTokenPerWeth(tokenReserves, wethReserves)
+
+		}
+	}
 }
