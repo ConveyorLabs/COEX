@@ -161,8 +161,31 @@ func orderGroupsByValue(orderGroups map[common.Hash][]LimitOrder) [][]LimitOrder
 }
 
 // Simulates orders and groups batches. Orders that are not able to execute are dropped from the order group
-func simulateAndBatchOrders([][]LimitOrder) [][]common.Hash {
+func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
 	orderGroupsForExecution := [][]common.Hash{}
+
+	for _, orderGroup := range orderGroups {
+
+		//Order the ordergroup by quantity
+		//TODO:
+
+		firstOrder := orderGroup[0]
+		buyStatus := firstOrder.buy
+		tokenIn := firstOrder.tokenIn
+		tokenOut := firstOrder.tokenOut
+
+		tokenInMarkets := Markets[tokenIn]
+		tokenOutMarkets := Markets[tokenOut]
+
+		for _, order := range orderGroup {
+
+			//Check if order can execute without hitting slippage
+			//TODO: write function that simulates execution, if order can not execute, revert reserves back to original values, and return false
+			//If the execution can complete,
+
+		}
+
+	}
 
 	return orderGroupsForExecution
 }

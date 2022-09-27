@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// TODO: FIXME: you will prob need this as a pointer to pool to update state instead of updating the entire pool
 var Markets map[common.Address][]Pool
 var MarketsMutex *sync.Mutex
 
