@@ -13,14 +13,16 @@ func batchOrdersForExecution(orderIds []common.Hash) [][]common.Hash {
 	//group orders that have the same in/out
 	ordersGroupedByRoute := groupOrdersByRoute(orderIds)
 
-	//TODO: filter orders by execution price
+	// filter orders by execution price, dropping orders that are not ready for execution
+	orderGroupsAtExecutionPrice := filterOrdersAtExectuionPrice(ordersGroupedByRoute)
 
-	//TODO: simulate each ordergroup to determine which should be first in batching simulation. This should be compared by usd value
+	groupsOrderedByValue := orderGroupsByValue(orderGroupsAtExecutionPrice)
+	fmt.Println(groupsOrderedByValue)
 
 	//Simulate all orders and create batches.
-	fmt.Println(ordersGroupedByRoute)
+	orderGroupsForExecution := simulateAndBatchOrders(groupsOrderedByValue)
 
-	return [][]common.Hash{}
+	return orderGroupsForExecution
 }
 
 // Groups orders by tokenIn/tokenOut
@@ -53,7 +55,7 @@ func groupOrdersByRoute(orderIds []common.Hash) map[common.Hash][]LimitOrder {
 }
 
 // Filters out orders that are not ready for execution
-func filterOrdersReadyForExectuion(orderGroups map[common.Hash][]LimitOrder) {
+func filterOrdersAtExectuionPrice(orderGroups map[common.Hash][]LimitOrder) map[common.Hash][]LimitOrder {
 
 	filteredOrders := make(map[common.Hash][]LimitOrder)
 
@@ -94,10 +96,19 @@ func filterOrdersReadyForExectuion(orderGroups map[common.Hash][]LimitOrder) {
 		}
 
 	}
-
+	return filteredOrders
 }
 
-//Simulates orders and groups batches. Each batch in the list of batches are ordered by lowest to highest quantity.
-//TODO: order by usd value in quantity? How to order the groups of batches
+func orderGroupsByValue(map[common.Hash][]LimitOrder) [][]LimitOrder {
 
-func simulateAndBatchOrders() {}
+	orderedOrderGroups := [][]LimitOrder{}
+
+	return orderedOrderGroups
+}
+
+// Simulates orders and groups batches. Orders that are not able to execute are dropped from the order group
+func simulateAndBatchOrders([][]LimitOrder) [][]common.Hash {
+	orderGroupsForExecution := [][]common.Hash{}
+
+	return orderGroupsForExecution
+}
