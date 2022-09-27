@@ -2,6 +2,7 @@ package limitOrders
 
 import (
 	"fmt"
+	"math/big"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -112,16 +113,39 @@ func orderGroupsByValue(orderGroups map[common.Hash][]LimitOrder) [][]LimitOrder
 
 	orderedOrderGroups := [][]LimitOrder{}
 
-	orderGroupValues := make(map[common.Hash]int64)
+	orderGroupValues := make(map[common.Hash]float64)
 
 	//Get value of all orders in order groups
-	for _, orderGroup := range orderGroups {
+	for key, orderGroup := range orderGroups {
+		orderGroupUSDValue := float64(0)
 		for _, order := range orderGroup {
-			fmt.Println(order)
+			market := Markets[order.tokenIn]
+			tokenDecimals := market[0].tokenDecimals
+
+			//get tokenIn per weth price
+			tokenPricePerWeth := getBestMarketPrice(market, order.buy)
+
+			//convert amountIn to base 10
+			//TODO: double check this calculation
+			quantity, _ := big.NewFloat(0).SetInt(big.NewInt(0).Div(order.quantity, big.NewInt(int64(tokenDecimals)))).Float64()
+
+			//convert amountIn to weth
+			quantityInWeth := quantity / tokenPricePerWeth
+
+			//convert weth to usd value
+			orderUSDValue := quantityInWeth * USDWETHPool.tokenPricePerWeth
+
+			//Add order USD value to total order group USD value
+			orderGroupUSDValue += orderUSDValue
+
 		}
+
+		//Add the total order group USD value to the order group values map
+		orderGroupValues[key] = orderGroupUSDValue
 	}
 
 	//Sort order groups by value
+	//TODO:
 	fmt.Println(orderGroupValues)
 
 	return orderedOrderGroups

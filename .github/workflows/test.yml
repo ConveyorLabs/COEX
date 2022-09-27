@@ -1,4 +1,12 @@
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - production
+      - staging
+  pull_request:
+    branches:
+      - production
+      - staging
 
 name: run tests
 jobs:
