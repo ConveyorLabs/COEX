@@ -13,12 +13,19 @@ func batchOrdersForExecution(orderIds []common.Hash) [][]common.Hash {
 	//group orders that have the same in/out
 	ordersGroupedByRoute := groupOrdersByRoute(orderIds)
 
+	//TODO: filter orders by execution price
+
+	//TODO: simulate each ordergroup to determine which should be first in batching simulation. This should be compared by usd value
+
+	//Simulate all orders and create batches.
 	fmt.Println(ordersGroupedByRoute)
 
 	return [][]common.Hash{}
 }
 
 // Groups orders by tokenIn/tokenOut
+
+// TODO: make sure the orders are in order by quantity in each group
 func groupOrdersByRoute(orderIds []common.Hash) map[common.Hash][]LimitOrder {
 	//Tokenin tokenout out hash
 	ordersBatchedByRoute := make(map[common.Hash][]LimitOrder)
@@ -60,28 +67,30 @@ func filterOrdersReadyForExectuion(orderGroups map[common.Hash][]LimitOrder) {
 			secondHopPrice := getBestMarketPrice(tokenOutMarkets, order.buy)
 
 			currentPrice := firstHopPrice / secondHopPrice
+			fmt.Println(currentPrice)
+			fmt.Println(filteredOrders)
 
 			if order.buy {
-				if order.price >= currentPrice {
-					key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
-					if _, ok := filteredOrders[key]; ok {
-						filteredOrders[key] = append(filteredOrders[key], order)
-					} else {
-						filteredOrders[key] = []LimitOrder{}
-						filteredOrders[key] = append(filteredOrders[key], order)
-					}
-				}
+				// if order.price >= currentPrice {
+				// 	key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
+				// 	if _, ok := filteredOrders[key]; ok {
+				// 		filteredOrders[key] = append(filteredOrders[key], order)
+				// 	} else {
+				// 		filteredOrders[key] = []LimitOrder{}
+				// 		filteredOrders[key] = append(filteredOrders[key], order)
+				// 	}
+				// }
 
 			} else {
-				if order.price <= currentPrice {
-					key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
-					if _, ok := filteredOrders[key]; ok {
-						filteredOrders[key] = append(filteredOrders[key], order)
-					} else {
-						filteredOrders[key] = []LimitOrder{}
-						filteredOrders[key] = append(filteredOrders[key], order)
-					}
-				}
+				// if order.price <= currentPrice {
+				// 	key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
+				// 	if _, ok := filteredOrders[key]; ok {
+				// 		filteredOrders[key] = append(filteredOrders[key], order)
+				// 	} else {
+				// 		filteredOrders[key] = []LimitOrder{}
+				// 		filteredOrders[key] = append(filteredOrders[key], order)
+				// 	}
+				// }
 			}
 
 		}
