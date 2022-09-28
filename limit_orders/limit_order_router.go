@@ -36,6 +36,7 @@ func getRemoteOrderById(orderId common.Hash) LimitOrder {
 	price, _ := priceBigFloat.Float64()
 
 	return LimitOrder{
+		orderId:              orderId,
 		buy:                  order[0].(bool),
 		taxed:                order[1].(bool),
 		lastRefreshTimestamp: order[2].(uint32),

@@ -7,6 +7,7 @@ import (
 )
 
 type LimitOrder struct {
+	orderId              common.Hash
 	buy                  bool
 	lastRefreshTimestamp uint32
 	expirationTimestamp  uint32

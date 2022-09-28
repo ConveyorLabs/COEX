@@ -70,8 +70,8 @@ func filterOrdersAtExectuionPrice(orderGroups map[common.Hash][]LimitOrder) map[
 			tokenInMarkets := Markets[order.tokenIn]
 			tokenOutMarkets := Markets[order.tokenOut]
 
-			firstHopPrice := getBestMarket(tokenInMarkets, order.buy).tokenPricePerWeth
-			secondHopPrice := getBestMarket(tokenOutMarkets, order.buy).tokenPricePerWeth
+			firstHopPrice := getBestMarketPrice(tokenInMarkets, order.buy)
+			secondHopPrice := getBestMarketPrice(tokenOutMarkets, order.buy)
 
 			currentPrice := firstHopPrice / secondHopPrice
 
@@ -131,7 +131,7 @@ func orderGroupsByValue(orderGroups map[common.Hash][]LimitOrder) [][]LimitOrder
 			tokenDecimals := market[0].tokenDecimals
 
 			//get tokenIn per weth price
-			tokenPricePerWeth := getBestMarket(market, order.buy).tokenPricePerWeth
+			tokenPricePerWeth := getBestMarketPrice(market, order.buy)
 
 			//convert amountIn to base 10
 			//TODO: double check this calculation
@@ -180,18 +180,21 @@ func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
 		tokenInMarkets := Markets[tokenIn]
 		tokenOutMarkets := Markets[tokenOut]
 
+		ordersIdsToExecute := []common.Hash{}
 		for _, order := range orderGroup {
 
-			bestTokenInMarketIndex := getBestMarket(tokenInMarkets, buyStatus)
-			bestTokenOutMarketIndex := getBestMarketIndex(tokenOutMarkets, buyStatus)
+			success := simulateOrderLocallyAndUpdateMarkets(order, &tokenInMarkets, &tokenOutMarkets, buyStatus)
 
-			simulate_order(order, bestTokenInMarket, bestTokenOutMarket, buyStatus)
-
-			//Check if order can execute without hitting slippage
-			//TODO: write function that simulates execution, if order can not execute, revert reserves back to original values, and return false
-			//If the execution can complete,
+			if success {
+				ordersIdsToExecute = append(ordersIdsToExecute, order.orderId)
+			} else {
+				break
+			}
 
 		}
+
+		//TODO: simulate execution via rpc call to the node
+		simulateExecutionBatch(ordersIdsToExecute)
 
 	}
 

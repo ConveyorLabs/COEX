@@ -97,6 +97,30 @@ func (d *Dex) getPoolAddress(tokenIn common.Address, tokenOut common.Address, fe
 
 }
 
+func getBestMarketPrice(markets []Pool, buy bool) float64 {
+
+	if buy {
+		bestBuyPrice := markets[0].tokenPricePerWeth
+		for _, market := range markets[1:] {
+			if market.tokenPricePerWeth < bestBuyPrice {
+				bestBuyPrice = market.tokenPricePerWeth
+			}
+		}
+		return bestBuyPrice
+
+	} else {
+		bestSellPrice := markets[0].tokenPricePerWeth
+		for _, market := range markets[1:] {
+			if market.tokenPricePerWeth > bestSellPrice {
+				bestSellPrice = market.tokenPricePerWeth
+			}
+		}
+
+		return bestSellPrice
+	}
+
+}
+
 func getBestMarket(markets []Pool, buy bool) (int, Pool) {
 
 	bestMarketIndex := 0
