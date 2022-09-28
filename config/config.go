@@ -31,6 +31,7 @@ type Config struct {
 	LimitOrderRouterCreationBlock *big.Int
 	SwapRouterAddress             common.Address
 	NumberOfDexes                 int
+	EnableTaxedTokens             bool
 }
 
 func initializeConfig() {

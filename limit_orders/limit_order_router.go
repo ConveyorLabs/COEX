@@ -57,7 +57,13 @@ func getLocalOrderById(orderId common.Hash) LimitOrder {
 func addOrderToOrderBook(orderIds []common.Hash) {
 	for _, orderId := range orderIds {
 		order := getRemoteOrderById(orderId)
-		ActiveOrders[orderId] = &order
+		if order.taxed {
+			if config.Configuration.EnableTaxedTokens {
+				ActiveOrders[orderId] = &order
+			}
+		} else {
+			ActiveOrders[orderId] = &order
+		}
 	}
 
 }

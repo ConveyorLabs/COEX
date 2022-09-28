@@ -8,7 +8,6 @@ import (
 
 type LimitOrder struct {
 	buy                  bool
-	taxed                bool
 	lastRefreshTimestamp uint32
 	expirationTimestamp  uint32
 	price                float64
@@ -17,4 +16,6 @@ type LimitOrder struct {
 	tokenIn              common.Address
 	tokenOut             common.Address
 	fee                  *big.Int
+	taxed                bool
+	taxIn                uint32
 }
