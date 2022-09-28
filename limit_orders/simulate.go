@@ -77,9 +77,10 @@ func simulateAToBSwapLocally(amountIn *big.Int, pool Pool) (*big.Int, *big.Int, 
 }
 
 // Returns amountOut, newReserve0, newReserve1
-func simulateV2Swap(amountIn *big.Int, reserve0 *big.Int, token0Decimals uint8, reserve1 *big.Int, token1Decimals uint8, aToB bool) (*big.Int, *big.Int, *big.Int) {
-
-	return big.NewInt(0), big.NewInt(0), big.NewInt(0)
+func simulateV2Swap(amountIn *big.Int, reserveA *big.Int, reserveADecimals uint8, reserveB *big.Int, reserveBDecimals uint8, aToB bool) (*big.Int, *big.Int, *big.Int) {
+	priceOfAPerB := getPriceOfAPerBBigInt(true, reserveA, reserveADecimals, reserveB, reserveBDecimals)
+	amountOut := big.NewInt(0).Div(amountIn, priceOfAPerB)
+	return amountOut, big.NewInt(0).Add(reserveA, amountIn), big.NewInt(0).Sub(reserveB, amountOut)
 }
 
 func simulateV3Swap(amountIn *big.Int, reserve0 *big.Int, token0Decimals uint8, reserve1 *big.Int, token1Decimals uint8, aToB bool) (*big.Int, *big.Int, *big.Int) {

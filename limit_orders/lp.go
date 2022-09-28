@@ -102,7 +102,6 @@ func (p *Pool) updatePriceOfTokenPerWeth() float64 {
 
 func getPriceOfAPerB(isUniv2 bool, reserveA *big.Int, reserveADecimals uint8, reserveB *big.Int, reserveBDecimals uint8) float64 {
 	if isUniv2 {
-
 		reserveACommonDecimals, reserveBCommonDecimals := ConvertAmountsToCommonDecmials(reserveA, reserveADecimals, reserveB, reserveBDecimals)
 		priceOfAPerB := big.NewInt(0).Div(reserveACommonDecimals, reserveBCommonDecimals)
 		priceOfAPerBFloat64, _ := new(big.Float).SetInt(priceOfAPerB).Float64()
@@ -111,6 +110,18 @@ func getPriceOfAPerB(isUniv2 bool, reserveA *big.Int, reserveADecimals uint8, re
 
 		//TODO: for univ3
 		return 0
+	}
+}
+
+func getPriceOfAPerBBigInt(isUniv2 bool, reserveA *big.Int, reserveADecimals uint8, reserveB *big.Int, reserveBDecimals uint8) *big.Int {
+	if isUniv2 {
+		reserveACommonDecimals, reserveBCommonDecimals := ConvertAmountsToCommonDecmials(reserveA, reserveADecimals, reserveB, reserveBDecimals)
+		priceOfAPerB := big.NewInt(0).Div(reserveACommonDecimals, reserveBCommonDecimals)
+		return priceOfAPerB
+	} else {
+
+		//TODO: for univ3
+		return big.NewInt(0)
 	}
 }
 
