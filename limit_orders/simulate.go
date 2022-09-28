@@ -8,10 +8,9 @@ import (
 )
 
 // Returns success or failure,
-//If success, the Pool values are updated
-//If failure, the Pool remain unchanged
-
-func simulateOrderLocallyAndUpdateMarkets(order LimitOrder, tokenInMarket []*Pool, tokenOutMarket []*Pool, buyStatus bool) bool {
+// If success, the affected Pool reserves are updated
+// If failure, the Pool reserves remained unchanged
+func simulateOrderLocally(order LimitOrder, tokenInMarket []*Pool, tokenOutMarket []*Pool, buyStatus bool) bool {
 	bestTokenInMarket := getBestPoolFromMarket(tokenInMarket, buyStatus)
 	bestTokenOutMarket := getBestPoolFromMarket(tokenOutMarket, buyStatus)
 
@@ -44,13 +43,25 @@ func updateBestMarketReserves(pool *Pool, newReserve0 *big.Int, newReserve1 *big
 
 func simulateAToBSwapLocally(amountIn *big.Int, pool Pool) (*big.Int, *big.Int, *big.Int) {
 
-	amountOut, updatedReserve0, updatedReserve1 := simulateV2Swap(amountIn, pool.tokenReserves,
-		pool.tokenDecimals,
-		pool.wethReserves,
-		config.Configuration.WrappedNativeTokenDecimals,
-		pool.tokenToWeth)
+	if pool.IsUniv2 {
+		amountOut, updatedReserve0, updatedReserve1 := simulateV2Swap(amountIn, pool.tokenReserves,
+			pool.tokenDecimals,
+			pool.wethReserves,
+			config.Configuration.WrappedNativeTokenDecimals,
+			pool.tokenToWeth)
+		return amountOut, updatedReserve0, updatedReserve1
 
-	return amountOut, updatedReserve0, updatedReserve1
+	} else {
+
+		amountOut, updatedReserve0, updatedReserve1 := simulateV3Swap(amountIn, pool.tokenReserves,
+			pool.tokenDecimals,
+			pool.wethReserves,
+			config.Configuration.WrappedNativeTokenDecimals,
+			pool.tokenToWeth)
+		return amountOut, updatedReserve0, updatedReserve1
+
+	}
+
 }
 
 // Returns amountOut, newReserve0, newReserve1
@@ -59,11 +70,37 @@ func simulateV2Swap(amountIn *big.Int, reserve0 *big.Int, token0Decimals uint8, 
 	return big.NewInt(0), big.NewInt(0), big.NewInt(0)
 }
 
-func simulateV3Swap() {}
+func simulateV3Swap(amountIn *big.Int, reserve0 *big.Int, token0Decimals uint8, reserve1 *big.Int, token1Decimals uint8, aToB bool) (*big.Int, *big.Int, *big.Int) {
+	return big.NewInt(0), big.NewInt(0), big.NewInt(0)
+}
 
-func convertToCommonBase() {}
+// -
+// Helper function to convert token reserves into a common decimals
+// Returns reserve0 and reserve1 in the highest common decimal form. Also returns the decimal form the values are transformed into.
+func convertAmountsToCommonDecimals(reserve0 *big.Int, token0Decimals uint8, reserve1 *big.Int, token1Decimals uint8) (*big.Int, *big.Int, uint8) {
+	if token0Decimals > token1Decimals {
+		multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(token0Decimals-token1Decimals)), nil)
+		return reserve0, big.NewInt(0).Mul(reserve1, multiplier), token0Decimals
+	} else if token1Decimals > token0Decimals {
+		multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(token1Decimals-token0Decimals)), nil)
+		return big.NewInt(0).Mul(reserve0, multiplier), reserve1, token1Decimals
+	} else {
+		return reserve0, reserve1, token0Decimals
+	}
 
-func convertToBase() {}
+}
+
+// Helper function to convert an Amount to a specified base given its original base
+func convertAmountToBase(tokenAmount *big.Int, tokenDecimals uint8, targetDecimals uint8) *big.Int {
+	if targetDecimals > tokenDecimals {
+		multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(targetDecimals-tokenDecimals)), nil)
+		return big.NewInt(0).Mul(tokenAmount, multiplier)
+	} else {
+		multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(tokenDecimals-targetDecimals)), nil)
+		return big.NewInt(0).Div(tokenAmount, multiplier)
+	}
+
+}
 
 // Calls the node to simulate an execution batch
 func simulateExecutionBatch(orderIds []common.Hash) {}

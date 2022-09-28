@@ -183,7 +183,7 @@ func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
 		ordersIdsToExecute := []common.Hash{}
 		for _, order := range orderGroup {
 
-			success := simulateOrderLocallyAndUpdateMarkets(order, tokenInMarkets, tokenOutMarkets, buyStatus)
+			success := simulateOrderLocally(order, tokenInMarkets, tokenOutMarkets, buyStatus)
 
 			if success {
 				ordersIdsToExecute = append(ordersIdsToExecute, order.orderId)
