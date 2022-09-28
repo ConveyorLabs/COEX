@@ -81,29 +81,19 @@ func simulateAToBSwapLocally(amountIn *big.Int, pool Pool) (*big.Int, *big.Int, 
 
 // Returns amountOut, newReserve0, newReserve1
 func simulateV2Swap(amountIn *big.Int, reserveA *big.Int, reserveADecimals uint8, reserveB *big.Int, reserveBDecimals uint8, aToB bool) (*big.Int, *big.Int, *big.Int) {
-	priceOfAPerB := getPriceOfAPerBBigInt(true, reserveA, reserveADecimals, reserveB, reserveBDecimals)
-	amountOut := big.NewInt(0).Div(amountIn, priceOfAPerB)
+	reserveAInTokens := convertAmountToTokens(reserveA, reserveADecimals)
+	reserveBInTokens := convertAmountToTokens(reserveB, reserveBDecimals)
+
+	k := big.NewInt(0).Mul(reserveAInTokens, reserveBInTokens)
+	// r_y-(k/(r_x+delta_x)) = delta_y
+	amountOutInTokens := big.NewInt(0).Sub(reserveB, big.NewInt(0).Div(k, big.NewInt(0).Add(reserveA, amountIn)))
+	amountOut := convertAmountToWei(amountOutInTokens, reserveBDecimals)
 	return amountOut, big.NewInt(0).Add(reserveA, amountIn), big.NewInt(0).Sub(reserveB, amountOut)
+
 }
 
 func simulateV3Swap(amountIn *big.Int, reserve0 *big.Int, token0Decimals uint8, reserve1 *big.Int, token1Decimals uint8, aToB bool) (*big.Int, *big.Int, *big.Int) {
 	return big.NewInt(0), big.NewInt(0), big.NewInt(0)
-}
-
-// -
-// Helper function to convert token reserves into a common decimals
-// Returns reserve0 and reserve1 in the highest common decimal form. Also returns the decimal form the values are transformed into.
-func convertAmountsToCommonDecimals(reserve0 *big.Int, token0Decimals uint8, reserve1 *big.Int, token1Decimals uint8) (*big.Int, *big.Int, uint8) {
-	if token0Decimals > token1Decimals {
-		multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(token0Decimals-token1Decimals)), nil)
-		return reserve0, big.NewInt(0).Mul(reserve1, multiplier), token0Decimals
-	} else if token1Decimals > token0Decimals {
-		multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(token1Decimals-token0Decimals)), nil)
-		return big.NewInt(0).Mul(reserve0, multiplier), reserve1, token1Decimals
-	} else {
-		return reserve0, reserve1, token0Decimals
-	}
-
 }
 
 // Helper function to convert an Amount to a specified base given its original base
@@ -116,6 +106,16 @@ func convertAmountToBase(tokenAmount *big.Int, tokenDecimals uint8, targetDecima
 		return big.NewInt(0).Div(tokenAmount, multiplier)
 	}
 
+}
+
+func convertAmountToTokens(amount *big.Int, decimals uint8) *big.Int {
+	multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
+	return big.NewInt(0).Div(amount, multiplier)
+}
+
+func convertAmountToWei(amount *big.Int, decimals uint8) *big.Int {
+	multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
+	return big.NewInt(0).Mul(amount, multiplier)
 }
 
 // Calls the node to simulate an execution batch
