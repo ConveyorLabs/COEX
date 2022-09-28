@@ -14,7 +14,13 @@ func simulateOrderLocally(order LimitOrder, tokenInMarket []*Pool, tokenOutMarke
 	bestTokenInMarket := getBestPoolFromMarket(tokenInMarket, buyStatus)
 	bestTokenOutMarket := getBestPoolFromMarket(tokenOutMarket, buyStatus)
 
-	firstHopAmountOut, newTokenInMarketReserve0, newTokenInMarketReserve1 := simulateAToBSwapLocally(order.quantity, *bestTokenInMarket)
+	amountIn := order.quantity
+
+	if order.taxed {
+		amountIn = applyFeeOnTransfer(amountIn, order.taxIn)
+	}
+
+	firstHopAmountOut, newTokenInMarketReserve0, newTokenInMarketReserve1 := simulateAToBSwapLocally(amountIn, *bestTokenInMarket)
 	secondHopAmountOut, newTokenOutMarketReserve0, newTokenOutMarketReserve1 := simulateAToBSwapLocally(firstHopAmountOut, *bestTokenOutMarket)
 
 	if order.amountOutMin.Cmp(secondHopAmountOut) >= 0 {
@@ -39,6 +45,12 @@ func updateBestMarketReserves(pool *Pool, newReserve0 *big.Int, newReserve1 *big
 		pool.wethReserves = newReserve0
 	}
 
+}
+
+func applyFeeOnTransfer(quantity *big.Int, fee uint32) *big.Int {
+	return big.NewInt(0).Div(
+		big.NewInt(0).Mul(
+			quantity, big.NewInt(int64(fee))), big.NewInt(100000))
 }
 
 func simulateAToBSwapLocally(amountIn *big.Int, pool Pool) (*big.Int, *big.Int, *big.Int) {
