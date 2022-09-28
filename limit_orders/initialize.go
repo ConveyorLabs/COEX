@@ -107,7 +107,7 @@ func initializeDexes() {
 
 func initializeMarkets() {
 
-	Markets = make(map[common.Address][]Pool)
+	Markets = make(map[common.Address][]*Pool)
 	MarketsMutex = &sync.Mutex{}
 
 	for _, order := range ActiveOrders {

@@ -10,8 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// TODO: FIXME: you will prob need this as a pointer to pool to update state instead of updating the entire pool
-var Markets map[common.Address][]Pool
+var Markets map[common.Address][]*Pool
 var MarketsMutex *sync.Mutex
 
 var Dexes []Dex
@@ -66,8 +65,21 @@ func addMarket(token common.Address, fee *big.Int) {
 		pool.updatePriceOfTokenPerWeth()
 
 		//append the pool to the market
-		Markets[token] = append(Markets[token], pool)
+		Markets[token] = append(Markets[token], &pool)
 	}
+
+}
+
+func getCloneOfMarket(token common.Address) []*Pool {
+	market := Markets[token]
+	clonedMarket := []*Pool{}
+
+	for _, pool := range market {
+		clonedPool := Pool(*pool)
+		clonedMarket = append(clonedMarket, &clonedPool)
+	}
+
+	return clonedMarket
 
 }
 
@@ -97,7 +109,7 @@ func (d *Dex) getPoolAddress(tokenIn common.Address, tokenOut common.Address, fe
 
 }
 
-func getBestMarketPrice(markets []Pool, buy bool) float64 {
+func getBestMarketPrice(markets []*Pool, buy bool) float64 {
 
 	if buy {
 		bestBuyPrice := markets[0].tokenPricePerWeth
@@ -121,31 +133,29 @@ func getBestMarketPrice(markets []Pool, buy bool) float64 {
 
 }
 
-func getBestMarket(markets []Pool, buy bool) (int, Pool) {
+func getBestPoolFromMarket(markets []*Pool, buy bool) *Pool {
 
 	bestMarketIndex := 0
 
 	if buy {
 		bestBuyPrice := markets[0].tokenPricePerWeth
-		for i, market := range markets[1:] {
+		for _, market := range markets[1:] {
 			if market.tokenPricePerWeth < bestBuyPrice {
 				bestBuyPrice = market.tokenPricePerWeth
-				bestMarketIndex = i
 			}
 		}
-		return bestMarketIndex, markets[bestMarketIndex]
+		return markets[bestMarketIndex]
 
 	} else {
 		bestSellPrice := markets[0].tokenPricePerWeth
-		for i, market := range markets[1:] {
+		for _, market := range markets[1:] {
 			if market.tokenPricePerWeth > bestSellPrice {
 				bestSellPrice = market.tokenPricePerWeth
-				bestMarketIndex = i
 
 			}
 		}
 
-		return bestMarketIndex, markets[bestMarketIndex]
+		return markets[bestMarketIndex]
 	}
 
 }
