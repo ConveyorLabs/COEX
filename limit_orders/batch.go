@@ -194,7 +194,7 @@ func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
 		}
 
 		//TODO: simulate execution via rpc call to the node
-		simulateExecutionBatch(ordersIdsToExecute)
+		simulateExecution(ordersIdsToExecute)
 
 	}
 

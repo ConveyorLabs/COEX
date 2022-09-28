@@ -2,6 +2,9 @@ package limitOrders
 
 import (
 	"beacon/config"
+	contractAbis "beacon/contract_abis"
+	rpcClient "beacon/rpc_client"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -116,4 +119,12 @@ func convertAmountToBase(tokenAmount *big.Int, tokenDecimals uint8, targetDecima
 }
 
 // Calls the node to simulate an execution batch
-func simulateExecutionBatch(orderIds []common.Hash) {}
+func simulateExecution(orderIds []common.Hash) {
+	result, err := rpcClient.Call(contractAbis.LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "executeOrders", orderIds)
+	if err != nil {
+		//TODO: handle error
+	}
+
+	panic("handle the result from here")
+	fmt.Println(result...)
+}
