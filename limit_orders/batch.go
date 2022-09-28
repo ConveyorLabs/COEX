@@ -70,16 +70,19 @@ func filterOrdersAtExectuionPrice(orderGroups map[common.Hash][]LimitOrder) map[
 			tokenInMarkets := Markets[order.tokenIn]
 			tokenOutMarkets := Markets[order.tokenOut]
 
-			firstHopPrice := getBestMarketPrice(tokenInMarkets, order.buy)
-			secondHopPrice := getBestMarketPrice(tokenOutMarkets, order.buy)
+			firstHopPrice := getBestMarket(tokenInMarkets, order.buy).tokenPricePerWeth
+			secondHopPrice := getBestMarket(tokenOutMarkets, order.buy).tokenPricePerWeth
 
 			currentPrice := firstHopPrice / secondHopPrice
 
 			if order.buy {
 				if order.price >= currentPrice {
 
-					//Key is generated from order tokenIn, tokenOut and buy status
-					keyBytes := strconv.AppendBool(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...), order.buy)
+					//Key is generated from order tokenIn, tokenOut, buy status and tax status
+					keyBytes := strconv.AppendBool(
+						strconv.AppendBool(
+							append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...), order.buy), order.taxed)
+
 					key := common.BytesToHash(keyBytes)
 
 					if _, ok := filteredOrders[key]; ok {
@@ -128,7 +131,7 @@ func orderGroupsByValue(orderGroups map[common.Hash][]LimitOrder) [][]LimitOrder
 			tokenDecimals := market[0].tokenDecimals
 
 			//get tokenIn per weth price
-			tokenPricePerWeth := getBestMarketPrice(market, order.buy)
+			tokenPricePerWeth := getBestMarket(market, order.buy).tokenPricePerWeth
 
 			//convert amountIn to base 10
 			//TODO: double check this calculation
@@ -178,6 +181,11 @@ func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
 		tokenOutMarkets := Markets[tokenOut]
 
 		for _, order := range orderGroup {
+
+			bestTokenInMarketIndex := getBestMarket(tokenInMarkets, buyStatus)
+			bestTokenOutMarketIndex := getBestMarketIndex(tokenOutMarkets, buyStatus)
+
+			simulate_order(order, bestTokenInMarket, bestTokenOutMarket, buyStatus)
 
 			//Check if order can execute without hitting slippage
 			//TODO: write function that simulates execution, if order can not execute, revert reserves back to original values, and return false
