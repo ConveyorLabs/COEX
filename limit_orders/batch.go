@@ -177,8 +177,8 @@ func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
 		tokenIn := firstOrder.tokenIn
 		tokenOut := firstOrder.tokenOut
 
-		tokenInMarkets := Markets[tokenIn]
-		tokenOutMarkets := Markets[tokenOut]
+		tokenInMarkets := getCloneOfMarket(tokenIn)
+		tokenOutMarkets := getCloneOfMarket(tokenOut)
 
 		ordersIdsToExecute := []common.Hash{}
 		for _, order := range orderGroup {
