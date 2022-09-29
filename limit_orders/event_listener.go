@@ -127,20 +127,24 @@ func ListenForEventLogs() {
 		//Wait for all prices to be updated and affected markets to be populated
 		wg.Wait()
 
+		executionOrderIds := [][]common.Hash{}
+
 		//Check all affected orders
 		for _, affectedMarket := range affectedMarkets {
 			affectedOrders := TokenToAffectedOrders[affectedMarket]
 
 			//Batches orders ready for execution
 			batchedOrders := batchOrdersForExecution(affectedOrders)
-
-			if len(batchedOrders) > 0 {
-				for _, batch := range batchedOrders {
-					executeOrders(batch)
-				}
-			}
+			executionOrderIds = append(executionOrderIds, batchedOrders...)
 
 		}
+
+		if len(executionOrderIds) > 0 {
+			for _, batch := range executionOrderIds {
+				go executeOrders(batch)
+			}
+		}
+
 	}
 
 }
