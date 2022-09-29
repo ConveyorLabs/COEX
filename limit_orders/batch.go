@@ -196,7 +196,7 @@ func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
 		success := simulateExecution(ordersIdsToExecute)
 
 		if success {
-			executeOrders(ordersIdsToExecute)
+			orderGroupsForExecution = append(orderGroupsForExecution, ordersIdsToExecute)
 		}
 
 	}
