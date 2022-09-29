@@ -169,8 +169,7 @@ func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
 
 	for _, orderGroup := range orderGroups {
 
-		//Order the ordergroup by quantity
-		//TODO:
+		orderGroup = quickSortOrderGroup(orderGroup, 0, len(orderGroup))
 
 		firstOrder := orderGroup[0]
 		buyStatus := firstOrder.buy
@@ -203,4 +202,29 @@ func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
 	}
 
 	return orderGroupsForExecution
+}
+
+// Quick sorts by quantity
+func quickSortOrderGroup(arr []LimitOrder, low, high int) []LimitOrder {
+	if low < high {
+		var p int
+		arr, p = partitionOrderGroup(arr, low, high)
+		arr = quickSortOrderGroup(arr, low, p-1)
+		arr = quickSortOrderGroup(arr, p+1, high)
+	}
+	return arr
+
+}
+
+func partitionOrderGroup(arr []LimitOrder, low, high int) ([]LimitOrder, int) {
+	pivot := arr[high].quantity
+	i := low
+	for j := low; j < high; j++ {
+		if arr[j].quantity.Cmp(pivot) < 0 {
+			arr[i], arr[j] = arr[j], arr[i]
+			i++
+		}
+	}
+	arr[i], arr[high] = arr[high], arr[i]
+	return arr, i
 }
