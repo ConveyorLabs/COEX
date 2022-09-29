@@ -119,7 +119,7 @@ func convertAmountToWei(amount *big.Int, decimals uint8) *big.Int {
 }
 
 // Calls the node to simulate an execution batch
-func simulateExecution(orderIds []common.Hash) {
+func simulateExecution(orderIds []common.Hash) bool {
 	result, err := rpcClient.Call(contractAbis.LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "executeOrders", orderIds)
 	if err != nil {
 		//TODO: handle error
@@ -127,4 +127,6 @@ func simulateExecution(orderIds []common.Hash) {
 
 	panic("handle the result from here")
 	fmt.Println(result...)
+
+	return true
 }

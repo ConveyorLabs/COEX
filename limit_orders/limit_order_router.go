@@ -89,7 +89,3 @@ func refreshOrder(orderIds []common.Hash) {
 		fmt.Println(orderId)
 	}
 }
-
-func simulate_execute_orders() {}
-
-func execute_orders() {}
