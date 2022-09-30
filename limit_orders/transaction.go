@@ -27,9 +27,9 @@ func executeOrders(orderIds []common.Hash) {
 	for _, orderId := range orderIds {
 		orderIdsBytes = append(orderIdsBytes, orderId.Bytes()...)
 	}
-
 	data = append(data, orderIdsBytes...)
 
+	//Sign and send the transaction
 	txHash := wallet.Wallet.SignAndSendTransaction(&config.Configuration.LimitOrderRouterAddress, data, big.NewInt(0))
 
 	fmt.Println(txHash)

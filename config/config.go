@@ -91,12 +91,10 @@ func initializeChain(configuration *Config) {
 		configuration.NativeToken = "MATIC"
 		configuration.WrappedNativeTokenAddress = common.HexToAddress("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270")
 		configuration.WrappedNativeTokenDecimals = 18
-
-		//TODO:
-		configuration.USDPeggedTokenAddress = common.HexToAddress("")
-		configuration.LimitOrderRouterAddress = common.HexToAddress("")
-		configuration.LimitOrderRouterCreationBlock = big.NewInt(0)
-		configuration.SwapRouterAddress = common.HexToAddress("")
+		configuration.USDPeggedTokenAddress = common.HexToAddress("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174")
+		configuration.LimitOrderRouterAddress = common.HexToAddress("0x6F28B03944fd8D3389398bC02B80A8E4217A98b3")
+		configuration.LimitOrderRouterCreationBlock = big.NewInt(33768035)
+		configuration.SwapRouterAddress = common.HexToAddress("0x2f828b887c7719E8D2217293ef6F32e825106C40")
 		configuration.NumberOfDexes = 3
 		configuration.USDWethPoolFee = big.NewInt(0)
 
