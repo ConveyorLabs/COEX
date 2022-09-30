@@ -17,10 +17,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/fatih/color"
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/term"
 )
@@ -162,64 +162,60 @@ func toChecksumAddress(address string) (string, error) {
 	return checksumAddress, nil
 }
 
-func (e *EOA) IncrementNonce() {
+func (e *EOA) incrementNonce() {
 	e.Nonce += 1
 }
 
-func (e *EOA) SignAndSendTx(toAddress *common.Address, calldata []byte, msgValue *big.Int) {
-	//hardcoding gas for the hackathon for now, this is way overpaying for most operations
-	// gas := uint64(1000000)
+// Creates a new transaction, signs and sends it to the network. The transaction hash is returned.
+func (e *EOA) SignAndSendTransaction(toAddress *common.Address, calldata []byte, msgValue *big.Int) common.Hash {
 
-	//lock the mutex so only one tx can be sent at a time. The most recently sent transaction must be confirmed
-	//before the next transaction can be sent
-	Wallet.signerMutex.Lock()
-
-	// block, err := rpcClient.HTTPClient.BlockByNumber(context.Background(), nil)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	os.Exit(1)
-	// }
-
-	//hard coding gas for the short term during the hackathon
-	tx := types.NewTx(&types.DynamicFeeTx{
-		ChainID: Wallet.Signer.ChainID(),
-		Nonce:   Wallet.Nonce,
-		GasFeeCap: big.NewInt(
-			3801940),
-		GasTipCap: big.NewInt(10),
-		Gas:       2002920,
-		To:        toAddress,
-		Value:     big.NewInt(0),
-		Data:      calldata,
+	//Estimate the gas limit for the transaction
+	gasLimit, err := rpcClient.HTTPClient.EstimateGas(context.Background(), ethereum.CallMsg{
+		To:   &config.Configuration.LimitOrderRouterAddress,
+		Data: calldata,
 	})
-
-	signedTx, err := types.SignTx(tx, e.Signer, e.PrivateKey)
 	if err != nil {
-		fmt.Println("error when signing tx", err)
-		//TODO: In the future, handle errors gracefully
-		os.Exit(1)
+		//TODO: hanlde error
 	}
 
-	//send the transaction
-	txErr := rpcClient.HTTPClient.SendTransaction(context.Background(), signedTx)
-	if txErr != nil {
-		fmt.Println(txErr)
-		//TODO: In the future, handle errors gracefully
-		os.Exit(12)
+	//Get the suggested gas price
+	gasPrice, err := rpcClient.HTTPClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		//TODO: hanlde error
 	}
 
-	//increment the nonce
-	Wallet.Nonce++
+	//Lock the signer
+	e.signerMutex.Lock()
 
-	//unlock the wallet after the nonce has been incremented to avoid collision
-	Wallet.signerMutex.Unlock()
-	//wait for the tx to complete
-	// WaitForTransactionToComplete(signedTx.Hash())
+	//Create a new transaction from the calldata
+	tx := types.NewTransaction(e.Nonce,
+		config.Configuration.LimitOrderRouterAddress,
+		msgValue,
+		gasLimit,
+		gasPrice,
+		calldata)
 
-	// Mix up foreground and background colors, create new mixes!
-	green := color.New(color.FgGreen)
-	green.Println("Transaction Successfully Sent, hash: {%v}", signedTx.Hash())
+	//Sign the transaction
+	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(e.Signer.ChainID()), e.PrivateKey)
+	if err != nil {
+		//TODO: hanlde error
 
+	}
+
+	//Send the signed transaction
+	err = rpcClient.HTTPClient.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		//TODO: hanlde error
+
+	}
+
+	//Update the nonce value
+	e.incrementNonce()
+
+	//Unlock the signer
+	e.signerMutex.Unlock()
+
+	return signedTx.Hash()
 }
 
 func WaitForTransactionToComplete(txHash common.Hash) *types.Transaction {

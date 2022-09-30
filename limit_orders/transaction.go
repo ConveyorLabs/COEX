@@ -3,16 +3,12 @@ package limitOrders
 import (
 	"beacon/config"
 	contractAbis "beacon/contract_abis"
-	rpcClient "beacon/rpc_client"
 	"beacon/wallet"
-	"context"
 	"fmt"
 	"math/big"
 	"sync"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 )
 
 var PendingExecution map[common.Hash]bool
@@ -34,31 +30,9 @@ func executeOrders(orderIds []common.Hash) {
 
 	data = append(data, orderIdsBytes...)
 
-	gasLimit, err := rpcClient.HTTPClient.EstimateGas(context.Background(), ethereum.CallMsg{
-		To:   &config.Configuration.LimitOrderRouterAddress,
-		Data: data,
-	})
+	txHash := wallet.Wallet.SignAndSendTransaction(&config.Configuration.LimitOrderRouterAddress, data, big.NewInt(0))
 
-	if err != nil {
-		//TODO: hanlde error
-	}
-
-	gasPrice, err := rpcClient.HTTPClient.SuggestGasPrice(context.Background())
-	if err != nil {
-		//TODO: hanlde error
-	}
-
-	tx := types.NewTransaction(wallet.Wallet.Nonce,
-		config.Configuration.LimitOrderRouterAddress,
-		big.NewInt(0),
-		gasLimit,
-		gasPrice,
-		data)
-
-	//Increment nonce
-	wallet.Wallet.IncrementNonce()
-
-	fmt.Println(tx)
+	fmt.Println(txHash)
 
 }
 
