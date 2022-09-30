@@ -162,6 +162,10 @@ func toChecksumAddress(address string) (string, error) {
 	return checksumAddress, nil
 }
 
+func (e *EOA) IncrementNonce() {
+	e.Nonce += 1
+}
+
 func (e *EOA) SignAndSendTx(toAddress *common.Address, calldata []byte, msgValue *big.Int) {
 	//hardcoding gas for the hackathon for now, this is way overpaying for most operations
 	// gas := uint64(1000000)

@@ -56,6 +56,8 @@ func executeOrders(orderIds []common.Hash) {
 		data)
 
 	//Increment nonce
+	wallet.Wallet.IncrementNonce()
+
 	fmt.Println(tx)
 
 }
