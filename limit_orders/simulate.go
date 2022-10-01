@@ -4,7 +4,6 @@ import (
 	"beacon/config"
 	contractAbis "beacon/contract_abis"
 	rpcClient "beacon/rpc_client"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -121,12 +120,9 @@ func convertAmountToWei(amount *big.Int, decimals uint8) *big.Int {
 // Calls the node to simulate an execution batch
 func simulateExecution(orderIds []common.Hash) bool {
 	result, err := rpcClient.Call(contractAbis.LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "executeOrders", orderIds)
+
 	if err != nil {
 		//TODO: handle error
 	}
-
-	panic("handle the result from here")
-	fmt.Println(result...)
-
-	return true
+	return result[0].(bool)
 }
