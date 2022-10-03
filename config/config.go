@@ -31,6 +31,7 @@ type Config struct {
 	LimitOrderRouterCreationBlock *big.Int
 	SwapRouterAddress             common.Address
 	NumberOfDexes                 int
+	UniswapV3QuoterAddress        common.Address
 	EnableTaxedTokens             bool
 }
 
@@ -85,6 +86,7 @@ func initializeChain(configuration *Config) {
 		configuration.SwapRouterAddress = common.HexToAddress("")
 		configuration.NumberOfDexes = 3
 		configuration.USDWethPoolFee = big.NewInt(0)
+		configuration.UniswapV3QuoterAddress = common.HexToAddress("")
 
 	} else if chainName == "polygon" {
 		configuration.ChainID = 137
@@ -95,6 +97,7 @@ func initializeChain(configuration *Config) {
 		configuration.LimitOrderRouterAddress = common.HexToAddress("0x6F28B03944fd8D3389398bC02B80A8E4217A98b3")
 		configuration.LimitOrderRouterCreationBlock = big.NewInt(33768035)
 		configuration.SwapRouterAddress = common.HexToAddress("0x2f828b887c7719E8D2217293ef6F32e825106C40")
+		configuration.UniswapV3QuoterAddress = common.HexToAddress("0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6")
 		configuration.NumberOfDexes = 3
 		configuration.USDWethPoolFee = big.NewInt(0)
 
@@ -111,6 +114,7 @@ func initializeChain(configuration *Config) {
 		configuration.SwapRouterAddress = common.HexToAddress("")
 		configuration.NumberOfDexes = 3
 		configuration.USDWethPoolFee = big.NewInt(0)
+		configuration.UniswapV3QuoterAddress = common.HexToAddress("")
 
 	} else if chainName == "arbitrum" {
 		configuration.ChainID = 42161
@@ -125,6 +129,7 @@ func initializeChain(configuration *Config) {
 		configuration.SwapRouterAddress = common.HexToAddress("")
 		configuration.NumberOfDexes = 3
 		configuration.USDWethPoolFee = big.NewInt(0)
+		configuration.UniswapV3QuoterAddress = common.HexToAddress("")
 
 	} else if chainName == "bsc" {
 		configuration.ChainID = 56
@@ -139,6 +144,7 @@ func initializeChain(configuration *Config) {
 		configuration.SwapRouterAddress = common.HexToAddress("")
 		configuration.NumberOfDexes = 3
 		configuration.USDWethPoolFee = big.NewInt(0)
+		configuration.UniswapV3QuoterAddress = common.HexToAddress("")
 
 	} else if chainName == "cronos" {
 		configuration.ChainID = 25
@@ -153,6 +159,7 @@ func initializeChain(configuration *Config) {
 		configuration.SwapRouterAddress = common.HexToAddress("")
 		configuration.NumberOfDexes = 3
 		configuration.USDWethPoolFee = big.NewInt(0)
+		configuration.UniswapV3QuoterAddress = common.HexToAddress("")
 
 	} else if chainName == "goerli" {
 		configuration.ChainID = 5

@@ -15,6 +15,7 @@ func Initialize() {
 	initializeUniswapV2PairABI()
 	initializeUniswapV3FactoryABI()
 	initializeUniswapV3PoolABI()
+	initializeUniswapV3Quoter()
 	initializeERC20ABI()
 
 }
@@ -39,8 +40,8 @@ func initializeERC20ABI() {
 	_abi := initializeABI(
 		"contract_abis/erc20_abi.json")
 	ERC20ABI = &_abi
-
 }
+
 func initializeUniswapV2FactoryABI() {
 	_abi := initializeABI(
 		"contract_abis/uniswap_v2_factory_abi.json")
@@ -64,6 +65,12 @@ func initializeUniswapV3PoolABI() {
 	_abi := initializeABI(
 		"contract_abis/uniswap_v3_pool_abi.json")
 	UniswapV3PoolABI = &_abi
+}
+
+func initializeUniswapV3Quoter() {
+	_abi := initializeABI(
+		"contract_abis/uniswap_v3_quoter.json")
+	UniswapV3Quoter = &_abi
 }
 
 func initializeSwapRouterABI() {
