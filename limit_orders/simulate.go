@@ -22,8 +22,8 @@ func simulateOrderLocally(order LimitOrder, tokenInMarket []*Pool, tokenOutMarke
 		amountIn = applyFeeOnTransfer(amountIn, order.taxIn)
 	}
 
-	firstHopAmountOut, newTokenInMarketReserve0, newTokenInMarketReserve1 := simulateAToBSwapLocally(amountIn, *bestTokenInMarket)
-	secondHopAmountOut, newTokenOutMarketReserve0, newTokenOutMarketReserve1 := simulateAToBSwapLocally(firstHopAmountOut, *bestTokenOutMarket)
+	firstHopAmountOut, newTokenInMarketReserve0, newTokenInMarketReserve1 := simulateAToBSwapLocally(order.tokenIn, order.tokenOut, order.fee, amountIn, *bestTokenInMarket)
+	secondHopAmountOut, newTokenOutMarketReserve0, newTokenOutMarketReserve1 := simulateAToBSwapLocally(order.tokenIn, order.tokenOut, order.fee, firstHopAmountOut, *bestTokenOutMarket)
 
 	if order.amountOutMin.Cmp(secondHopAmountOut) >= 0 {
 		//Update tokenInMarket
@@ -55,7 +55,7 @@ func applyFeeOnTransfer(quantity *big.Int, fee uint32) *big.Int {
 			quantity, big.NewInt(int64(fee))), big.NewInt(100000))
 }
 
-func simulateAToBSwapLocally(amountIn *big.Int, pool Pool) (*big.Int, *big.Int, *big.Int) {
+func simulateAToBSwapLocally(tokenIn common.Address, tokenOut common.Address, fee *big.Int, amountIn *big.Int, pool Pool) (*big.Int, *big.Int, *big.Int) {
 
 	if pool.IsUniv2 {
 		amountOut, updatedReserve0, updatedReserve1 := simulateV2Swap(amountIn, pool.tokenReserves,
@@ -67,11 +67,13 @@ func simulateAToBSwapLocally(amountIn *big.Int, pool Pool) (*big.Int, *big.Int, 
 
 	} else {
 
-		amountOut, updatedReserve0, updatedReserve1 := simulateV3Swap(amountIn, pool.tokenReserves,
+		amountOut, updatedReserve0, updatedReserve1 := simulateV3Swap(
+			tokenIn,
+			tokenOut,
+			fee,
+			amountIn,
 			pool.tokenDecimals,
-			pool.wethReserves,
-			config.Configuration.WrappedNativeTokenDecimals,
-			pool.tokenToWeth)
+			config.Configuration.WrappedNativeTokenDecimals)
 		return amountOut, updatedReserve0, updatedReserve1
 
 	}
@@ -91,8 +93,26 @@ func simulateV2Swap(amountIn *big.Int, reserveA *big.Int, reserveADecimals uint8
 
 }
 
-func simulateV3Swap(amountIn *big.Int, reserve0 *big.Int, token0Decimals uint8, reserve1 *big.Int, token1Decimals uint8, aToB bool) (*big.Int, *big.Int, *big.Int) {
-	return big.NewInt(0), big.NewInt(0), big.NewInt(0)
+// Returns amountOut, newReserve0, newReserve1
+func simulateV3Swap(tokenIn common.Address, tokenOut common.Address, fee *big.Int, amountIn *big.Int, token0Decimals uint8, token1Decimals uint8) (*big.Int, *big.Int, *big.Int) {
+	result, err := rpcClient.Call(
+		contractAbis.UniswapV3Quoter,
+		&config.Configuration.UniswapV3QuoterAddress,
+		"quoteExactInputSingle",
+		tokenIn,
+		tokenOut,
+		amountIn,
+		big.NewInt(0))
+
+	if err != nil {
+		//TODO: handle error
+		println(err)
+	}
+
+	amountOut := result[0].(*big.Int)
+
+	//TODO: return adjusted reserve values
+	return amountOut
 }
 
 // Helper function to convert an Amount to a specified base given its original base
