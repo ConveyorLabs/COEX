@@ -23,6 +23,10 @@ func updateGasCreditBalance(address common.Address, amount *big.Int) {
 
 }
 
+func getGasCreditBalance(address common.Address) *big.Int {
+	return GasCreditBalances[address]
+}
+
 // Get an on-chain order by Id from the LimitOrderRouter contract
 func getRemoteOrderById(orderId common.Hash) LimitOrder {
 	order, err := rpcClient.Call(contractAbis.LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "orderIdToOrder", orderId)
@@ -84,6 +88,7 @@ func updateOrderInOrderBook(orderIds []common.Hash) {
 
 }
 
+// TODO: do we need this here?
 func refreshOrder(orderIds []common.Hash) {
 	for _, orderId := range orderIds {
 		fmt.Println(orderId)
