@@ -18,12 +18,19 @@ func Initialize() {
 	//Initialize event log signatures to listen for updates
 	initializeEventLogSignatures()
 
-	//Initialize state structures
-	initializeActiveOrdersAndGasCreditsFromLogs()
+	//Initialize dexes from the swap router
 	initializeDexes()
-	initializeMarkets()
+
+	//Initialize state structures
+	initializeActiveOrders()
 	initializeTokenToAffectedOrders()
-	initializePendingExecution()
+	initializeGasCreditBalances()
+
+	//Populate state structures
+	populateActiveOrdersAndGasCreditsFromLogs()
+	populateMarkets()
+	populateTokenToAffectedOrders()
+	populatePendingExecution()
 
 	initializeUSDWETHPool()
 
@@ -32,7 +39,20 @@ func Initialize() {
 
 }
 
-func initializeActiveOrdersAndGasCreditsFromLogs() {
+// @dev: Initialize individually to allow for easier testing
+func initializeActiveOrders() {
+	ActiveOrders = map[common.Hash]*LimitOrder{}
+}
+
+func initializeTokenToAffectedOrders() {
+	TokenToAffectedOrders = map[common.Address][]common.Hash{}
+}
+
+func initializeGasCreditBalances() {
+	GasCreditBalances = map[common.Address]*big.Int{}
+}
+
+func populateActiveOrdersAndGasCreditsFromLogs() {
 
 	latestBlock, err := rpcClient.HTTPClient.BlockNumber(context.Background())
 
@@ -105,7 +125,7 @@ func initializeDexes() {
 
 }
 
-func initializeMarkets() {
+func populateMarkets() {
 
 	Markets = make(map[common.Address][]*Pool)
 	MarketsMutex = &sync.Mutex{}
@@ -117,7 +137,7 @@ func initializeMarkets() {
 
 }
 
-func initializeTokenToAffectedOrders() {
+func populateTokenToAffectedOrders() {
 
 	tokenToAffectedOrders := make(map[common.Address][]common.Hash)
 
@@ -143,7 +163,7 @@ func initializeTokenToAffectedOrders() {
 
 }
 
-func initializePendingExecution() {
+func populatePendingExecution() {
 
 	PendingExecution = make(map[common.Hash]bool)
 	PendingExecutionMutex = &sync.Mutex{}

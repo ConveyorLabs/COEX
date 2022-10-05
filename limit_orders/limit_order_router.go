@@ -10,9 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var ActiveOrders = make(map[common.Hash]*LimitOrder)
-var TokenToAffectedOrders = make(map[common.Address][]common.Hash)
-var GasCreditBalances = make(map[common.Address]*big.Int)
+var ActiveOrders map[common.Hash]*LimitOrder
+var TokenToAffectedOrders map[common.Address][]common.Hash
+var GasCreditBalances map[common.Address]*big.Int
 
 // Hash TokenIn and TokenOut for the key. Values are a map of prices to order Ids.
 var ExecutionPrices = make(map[common.Hash]map[float32][]common.Hash)

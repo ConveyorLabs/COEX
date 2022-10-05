@@ -1,6 +1,7 @@
 package limitOrders
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 
 func TestGetGasCreditBalance(t *testing.T) {
 
+	fmt.Println("here")
 	addr := common.HexToAddress("0x000000000000000000000000000000000000dead")
 
 	//get the initial balance
