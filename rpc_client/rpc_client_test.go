@@ -4,12 +4,11 @@ import (
 	"beacon/config"
 	contractAbis "beacon/contract_abis"
 	"context"
-	"math/big"
 	"testing"
 )
 
 func TestInitializeHTTPClient(t *testing.T) {
-	config.Initialize("../config.toml")
+	config.Initialize("../ci_config.toml")
 
 	initializeHTTPClient(config.Configuration.NodeHttpEndpoint)
 	chainID, err := HTTPClient.ChainID(context.Background())
@@ -18,14 +17,14 @@ func TestInitializeHTTPClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if chainID.Cmp(big.NewInt(1)) != 0 {
-		t.Fatal("ChainID does not equal 1")
+	if chainID.Int64() != int64(config.Configuration.ChainID) {
+		t.Fatal("ChainID does not equal config chainId")
 	}
 
 }
 
 func TestInitializeWSClient(t *testing.T) {
-	config.Initialize("../config.toml")
+	config.Initialize("../ci_config.toml")
 
 	initializeWSClient(config.Configuration.NodeWebsocketsEndpoint)
 	chainID, err := WSClient.ChainID(context.Background())
@@ -34,14 +33,14 @@ func TestInitializeWSClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if chainID.Cmp(big.NewInt(1)) != 0 {
-		t.Fatal("ChainID does not equal 1")
+	if chainID.Int64() != int64(config.Configuration.ChainID) {
+		t.Fatal("ChainID does not equal config chainId")
 	}
 
 }
 
 func TestCall(t *testing.T) {
-	config.Initialize("../config.toml")
+	config.Initialize("../ci_config.toml")
 	initializeHTTPClient(config.Configuration.NodeHttpEndpoint)
 
 	//Initialize ABIs
@@ -53,9 +52,9 @@ func TestCall(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	decimals := result[0].(big.Int)
+	decimals := result[0].(uint8)
 
-	if decimals.Cmp(big.NewInt(18)) != 0 {
+	if decimals != 18 {
 		t.Fatal("Weth decimals do not equal 18")
 	}
 }

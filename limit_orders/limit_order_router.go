@@ -20,7 +20,6 @@ var SortedExecutionPricesKeys = []float32{}
 
 func updateGasCreditBalance(address common.Address, amount *big.Int) {
 	GasCreditBalances[address] = amount
-
 }
 
 func getGasCreditBalance(address common.Address) *big.Int {
