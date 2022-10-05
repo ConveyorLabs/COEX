@@ -14,14 +14,18 @@ import (
 // If failure, the Pool reserves remained unchanged
 func simulateOrderLocally(order LimitOrder, tokenInMarket []*Pool, tokenOutMarket []*Pool, buyStatus bool) bool {
 	if order.tokenIn == config.Configuration.WrappedNativeTokenAddress || order.tokenOut == config.Configuration.WrappedNativeTokenAddress {
-		return simulateOnePoolSwap()
+		return simulateOnePoolSwap(order, tokenInMarket, buyStatus)
 	} else {
 		return simulateOneTwoPoolSwap(order, tokenInMarket, tokenOutMarket, buyStatus)
 	}
 
 }
 
-func simulateOnePoolSwap() bool {}
+func simulateOnePoolSwap(order LimitOrder, tokenInMarket []*Pool, buyStatus bool) bool {
+
+	return true
+
+}
 
 func simulateOneTwoPoolSwap(order LimitOrder, tokenInMarket []*Pool, tokenOutMarket []*Pool, buyStatus bool) bool {
 
@@ -35,10 +39,8 @@ func simulateOneTwoPoolSwap(order LimitOrder, tokenInMarket []*Pool, tokenOutMar
 		amountIn = applyFeeOnTransfer(amountIn, order.taxIn)
 	}
 
-	//TODO: account for weth to token or token to weth as one hop
-
-	firstHopAmountOut, newTokenInMarketReserve0, newTokenInMarketReserve1 := simulateAToBSwapLocally(amountIn, order.tokenIn, order.tokenOut, *bestTokenInMarket, order.fee, true)
-	secondHopAmountOut, newTokenOutMarketReserve0, newTokenOutMarketReserve1 := simulateAToBSwapLocally(order.tokenIn, order.tokenOut, order.fee, firstHopAmountOut, *bestTokenOutMarket)
+	firstHopAmountOut, newTokenInMarketReserve0, newTokenInMarketReserve1 := simulateAToBSwapLocally(amountIn, order.tokenIn, config.Configuration.WrappedNativeTokenAddress, *bestTokenInMarket, order.fee, true)
+	secondHopAmountOut, newTokenOutMarketReserve0, newTokenOutMarketReserve1 := simulateAToBSwapLocally(firstHopAmountOut, config.Configuration.WrappedNativeTokenAddress, order.tokenOut, *bestTokenOutMarket, order.fee, false)
 
 	if order.amountOutMin.Cmp(secondHopAmountOut) >= 0 {
 		//Update tokenInMarket
@@ -69,14 +71,15 @@ func applyFeeOnTransfer(quantity *big.Int, fee uint32) *big.Int {
 			quantity, big.NewInt(int64(fee))), big.NewInt(100000))
 }
 
-func simulateAToBSwapLocally(amountIn *big.Int, tokenIn common.Address, tokenOut common.Address, pool Pool, fee *big.Int, tokenToWeth bool) (*big.Int, *big.Int, *big.Int) {
+// Always returns
+func simulateAToBSwapLocally(amountIn *big.Int, tokenIn common.Address, tokenOut common.Address, pool Pool, fee *big.Int, tokenToWethSwap bool) (*big.Int, *big.Int, *big.Int) {
 
 	var tokenInReserves *big.Int
 	var tokenInDecimals uint8
 	var tokenOutReserves *big.Int
 	var tokenOutDecimals uint8
 
-	if tokenToWeth {
+	if tokenToWethSwap {
 		tokenInReserves = pool.tokenReserves
 		tokenInDecimals = pool.tokenDecimals
 
@@ -90,21 +93,18 @@ func simulateAToBSwapLocally(amountIn *big.Int, tokenIn common.Address, tokenOut
 		tokenOutDecimals = pool.tokenDecimals
 	}
 
-	if pool.IsUniv2 {
+	var amountOut, updatedReserve0, updatedReserve1 *big.Int
 
-		amountOut, updatedReserve0, updatedReserve1 := simulateV2Swap(
+	if pool.IsUniv2 {
+		amountOut, updatedReserve0, updatedReserve1 = simulateV2Swap(
 			amountIn,
 			tokenInReserves,
 			tokenInDecimals,
 			tokenOutReserves,
 			tokenOutDecimals,
-			pool.tokenToWeth)
-
-		return amountOut, updatedReserve0, updatedReserve1
-
+		)
 	} else {
-
-		amountOut, updatedReserve0, updatedReserve1 := simulateV3Swap(
+		amountOut, updatedReserve0, updatedReserve1 = simulateV3Swap(
 			tokenIn,
 			tokenOut,
 			fee,
@@ -112,15 +112,27 @@ func simulateAToBSwapLocally(amountIn *big.Int, tokenIn common.Address, tokenOut
 			tokenInReserves,
 			tokenOutReserves,
 		)
+	}
 
-		return amountOut, updatedReserve0, updatedReserve1
+	if tokenToWethSwap {
+		if pool.tokenToWeth {
+			return amountOut, updatedReserve0, updatedReserve1
+		} else {
+			return amountOut, updatedReserve1, updatedReserve0
+		}
+	} else {
+		if pool.tokenToWeth {
+			return amountOut, updatedReserve1, updatedReserve0
+		} else {
+			return amountOut, updatedReserve0, updatedReserve1
+		}
 
 	}
 
 }
 
 // Returns amountOut, newReserve0, newReserve1
-func simulateV2Swap(amountIn *big.Int, reserveA *big.Int, reserveADecimals uint8, reserveB *big.Int, reserveBDecimals uint8, aToB bool) (*big.Int, *big.Int, *big.Int) {
+func simulateV2Swap(amountIn *big.Int, reserveA *big.Int, reserveADecimals uint8, reserveB *big.Int, reserveBDecimals uint8) (*big.Int, *big.Int, *big.Int) {
 	reserveAInTokens := convertAmountToTokens(reserveA, reserveADecimals)
 	reserveBInTokens := convertAmountToTokens(reserveB, reserveBDecimals)
 
