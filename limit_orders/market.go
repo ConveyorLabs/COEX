@@ -91,8 +91,6 @@ func getCloneOfMarket(token common.Address) []*Pool {
 // Returns a bool and the address. If the bool is false, then the pair does not exist on this dex
 func (d *Dex) getPoolAddress(tokenIn common.Address, tokenOut common.Address, fee *big.Int) (bool, common.Address) {
 
-	panic("killed here at get Pool address, the one dex does not look accurate, need to investigate")
-
 	var result []interface{}
 
 	if d.IsUniv2 {
