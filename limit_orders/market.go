@@ -11,7 +11,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+//TODO: add market fee tiers
+//Either add to the value stored in markets
+//or add an additional structure
+
 var Markets map[common.Address][]*Pool
+
 var MarketsMutex *sync.Mutex
 
 var Dexes []Dex
