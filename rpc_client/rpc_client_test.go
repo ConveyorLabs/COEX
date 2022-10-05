@@ -45,7 +45,7 @@ func TestCall(t *testing.T) {
 	initializeHTTPClient(config.Configuration.NodeHttpEndpoint)
 
 	//Initialize ABIs
-	contractAbis.Initialize()
+	contractAbis.Initialize("../contract_abis")
 
 	result, err := Call(contractAbis.ERC20ABI, &config.Configuration.WethAddress, "decimals")
 

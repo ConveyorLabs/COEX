@@ -15,10 +15,12 @@ func main() {
 
 	//Initalize packages
 	log.Println("Initializing configuration...")
-	config.Initialize("config.toml")
+
+	//TODO: change this to config.toml for prod version
+	config.Initialize("dev_config.toml")
 
 	log.Println("Initializing Contract ABIs...")
-	contractAbis.Initialize()
+	contractAbis.Initialize("contract_abis")
 
 	log.Println("Initializing RPC client...")
 	rpcClient.Initialize()
