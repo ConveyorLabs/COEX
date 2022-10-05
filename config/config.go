@@ -35,11 +35,11 @@ type Config struct {
 	EnableTaxedTokens             bool
 }
 
-func initializeConfig() {
+func initializeConfig(path string) {
 	var conf Config
 
 	//Read in the config toml file
-	tomlBytes, err := os.ReadFile("config/config.toml")
+	tomlBytes, err := os.ReadFile(path)
 	if err != nil {
 		panic(fmt.Sprintf("Error when reading the config.toml %s", err))
 	}

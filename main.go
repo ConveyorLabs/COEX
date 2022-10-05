@@ -3,6 +3,7 @@ package main
 import (
 	"beacon/config"
 	contractAbis "beacon/contract_abis"
+	rpcClient "beacon/rpc_client"
 	"log"
 	"sync"
 )
@@ -14,13 +15,13 @@ func main() {
 
 	//Initalize packages
 	log.Println("Initializing configuration...")
-	config.Initialize()
+	config.Initialize("config.toml")
 
 	log.Println("Initializing Contract ABIs...")
 	contractAbis.Initialize()
 
-	// log.Println("Initializing RPC client...")
-	// rpcClient.Initialize()
+	log.Println("Initializing RPC client...")
+	rpcClient.Initialize()
 
 	// log.Println("Initializing signer...")
 	// wallet.Initialize()

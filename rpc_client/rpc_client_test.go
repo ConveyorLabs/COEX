@@ -9,7 +9,7 @@ import (
 )
 
 func TestInitializeHTTPClient(t *testing.T) {
-	config.Initialize()
+	config.Initialize("../config.toml")
 
 	initializeHTTPClient(config.Configuration.NodeHttpEndpoint)
 	chainID, err := HTTPClient.ChainID(context.Background())
@@ -25,7 +25,7 @@ func TestInitializeHTTPClient(t *testing.T) {
 }
 
 func TestInitializeWSClient(t *testing.T) {
-	config.Initialize()
+	config.Initialize("../config.toml")
 
 	initializeWSClient(config.Configuration.NodeWebsocketsEndpoint)
 	chainID, err := WSClient.ChainID(context.Background())
@@ -41,7 +41,7 @@ func TestInitializeWSClient(t *testing.T) {
 }
 
 func TestCall(t *testing.T) {
-	config.Initialize()
+	config.Initialize("../config.toml")
 	initializeHTTPClient(config.Configuration.NodeHttpEndpoint)
 
 	//Initialize ABIs

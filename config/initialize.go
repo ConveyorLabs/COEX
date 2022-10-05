@@ -1,5 +1,5 @@
 package config
 
-func Initialize() {
-	initializeConfig()
+func Initialize(path string) {
+	initializeConfig(path)
 }
