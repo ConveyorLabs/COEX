@@ -16,7 +16,8 @@ type LimitOrder struct {
 	quantity             *big.Int
 	tokenIn              common.Address
 	tokenOut             common.Address
-	fee                  *big.Int
+	feeIn                *big.Int
+	feeOut               *big.Int
 	taxed                bool
 	taxIn                uint32
 }

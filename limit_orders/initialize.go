@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"os"
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
@@ -30,7 +29,8 @@ func Initialize() {
 	//Populate state structures
 	populateActiveOrdersAndGasCreditsFromLogs()
 	populateMarkets()
-	os.Exit(12)
+
+	panic("killed here after populate markets for testing")
 
 	populateTokenToAffectedOrders()
 	populatePendingExecution()
@@ -86,8 +86,7 @@ func populateActiveOrdersAndGasCreditsFromLogs() {
 
 		eventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), eventLogsFilter)
 		if err != nil {
-			//TODO: handle errors
-			panic(err)
+			panic(fmt.Sprint("Error when initializing active orders/gas credits. Err:", err))
 		}
 
 		for _, eventLog := range eventLogs {
