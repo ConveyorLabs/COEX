@@ -39,14 +39,14 @@ func simulateOneTwoPoolSwap(order LimitOrder, tokenInMarket []*Pool, tokenOutMar
 		amountIn = applyFeeOnTransfer(amountIn, order.taxIn)
 	}
 
-	firstHopAmountOut, newTokenInMarketReserve0, newTokenInMarketReserve1 := simulateAToBSwapLocally(amountIn, order.tokenIn, config.Configuration.WrappedNativeTokenAddress, *bestTokenInMarket, order.fee, true)
-	secondHopAmountOut, newTokenOutMarketReserve0, newTokenOutMarketReserve1 := simulateAToBSwapLocally(firstHopAmountOut, config.Configuration.WrappedNativeTokenAddress, order.tokenOut, *bestTokenOutMarket, order.fee, false)
+	firstHopAmountOut, updatedTokenInTokenReserves, updatedTokenInTokenWethReserves := simulateAToBSwapLocally(amountIn, order.tokenIn, config.Configuration.WrappedNativeTokenAddress, *bestTokenInMarket, order.fee, true)
+	secondHopAmountOut, updatedTokenOutTokenReserves, updatedTokenOutTokenWethReserves := simulateAToBSwapLocally(firstHopAmountOut, config.Configuration.WrappedNativeTokenAddress, order.tokenOut, *bestTokenOutMarket, order.fee, false)
 
 	if order.amountOutMin.Cmp(secondHopAmountOut) >= 0 {
 		//Update tokenInMarket
-		updateBestMarketReserves(bestTokenInMarket, newTokenInMarketReserve0, newTokenInMarketReserve1)
+		updateMarketReserves(bestTokenInMarket, updatedTokenInTokenReserves, updatedTokenInTokenWethReserves)
 		//Update tokenOutMarket
-		updateBestMarketReserves(bestTokenInMarket, newTokenOutMarketReserve0, newTokenOutMarketReserve1)
+		updateMarketReserves(bestTokenOutMarket, updatedTokenOutTokenReserves, updatedTokenOutTokenWethReserves)
 		return true
 
 	} else {
@@ -54,15 +54,9 @@ func simulateOneTwoPoolSwap(order LimitOrder, tokenInMarket []*Pool, tokenOutMar
 	}
 }
 
-func updateBestMarketReserves(pool *Pool, newReserve0 *big.Int, newReserve1 *big.Int) {
-	if pool.tokenToWeth {
-		pool.tokenReserves = newReserve0
-		pool.wethReserves = newReserve1
-	} else {
-		pool.tokenReserves = newReserve1
-		pool.wethReserves = newReserve0
-	}
-
+func updateMarketReserves(pool *Pool, updatedTokenReserves *big.Int, updatedWethreserves *big.Int) {
+	pool.tokenReserves = updatedTokenReserves
+	pool.wethReserves = updatedWethreserves
 }
 
 func applyFeeOnTransfer(quantity *big.Int, fee uint32) *big.Int {
@@ -71,7 +65,7 @@ func applyFeeOnTransfer(quantity *big.Int, fee uint32) *big.Int {
 			quantity, big.NewInt(int64(fee))), big.NewInt(100000))
 }
 
-// Always returns
+// Returns amountOut, updated token reserves, updated Weth reserves strictly
 func simulateAToBSwapLocally(amountIn *big.Int, tokenIn common.Address, tokenOut common.Address, pool Pool, fee *big.Int, tokenToWethSwap bool) (*big.Int, *big.Int, *big.Int) {
 
 	var tokenInReserves *big.Int
