@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var Configuration Config
+var Configuration *Config
 
 // TODO: split up the config into parts that are used on initialization and parts that are used often throughout the application
 // That way, we can cut down the amount of data that needs to be loaded when the config is used.
@@ -66,7 +66,7 @@ func initializeConfig() {
 
 	initializeChain(&conf)
 
-	Configuration = conf
+	Configuration = &conf
 
 }
 

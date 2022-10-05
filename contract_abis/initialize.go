@@ -82,6 +82,6 @@ func initializeSwapRouterABI() {
 
 func initializeLimitOrderRouterABI() {
 	_abi := initializeABI(
-		"limit_orders/limit_order_router_abi.json")
+		"contract_abis/limit_order_router_abi.json")
 	LimitOrderRouterABI = &_abi
 }
