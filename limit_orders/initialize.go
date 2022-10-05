@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"os"
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
@@ -29,6 +30,8 @@ func Initialize() {
 	//Populate state structures
 	populateActiveOrdersAndGasCreditsFromLogs()
 	populateMarkets()
+	os.Exit(12)
+
 	populateTokenToAffectedOrders()
 	populatePendingExecution()
 
@@ -113,7 +116,7 @@ func initializeDexes() {
 
 		result, err := rpcClient.Call(contractAbis.SwapRouterABI, &config.Configuration.SwapRouterAddress, "dexes", big.NewInt(int64(i)))
 		if err != nil {
-			//TODO: handle errors
+			fmt.Println("Error when trying to initialize Dexes", err)
 		}
 
 		Dexes = append(Dexes, Dex{

@@ -36,7 +36,6 @@ type EOA struct {
 }
 
 func initializeEOA() {
-
 	wallet := config.Configuration.WalletAddress
 	wallet, err := toChecksumAddress(wallet)
 	if err != nil {

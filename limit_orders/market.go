@@ -4,6 +4,7 @@ import (
 	"beacon/config"
 	contractAbis "beacon/contract_abis"
 	rpcClient "beacon/rpc_client"
+	"fmt"
 	"math/big"
 	"sync"
 
@@ -35,37 +36,41 @@ func addMarket(token common.Address, fee *big.Int) {
 	for _, dex := range Dexes {
 
 		//Get the pool address
-		lpAddress := dex.getPoolAddress(token, config.Configuration.WethAddress, fee)
+		exists, lpAddress := dex.getPoolAddress(token, config.Configuration.WethAddress, fee)
 
-		token0 := getLPToken0(&lpAddress)
-		tokenDecimals := getTokenDecimals(&token)
+		if exists {
+			token0 := getLPToken0(&lpAddress)
+			tokenDecimals := getTokenDecimals(&token)
 
-		var tokenReserves *big.Int
-		var wethReserves *big.Int
+			var tokenReserves *big.Int
+			var wethReserves *big.Int
 
-		tokenToWeth := false
-		if token0 == token {
-			tokenToWeth = true
+			tokenToWeth := false
+			if token0 == token {
+				tokenToWeth = true
+			} else {
+				tokenToWeth = false
+
+			}
+
+			pool := Pool{
+				lpAddress:     lpAddress,
+				tokenReserves: tokenReserves,
+				tokenDecimals: tokenDecimals,
+				wethReserves:  wethReserves,
+				tokenToWeth:   tokenToWeth,
+			}
+
+			//Set the reserve values
+			pool.initializeLPReserves()
+			//set the price of token per weth
+			pool.updatePriceOfTokenPerWeth()
+
+			//append the pool to the market
+			Markets[token] = append(Markets[token], &pool)
 		} else {
-			tokenToWeth = false
-
+			continue
 		}
-
-		pool := Pool{
-			lpAddress:     lpAddress,
-			tokenReserves: tokenReserves,
-			tokenDecimals: tokenDecimals,
-			wethReserves:  wethReserves,
-			tokenToWeth:   tokenToWeth,
-		}
-
-		//Set the reserve values
-		pool.initializeLPReserves()
-		//set the price of token per weth
-		pool.updatePriceOfTokenPerWeth()
-
-		//append the pool to the market
-		Markets[token] = append(Markets[token], &pool)
 	}
 
 }
@@ -83,28 +88,38 @@ func getCloneOfMarket(token common.Address) []*Pool {
 
 }
 
-func (d *Dex) getPoolAddress(tokenIn common.Address, tokenOut common.Address, fee *big.Int) common.Address {
+// Returns a bool and the address. If the bool is false, then the pair does not exist on this dex
+func (d *Dex) getPoolAddress(tokenIn common.Address, tokenOut common.Address, fee *big.Int) (bool, common.Address) {
+
+	panic("killed here at get Pool address, the one dex does not look accurate, need to investigate")
+
+	var result []interface{}
+
 	if d.IsUniv2 {
 
-		result, err := rpcClient.Call(contractAbis.UniswapV2FactoryABI, &d.FactoryAddress, "getPair", tokenIn, tokenOut)
+		getPairResult, err := rpcClient.Call(contractAbis.UniswapV2FactoryABI, &d.FactoryAddress, "getPair", tokenIn, tokenOut)
 		if err != nil {
 			//TODO: handle error
+			fmt.Println(err)
 		}
 
-		pairAddress := result[0].(common.Address)
-		return pairAddress
+		result = getPairResult
 
 	} else {
 
-		result, err := rpcClient.Call(contractAbis.UniswapV3FactoryABI, &d.FactoryAddress, "getPool", tokenIn, tokenOut, fee)
+		getPoolResult, err := rpcClient.Call(contractAbis.UniswapV3FactoryABI, &d.FactoryAddress, "getPool", tokenIn, tokenOut, fee)
 		if err != nil {
 			//TODO: handle error
+			fmt.Println(err)
 		}
+		result = getPoolResult
 
-		pairAddress := result[0].(common.Address)
+	}
 
-		return pairAddress
-
+	if len(result) > 0 {
+		return true, result[0].(common.Address)
+	} else {
+		return false, common.Address{}
 	}
 
 }
@@ -168,14 +183,19 @@ func getMostLiquidPool(tokenIn common.Address, tokenOut common.Address, fee *big
 
 	for _, dex := range Dexes {
 
-		poolAddress := dex.getPoolAddress(tokenIn, tokenOut, fee)
-		reserve0, reserve1 := getLPReserves(dex.IsUniv2, &poolAddress)
-		liquidity := big.NewInt(0).Add(reserve0, reserve1)
+		exists, poolAddress := dex.getPoolAddress(tokenIn, tokenOut, fee)
 
-		if liquidity.Cmp(bestLiquidity) > 0 {
-			bestLiquidity = liquidity
-			bestPoolAddress = poolAddress
-			poolIsUniv2 = dex.IsUniv2
+		if exists {
+			reserve0, reserve1 := getLPReserves(dex.IsUniv2, &poolAddress)
+			liquidity := big.NewInt(0).Add(reserve0, reserve1)
+
+			if liquidity.Cmp(bestLiquidity) > 0 {
+				bestLiquidity = liquidity
+				bestPoolAddress = poolAddress
+				poolIsUniv2 = dex.IsUniv2
+			}
+		} else {
+			continue
 		}
 
 	}
