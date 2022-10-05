@@ -35,7 +35,7 @@ func addMarket(token common.Address, fee *big.Int) {
 	for _, dex := range Dexes {
 
 		//Get the pool address
-		lpAddress := dex.getPoolAddress(token, config.Configuration.WrappedNativeTokenAddress, fee)
+		lpAddress := dex.getPoolAddress(token, config.Configuration.WethAddress, fee)
 
 		token0 := getLPToken0(&lpAddress)
 		tokenDecimals := getTokenDecimals(&token)

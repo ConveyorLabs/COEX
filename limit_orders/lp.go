@@ -90,7 +90,7 @@ func (p *Pool) setReservesAndUpdatePriceOfTokenPerWeth(tokenReserves *big.Int, w
 }
 
 func (p *Pool) updatePriceOfTokenPerWeth() float64 {
-	reserveACommonDecimals, reserveBCommonDecimals := ConvertAmountsToCommonDecmials(p.tokenReserves, p.tokenDecimals, p.wethReserves, config.Configuration.WrappedNativeTokenDecimals)
+	reserveACommonDecimals, reserveBCommonDecimals := ConvertAmountsToCommonDecmials(p.tokenReserves, p.tokenDecimals, p.wethReserves, config.Configuration.WethDecimals)
 	priceOfTokenPerB := big.NewInt(0).Div(reserveACommonDecimals, reserveBCommonDecimals)
 	priceOfTokenPerBFloat64, _ := new(big.Float).SetInt(priceOfTokenPerB).Float64()
 

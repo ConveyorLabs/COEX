@@ -175,11 +175,11 @@ func handleUniv2SyncLog(eventLog *types.Log, affectedMarkets *[]common.Address, 
 	token0 := getLPToken0(&eventLog.Address)
 	token1 := getLPToken1(&eventLog.Address)
 
-	wethPair := token0 == config.Configuration.WrappedNativeTokenAddress || token1 == config.Configuration.WrappedNativeTokenAddress
+	wethPair := token0 == config.Configuration.WethAddress || token1 == config.Configuration.WethAddress
 
 	if wethPair {
 		var tokenToWeth bool
-		if token0 == config.Configuration.WrappedNativeTokenAddress {
+		if token0 == config.Configuration.WethAddress {
 			tokenToWeth = false
 		} else {
 			tokenToWeth = true
@@ -236,11 +236,11 @@ func handleUniv3SwapLog(eventLog *types.Log, affectedMarkets *[]common.Address, 
 	token0 := getLPToken0(&eventLog.Address)
 	token1 := getLPToken1(&eventLog.Address)
 
-	wethPair := token0 == config.Configuration.WrappedNativeTokenAddress || token1 == config.Configuration.WrappedNativeTokenAddress
+	wethPair := token0 == config.Configuration.WethAddress || token1 == config.Configuration.WethAddress
 
 	if wethPair {
 		var tokenToWeth bool
-		if token0 == config.Configuration.WrappedNativeTokenAddress {
+		if token0 == config.Configuration.WethAddress {
 			tokenToWeth = false
 		} else {
 			tokenToWeth = true

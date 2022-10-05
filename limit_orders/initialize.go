@@ -123,14 +123,14 @@ func initializeTokenToAffectedOrders() {
 
 	for orderId, order := range ActiveOrders {
 
-		if order.tokenIn != config.Configuration.WrappedNativeTokenAddress {
+		if order.tokenIn != config.Configuration.WethAddress {
 			if _, ok := tokenToAffectedOrders[order.tokenIn]; !ok {
 				tokenToAffectedOrders[order.tokenIn] = []common.Hash{}
 			}
 			tokenToAffectedOrders[order.tokenIn] = append(tokenToAffectedOrders[order.tokenIn], orderId)
 		}
 
-		if order.tokenOut != config.Configuration.WrappedNativeTokenAddress {
+		if order.tokenOut != config.Configuration.WethAddress {
 			if _, ok := tokenToAffectedOrders[order.tokenIn]; !ok {
 				tokenToAffectedOrders[order.tokenIn] = []common.Hash{}
 			}
@@ -159,14 +159,14 @@ func initializeUSDWETHPool() {
 
 	usdWethPoolAddress, isUniv2 := getMostLiquidPool(
 		config.Configuration.USDPeggedTokenAddress,
-		config.Configuration.WrappedNativeTokenAddress,
+		config.Configuration.WethAddress,
 		config.Configuration.USDWethPoolFee)
 
 	USDWETHPool = &Pool{lpAddress: usdWethPoolAddress, IsUniv2: isUniv2}
 
 	token0 := getLPToken0(&USDWETHPool.lpAddress)
 
-	if token0 == config.Configuration.WrappedNativeTokenAddress {
+	if token0 == config.Configuration.WethAddress {
 		USDWETHPool.tokenToWeth = true
 		USDWETHPool.tokenDecimals = getTokenDecimals(&token0)
 

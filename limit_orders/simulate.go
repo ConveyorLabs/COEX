@@ -13,7 +13,7 @@ import (
 // If success, the affected Pool reserves are updated
 // If failure, the Pool reserves remained unchanged
 func simulateOrderLocally(order LimitOrder, tokenInMarket []*Pool, tokenOutMarket []*Pool, buyStatus bool) bool {
-	if order.tokenIn == config.Configuration.WrappedNativeTokenAddress || order.tokenOut == config.Configuration.WrappedNativeTokenAddress {
+	if order.tokenIn == config.Configuration.WethAddress || order.tokenOut == config.Configuration.WethAddress {
 		return simulateOnePoolSwap(order, tokenInMarket, buyStatus)
 	} else {
 		return simulateOneTwoPoolSwap(order, tokenInMarket, tokenOutMarket, buyStatus)
@@ -39,8 +39,8 @@ func simulateOneTwoPoolSwap(order LimitOrder, tokenInMarket []*Pool, tokenOutMar
 		amountIn = applyFeeOnTransfer(amountIn, order.taxIn)
 	}
 
-	firstHopAmountOut, updatedTokenInTokenReserves, updatedTokenInTokenWethReserves := simulateAToBSwapLocally(amountIn, order.tokenIn, config.Configuration.WrappedNativeTokenAddress, *bestTokenInMarket, order.fee, true)
-	secondHopAmountOut, updatedTokenOutTokenReserves, updatedTokenOutTokenWethReserves := simulateAToBSwapLocally(firstHopAmountOut, config.Configuration.WrappedNativeTokenAddress, order.tokenOut, *bestTokenOutMarket, order.fee, false)
+	firstHopAmountOut, updatedTokenInTokenReserves, updatedTokenInTokenWethReserves := simulateAToBSwapLocally(amountIn, order.tokenIn, config.Configuration.WethAddress, *bestTokenInMarket, order.fee, true)
+	secondHopAmountOut, updatedTokenOutTokenReserves, updatedTokenOutTokenWethReserves := simulateAToBSwapLocally(firstHopAmountOut, config.Configuration.WethAddress, order.tokenOut, *bestTokenOutMarket, order.fee, false)
 
 	if order.amountOutMin.Cmp(secondHopAmountOut) >= 0 {
 		//Update tokenInMarket
@@ -78,10 +78,10 @@ func simulateAToBSwapLocally(amountIn *big.Int, tokenIn common.Address, tokenOut
 		tokenInDecimals = pool.tokenDecimals
 
 		tokenOutReserves = pool.wethReserves
-		tokenOutDecimals = config.Configuration.WrappedNativeTokenDecimals
+		tokenOutDecimals = config.Configuration.WethDecimals
 	} else {
 		tokenInReserves = pool.wethReserves
-		tokenInDecimals = config.Configuration.WrappedNativeTokenDecimals
+		tokenInDecimals = config.Configuration.WethDecimals
 
 		tokenOutReserves = pool.tokenReserves
 		tokenOutDecimals = pool.tokenDecimals

@@ -9,9 +9,9 @@ import (
 )
 
 func TestInitializeHTTPClient(t *testing.T) {
+	config.Initialize()
 
-	//TODO: add ci/cd secret
-	initializeHTTPClient("")
+	initializeHTTPClient(config.Configuration.NodeHttpEndpoint)
 	chainID, err := HTTPClient.ChainID(context.Background())
 
 	if err != nil {
@@ -25,9 +25,9 @@ func TestInitializeHTTPClient(t *testing.T) {
 }
 
 func TestInitializeWSClient(t *testing.T) {
+	config.Initialize()
 
-	//TODO: add ci/cd secret
-	initializeWSClient("")
+	initializeWSClient(config.Configuration.NodeWebsocketsEndpoint)
 	chainID, err := WSClient.ChainID(context.Background())
 
 	if err != nil {
@@ -41,18 +41,21 @@ func TestInitializeWSClient(t *testing.T) {
 }
 
 func TestCall(t *testing.T) {
-
-	//TODO: add ci/cd secret
-	initializeHTTPClient("")
+	config.Initialize()
+	initializeHTTPClient(config.Configuration.NodeHttpEndpoint)
 
 	//Initialize ABIs
 	contractAbis.Initialize()
 
-	//TODO: select method to test
-	result, err := Call(contractAbis.LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "")
+	result, err := Call(contractAbis.ERC20ABI, &config.Configuration.WethAddress, "decimals")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	decimals := result[0].(big.Int)
+
+	if decimals.Cmp(big.NewInt(18)) != 0 {
+		t.Fatal("Weth decimals do not equal 18")
+	}
 }
