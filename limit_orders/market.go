@@ -17,7 +17,7 @@ import (
 
 var Markets map[common.Address][]*Pool
 
-// Hash(Token, feeTier) -> bool
+// Hash(token_address, feeTier) -> bool
 // If the fee tier is being tracked, it will return true, if not, you can add it to the Market
 var MarketFeeTiers map[common.Hash]bool
 
@@ -35,12 +35,21 @@ func addMarketIfNotExist(token common.Address, fee *big.Int) {
 	MarketsMutex.Lock()
 	if _, ok := Markets[token]; !ok {
 		addMarket(token, fee)
+	} else {
+		//TODO: need to double check this
+		key := common.BytesToHash(append(token.Bytes(), fee.Bytes()...))
+		if _, ok := MarketFeeTiers[key]; !ok {
+			MarketFeeTiers[key] = true
+			//append new pool to market
+			appendUniV3PoolToMarket(token, fee)
+
+		}
+
 	}
 	MarketsMutex.Unlock()
 }
 
 func addMarket(token common.Address, fee *big.Int) {
-
 	//for each dex
 	for _, dex := range Dexes {
 
@@ -84,6 +93,51 @@ func addMarket(token common.Address, fee *big.Int) {
 
 }
 
+func appendUniV3PoolToMarket(token common.Address, fee *big.Int) {
+	//for each dex
+	for _, dex := range Dexes {
+
+		if !dex.IsUniv2 {
+			//Get the pool address
+			exists, lpAddress := dex.getPoolAddress(token, config.Configuration.WethAddress, fee)
+
+			if exists {
+				token0 := getLPToken0(&lpAddress)
+				tokenDecimals := getTokenDecimals(&token)
+
+				var tokenReserves *big.Int
+				var wethReserves *big.Int
+
+				tokenToWeth := false
+				if token0 == token {
+					tokenToWeth = true
+				} else {
+					tokenToWeth = false
+
+				}
+
+				pool := Pool{
+					lpAddress:     lpAddress,
+					tokenReserves: tokenReserves,
+					tokenDecimals: tokenDecimals,
+					wethReserves:  wethReserves,
+					tokenToWeth:   tokenToWeth,
+				}
+
+				//Set the reserve values
+				pool.initializeLPReserves()
+				//set the price of token per weth
+				pool.updatePriceOfTokenPerWeth()
+
+				//append the pool to the market
+				Markets[token] = append(Markets[token], &pool)
+			} else {
+				continue
+			}
+		}
+	}
+
+}
 func getCloneOfMarket(token common.Address) []*Pool {
 	market := Markets[token]
 	clonedMarket := []*Pool{}
