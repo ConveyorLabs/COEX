@@ -4,7 +4,6 @@ import (
 	"beacon/config"
 	contractAbis "beacon/contract_abis"
 	rpcClient "beacon/rpc_client"
-	"fmt"
 	"math/big"
 	"sync"
 
@@ -46,7 +45,6 @@ func addMarketIfNotExist(token common.Address, fee *big.Int) {
 			MarketFeeTiers[key] = true
 			//append new pool to market
 			appendUniV3PoolToMarket(token, fee)
-
 		}
 
 	}
@@ -164,8 +162,7 @@ func (d *Dex) getPoolAddress(tokenIn common.Address, tokenOut common.Address, fe
 
 		getPairResult, err := rpcClient.Call(contractAbis.UniswapV2FactoryABI, &d.FactoryAddress, "getPair", tokenIn, tokenOut)
 		if err != nil {
-			//TODO: handle error
-			fmt.Println(err)
+			return false, common.Address{}
 		}
 
 		result = getPairResult
@@ -174,18 +171,19 @@ func (d *Dex) getPoolAddress(tokenIn common.Address, tokenOut common.Address, fe
 
 		getPoolResult, err := rpcClient.Call(contractAbis.UniswapV3FactoryABI, &d.FactoryAddress, "getPool", tokenIn, tokenOut, fee)
 		if err != nil {
-			//TODO: handle error
-			fmt.Println(err)
+			return false, common.Address{}
 		}
 		result = getPoolResult
 
 	}
 
 	if len(result) > 0 {
-		return true, result[0].(common.Address)
-	} else {
-		return false, common.Address{}
+		if result[0] != common.HexToAddress("0x0000000000000000000000000000000000000000") {
+			return true, result[0].(common.Address)
+		}
 	}
+
+	return false, common.Address{}
 
 }
 
