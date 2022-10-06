@@ -35,6 +35,10 @@ func addMarketIfNotExist(token common.Address, fee *big.Int) {
 	MarketsMutex.Lock()
 	if _, ok := Markets[token]; !ok {
 		addMarket(token, fee)
+
+		key := common.BytesToHash(append(token.Bytes(), fee.Bytes()...))
+		MarketFeeTiers[key] = true
+
 	} else {
 		//TODO: need to double check this
 		key := common.BytesToHash(append(token.Bytes(), fee.Bytes()...))

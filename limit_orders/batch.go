@@ -40,7 +40,16 @@ func groupOrdersByRoute(orderIds []common.Hash) map[common.Hash][]LimitOrder {
 
 		order := ActiveOrders[orderId]
 
-		key := common.BytesToHash(append(order.tokenIn.Bytes(), order.tokenOut.Bytes()...))
+		//TODO: FIXME: update the approach when hashing two things together,
+		//Add feein/feeout
+		key := common.BytesToHash(
+			append(
+				append(
+					order.tokenIn.Bytes(),
+					order.tokenOut.Bytes()...,
+				),
+				order.feeIn.Bytes()...,
+			))
 
 		if _, ok := ordersBatchedByRoute[key]; ok {
 
