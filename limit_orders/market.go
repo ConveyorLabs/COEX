@@ -17,6 +17,10 @@ import (
 
 var Markets map[common.Address][]*Pool
 
+// Hash(Token, feeTier) -> bool
+// If the fee tier is being tracked, it will return true, if not, you can add it to the Market
+var MarketFeeTiers map[common.Hash]bool
+
 var MarketsMutex *sync.Mutex
 
 var Dexes []Dex
