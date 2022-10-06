@@ -22,6 +22,7 @@ func Initialize() {
 	initializeDexes()
 
 	//Initialize state structures
+	initializeMarketStructures()
 	initializeActiveOrders()
 	initializeTokenToAffectedOrders()
 	initializeGasCreditBalances()
@@ -45,6 +46,13 @@ func Initialize() {
 // @dev: Initialize individually to allow for easier testing
 func initializeActiveOrders() {
 	ActiveOrders = map[common.Hash]*LimitOrder{}
+}
+
+func initializeMarketStructures() {
+	Markets = make(map[common.Address][]*Pool)
+	MarketFeeTiers = make(map[common.Hash]bool)
+	MarketsMutex = &sync.Mutex{}
+
 }
 
 func initializeTokenToAffectedOrders() {

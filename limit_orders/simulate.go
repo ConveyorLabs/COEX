@@ -59,7 +59,7 @@ func updateMarketReserves(pool *Pool, updatedTokenReserves *big.Int, updatedWeth
 	pool.wethReserves = updatedWethreserves
 }
 
-func applyFeeOnTransfer(quantity *big.Int, fee uint32) *big.Int {
+func applyFeeOnTransfer(quantity *big.Int, fee uint16) *big.Int {
 	return big.NewInt(0).Div(
 		big.NewInt(0).Mul(
 			quantity, big.NewInt(int64(fee))), big.NewInt(100000))

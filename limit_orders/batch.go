@@ -1,7 +1,6 @@
 package limitOrders
 
 import (
-	"fmt"
 	"math/big"
 	"sort"
 	"strconv"
@@ -21,7 +20,6 @@ func batchOrdersForExecution(orderIds []common.Hash) [][]common.Hash {
 
 	//TODO: check this
 	groupsOrderedByValue := orderGroupsByValue(orderGroupsAtExecutionPrice)
-	fmt.Println(groupsOrderedByValue)
 
 	//Simulate all orders and create batches.
 	orderGroupsForExecution := simulateAndBatchOrders(groupsOrderedByValue)

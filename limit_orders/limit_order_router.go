@@ -30,16 +30,14 @@ func getGasCreditBalance(address common.Address) *big.Int {
 func getRemoteOrderById(orderId common.Hash) LimitOrder {
 	order, err := rpcClient.Call(contractAbis.LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "orderIdToOrder", orderId)
 
-	fmt.Println(order)
-
 	if err != nil {
 		//TODO: handle error
+		fmt.Println("Error when getting remote order by Id:", err)
 	}
 
 	priceBigInt := big.NewInt(0).Rsh(order[7].(*big.Int), 64)
 	priceBigFloat := new(big.Float).SetInt(priceBigInt)
 	price, _ := priceBigFloat.Float64()
-
 	return LimitOrder{
 		orderId:              orderId,
 		buy:                  order[0].(bool),
@@ -49,7 +47,7 @@ func getRemoteOrderById(orderId common.Hash) LimitOrder {
 		feeIn:                order[4].(*big.Int),
 		feeOut:               order[5].(*big.Int),
 		price:                price,
-		taxIn:                order[6].(uint32),
+		taxIn:                order[6].(uint16),
 		amountOutMin:         order[8].(*big.Int),
 		quantity:             order[9].(*big.Int),
 		tokenIn:              order[11].(common.Address),

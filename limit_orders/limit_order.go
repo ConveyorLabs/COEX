@@ -19,5 +19,5 @@ type LimitOrder struct {
 	feeIn                *big.Int
 	feeOut               *big.Int
 	taxed                bool
-	taxIn                uint32
+	taxIn                uint16
 }
