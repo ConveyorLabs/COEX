@@ -39,8 +39,8 @@ func simulateOneTwoPoolSwap(order LimitOrder, tokenInMarket []*Pool, tokenOutMar
 		amountIn = applyFeeOnTransfer(amountIn, order.taxIn)
 	}
 
-	firstHopAmountOut, updatedTokenInTokenReserves, updatedTokenInTokenWethReserves := simulateAToBSwapLocally(amountIn, order.tokenIn, config.Configuration.WethAddress, *bestTokenInMarket, order.fee, true)
-	secondHopAmountOut, updatedTokenOutTokenReserves, updatedTokenOutTokenWethReserves := simulateAToBSwapLocally(firstHopAmountOut, config.Configuration.WethAddress, order.tokenOut, *bestTokenOutMarket, order.fee, false)
+	firstHopAmountOut, updatedTokenInTokenReserves, updatedTokenInTokenWethReserves := simulateAToBSwapLocally(amountIn, order.tokenIn, config.Configuration.WethAddress, *bestTokenInMarket, order.feeIn, true)
+	secondHopAmountOut, updatedTokenOutTokenReserves, updatedTokenOutTokenWethReserves := simulateAToBSwapLocally(firstHopAmountOut, config.Configuration.WethAddress, order.tokenOut, *bestTokenOutMarket, order.feeOut, false)
 
 	if order.amountOutMin.Cmp(secondHopAmountOut) >= 0 {
 		//Update tokenInMarket
