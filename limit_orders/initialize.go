@@ -171,8 +171,8 @@ func populatePendingExecution() {
 	PendingExecutionMutex = &sync.Mutex{}
 
 	for _, order := range ActiveOrders {
-		addMarketIfNotExist(order.tokenIn, order.fee)
-		addMarketIfNotExist(order.tokenOut, order.fee)
+		addMarketIfNotExist(order.tokenIn, order.feeIn)
+		addMarketIfNotExist(order.tokenOut, order.feeOut)
 	}
 
 }
