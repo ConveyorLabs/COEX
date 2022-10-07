@@ -68,7 +68,7 @@ func ListenForEventLogs() {
 		eventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), eventLogsFilter)
 
 		if err != nil {
-			//TODO: handle the error
+			continue
 		}
 
 		lpLogs := []types.Log{}
