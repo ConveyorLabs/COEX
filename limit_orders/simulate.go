@@ -127,6 +127,9 @@ func simulateAToBSwapLocally(amountIn *big.Int, tokenIn common.Address, tokenOut
 
 // Returns amountOut, newReserve0, newReserve1
 func simulateV2Swap(amountIn *big.Int, reserveA *big.Int, reserveADecimals uint8, reserveB *big.Int, reserveBDecimals uint8) (*big.Int, *big.Int, *big.Int) {
+	//Apply .3% fee to amountIn
+	amountIn = big.NewInt(0).Div(big.NewInt(0).Mul(amountIn, big.NewInt(997)), big.NewInt(1000))
+
 	reserveAInTokens := convertAmountToTokens(reserveA, reserveADecimals)
 	reserveBInTokens := convertAmountToTokens(reserveB, reserveBDecimals)
 
