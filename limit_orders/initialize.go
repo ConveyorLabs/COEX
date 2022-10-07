@@ -31,8 +31,6 @@ func Initialize() {
 	populateActiveOrdersAndGasCreditsFromLogs()
 	populateMarkets()
 
-	panic("killed here after populate markets for testing")
-
 	populateTokenToAffectedOrders()
 	populatePendingExecution()
 

@@ -33,10 +33,10 @@ func main() {
 	log.Println("Initializing limit orders...")
 	limitOrders.Initialize()
 
-	// log.Println("Listening for event logs...")
-	// //Start listening for events
-	// go limitOrders.ListenForEventLogs()
+	log.Println("Listening for event logs...")
+	//Start listening for events
+	go limitOrders.ListenForEventLogs()
 
-	// wg.Wait()
+	wg.Wait()
 
 }
