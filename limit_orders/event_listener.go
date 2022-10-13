@@ -134,7 +134,7 @@ func ListenForEventLogs() {
 			affectedOrders := TokenToAffectedOrders[affectedMarket]
 
 			//Batches orders ready for execution
-			batchedOrders := batchOrdersForExecution(affectedOrders)
+			batchedOrders := prepareOrdersForExecution(affectedOrders)
 			executionOrderIds = append(executionOrderIds, batchedOrders...)
 
 		}

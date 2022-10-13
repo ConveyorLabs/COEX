@@ -11,7 +11,7 @@ import (
 //Batching logic
 
 // Iterates through orderIds potentially affected by price updates. Returns a nested of orderIds to be executed as batches.
-func batchOrdersForExecution(orderIds []common.Hash) [][]common.Hash {
+func prepareOrdersForExecution(orderIds []common.Hash) [][]common.Hash {
 	//group orders that have the same in/out
 	ordersGroupedByRoute := groupOrdersByRoute(orderIds)
 
@@ -22,7 +22,7 @@ func batchOrdersForExecution(orderIds []common.Hash) [][]common.Hash {
 	groupsOrderedByValue := orderGroupsByValue(orderGroupsAtExecutionPrice)
 
 	//Simulate all orders and create batches.
-	orderGroupsForExecution := simulateAndBatchOrders(groupsOrderedByValue)
+	orderGroupsForExecution := simulateOrderGroups(groupsOrderedByValue)
 
 	return orderGroupsForExecution
 }
@@ -171,7 +171,7 @@ func orderGroupsByValue(orderGroups map[common.Hash][]LimitOrder) [][]LimitOrder
 }
 
 // Simulates orders and groups batches. Orders that are not able to execute are dropped from the order group
-func simulateAndBatchOrders(orderGroups [][]LimitOrder) [][]common.Hash {
+func simulateOrderGroups(orderGroups [][]LimitOrder) [][]common.Hash {
 	orderGroupsForExecution := [][]common.Hash{}
 
 	for _, orderGroup := range orderGroups {
