@@ -90,7 +90,6 @@ func ListenForEventLogs() {
 					updateGasCreditBalance(addr, updatedBalance)
 				case orderRefreshEventSignature:
 					refreshOrder(orderIds)
-
 				}
 			} else {
 				switch eventLog.Topics[0] {
