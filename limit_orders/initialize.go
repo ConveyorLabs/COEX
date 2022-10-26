@@ -173,8 +173,8 @@ func populateTokenToAffectedOrders() {
 
 func populatePendingExecution() {
 
-	PendingExecution = make(map[common.Hash]bool)
-	PendingExecutionMutex = &sync.Mutex{}
+	OrderIdsPendingExecution = make(map[common.Hash]bool)
+	OrderIdsPendingExecutionMutex = &sync.Mutex{}
 
 	for _, order := range ActiveOrders {
 		addMarketIfNotExist(order.tokenIn, order.feeIn)
