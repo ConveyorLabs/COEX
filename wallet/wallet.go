@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"beacon/config"
+	contractAbis "beacon/contract_abis"
 	rpcClient "beacon/rpc_client"
 	"context"
 	"crypto/ecdsa"
@@ -174,11 +175,11 @@ func (e *EOA) SignAndSendTransaction(toAddress *common.Address, calldata []byte,
 		Data: calldata,
 	})
 	if err != nil {
-		//TODO: hanlde error
+		//TODO: handle error
 	}
 
-	//Get the suggested gas price
-	gasPrice, err := rpcClient.HTTPClient.SuggestGasPrice(context.Background())
+	//Get the verifier dilemma gas price
+	gasPriceResult, err := rpcClient.Call(contractAbis.LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "getGasPrice")
 	if err != nil {
 		//TODO: hanlde error
 	}
@@ -191,7 +192,7 @@ func (e *EOA) SignAndSendTransaction(toAddress *common.Address, calldata []byte,
 		config.Configuration.LimitOrderRouterAddress,
 		msgValue,
 		gasLimit,
-		gasPrice,
+		gasPriceResult[0].(*big.Int),
 		calldata)
 
 	//Sign the transaction
