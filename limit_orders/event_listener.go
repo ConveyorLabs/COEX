@@ -77,16 +77,16 @@ func ListenForEventLogs() {
 
 			if eventLog.Address == limitOrderRouterAddress {
 				switch eventLog.Topics[0] {
-				case placeOrderEventSignature:
+				case orderPlacedEventSignature:
 					addOrderToOrderBook(orderIds)
-				case cancelOrderEventSignature:
+				case orderCancelledEventSignature:
 					removeOrderFromOrderBook(orderIds)
-				case updateOrderEventSignature:
+				case orderUpdatedEventSignature:
 					updateOrderInOrderBook(orderIds)
 				case gasCreditEventSignature:
 					addr, updatedBalance := handleGasCreditEventLog(eventLog)
 					updateGasCreditBalance(addr, updatedBalance)
-				case orderRefreshEventSignature:
+				case orderRefreshedEventSignature:
 					refreshOrder(orderIds)
 				}
 			} else {
