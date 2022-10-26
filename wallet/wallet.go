@@ -169,7 +169,7 @@ func (e *EOA) incrementNonce() {
 func (e *EOA) SignAndSendTransaction(toAddress *common.Address, calldata []byte, msgValue *big.Int) common.Hash {
 
 	//Estimate the gas limit for the transaction
-	gasLimit, err := rpcClient.HTTPClient.EstimateGas(context.Background(), ethereum.CallMsg{
+	gasCost, err := rpcClient.HTTPClient.EstimateGas(context.Background(), ethereum.CallMsg{
 		To:   &config.Configuration.LimitOrderRouterAddress,
 		Data: calldata,
 	})
@@ -183,6 +183,8 @@ func (e *EOA) SignAndSendTransaction(toAddress *common.Address, calldata []byte,
 		//TODO: hanlde error
 	}
 
+	gasPrice := gasPriceResult[0].(*big.Int)
+
 	//Lock the signer
 	e.signerMutex.Lock()
 
@@ -190,8 +192,8 @@ func (e *EOA) SignAndSendTransaction(toAddress *common.Address, calldata []byte,
 	tx := types.NewTransaction(e.Nonce,
 		config.Configuration.LimitOrderRouterAddress,
 		msgValue,
-		gasLimit,
-		gasPriceResult[0].(*big.Int),
+		big.NewInt(0).Mul(big.NewInt(int64(gasCost)), gasPrice).Uint64(),
+		gasPrice,
 		calldata)
 
 	//Sign the transaction

@@ -67,9 +67,13 @@ func addOrderToOrderBook(orderIds []common.Hash) {
 		if order.taxed {
 			if config.Configuration.EnableTaxedTokens {
 				ActiveOrders[orderId] = &order
+
+				//TODO: add market if market not present
 			}
 		} else {
 			ActiveOrders[orderId] = &order
+			//TODO: add market if market not present
+
 		}
 	}
 

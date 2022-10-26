@@ -224,9 +224,7 @@ func handleUniv2SyncLog(eventLog *types.Log, affectedMarkets *[]common.Address, 
 		}
 
 	}
-
 	wg.Done()
-
 }
 
 // Returns affected market address

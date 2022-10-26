@@ -22,7 +22,6 @@ func simulateOrderLocally(order LimitOrder, tokenInMarket []*Pool, tokenOutMarke
 }
 
 func simulateOnePoolSwap(order LimitOrder, tokenInMarket []*Pool, buyStatus bool) bool {
-
 	return true
 
 }
@@ -185,10 +184,12 @@ func convertAmountToWei(amount *big.Int, decimals uint8) *big.Int {
 
 // Calls the node to simulate an execution batch
 func simulateExecution(orderIds []common.Hash) bool {
+
 	result, err := rpcClient.Call(contractAbis.LimitOrderRouterABI, &config.Configuration.LimitOrderRouterAddress, "executeOrders", orderIds)
 
 	if err != nil {
 		//TODO: handle error
 	}
+
 	return result[0].(bool)
 }
