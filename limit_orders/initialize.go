@@ -51,7 +51,8 @@ func Initialize() {
 	orderGroupsForExecution := simulateOrderGroups(groupsOrderedByValue)
 
 	if len(orderGroupsForExecution) > 0 {
-		go executeOrders(orderGroupsForExecution)
+		fmt.Println("orderGroups ready for execution", orderGroupsForExecution)
+		// go executeOrders(orderGroupsForExecution)
 	}
 
 }
