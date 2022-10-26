@@ -16,7 +16,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -216,22 +215,6 @@ func (e *EOA) SignAndSendTransaction(toAddress *common.Address, calldata []byte,
 	e.signerMutex.Unlock()
 
 	return signedTx.Hash()
-}
-
-func WaitForTransactionToComplete(txHash common.Hash) *types.Transaction {
-	for {
-		confirmedTx, pending, err := rpcClient.HTTPClient.TransactionByHash(context.Background(), txHash)
-		if err != nil {
-			fmt.Println("Err when getting transaction by hash", err)
-			//TODO: In the future, handle errors gracefully
-			os.Exit(13)
-		}
-		if !pending {
-			return confirmedTx
-		}
-
-		time.Sleep(time.Second * time.Duration(1))
-	}
 }
 
 // Prompt the user for a terminal input while obscuring the input and return the value as bytes

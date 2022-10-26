@@ -3,10 +3,13 @@ package rpcClient
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -49,4 +52,20 @@ func Call(ABI *abi.ABI, to *common.Address, method string, args ...interface{}) 
 	}
 
 	return values, nil
+}
+
+func WaitForTransactionToComplete(txHash common.Hash) *types.Transaction {
+	for {
+		confirmedTx, pending, err := HTTPClient.TransactionByHash(context.Background(), txHash)
+		if err != nil {
+			fmt.Println("Err when getting transaction by hash", err)
+			//TODO: In the future, handle errors gracefully
+			os.Exit(13)
+		}
+		if !pending {
+			return confirmedTx
+		}
+
+		time.Sleep(time.Second * time.Duration(1))
+	}
 }

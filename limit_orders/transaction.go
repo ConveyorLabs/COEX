@@ -3,6 +3,7 @@ package limitOrders
 import (
 	"beacon/config"
 	contractAbis "beacon/contract_abis"
+	rpcClient "beacon/rpc_client"
 	"beacon/wallet"
 	"fmt"
 	"math/big"
@@ -34,7 +35,14 @@ func executeOrders(orderGroups [][]common.Hash) {
 	//Sign and send the transaction
 	txHash := wallet.Wallet.SignAndSendTransaction(&config.Configuration.LimitOrderRouterAddress, data, big.NewInt(0))
 
-	fmt.Println(txHash)
+	go handlePendingOrderExecution(txHash)
+
+}
+
+func handlePendingOrderExecution(txHash common.Hash) {
+	tx := rpcClient.WaitForTransactionToComplete(txHash)
+
+	fmt.Println(tx)
 
 }
 
