@@ -14,20 +14,20 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-var placeOrderEventSignature common.Hash
-var cancelOrderEventSignature common.Hash
-var updateOrderEventSignature common.Hash
+var orderPlacedEventSignature common.Hash
+var orderCancelledEventSignature common.Hash
+var orderUpdatedEventSignature common.Hash
 var gasCreditEventSignature common.Hash
-var orderRefreshEventSignature common.Hash
+var orderRefreshedEventSignature common.Hash
 var v2SyncEventSignature common.Hash
 var v3SwapEventSignature common.Hash
 
 func initializeEventLogSignatures() {
-	placeOrderEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderPlaced"].ID
-	cancelOrderEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderCancelled"].ID
-	updateOrderEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderUpdated"].ID
+	orderPlacedEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderPlaced"].ID
+	orderCancelledEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderCancelled"].ID
+	orderUpdatedEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderUpdated"].ID
 	gasCreditEventSignature = contractAbis.LimitOrderRouterABI.Events["GasCreditEvent"].ID
-	orderRefreshEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderRefreshed"].ID
+	orderRefreshedEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderRefreshed"].ID
 	v2SyncEventSignature = common.HexToHash("0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1")
 	v3SwapEventSignature = common.HexToHash("0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67")
 }
@@ -38,15 +38,14 @@ func ListenForEventLogs() {
 	blockHeaderChannel := make(chan *types.Header)
 
 	//create a topic filter
-
 	eventLogsFilter := ethereum.FilterQuery{
 		Topics: [][]common.Hash{
 			{
-				placeOrderEventSignature,
-				cancelOrderEventSignature,
-				updateOrderEventSignature,
+				orderPlacedEventSignature,
+				orderCancelledEventSignature,
+				orderUpdatedEventSignature,
 				gasCreditEventSignature,
-				orderRefreshEventSignature,
+				orderRefreshedEventSignature,
 				v2SyncEventSignature,
 				v3SwapEventSignature,
 			},
@@ -64,7 +63,6 @@ func ListenForEventLogs() {
 	for {
 
 		<-blockHeaderChannel
-
 		eventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), eventLogsFilter)
 
 		if err != nil {
