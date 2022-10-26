@@ -14,12 +14,12 @@ import (
 var PendingExecution map[common.Hash]bool
 var PendingExecutionMutex *sync.Mutex
 
-func executeOrders(orderIds []common.Hash) {
+func executeOrders(orderGroups [][]common.Hash) {
 	//Create data payload
 	var data []byte
 
 	//append the method sig to the data payload
-	methodSig := contractAbis.SwapRouterABI.Methods["executeOrders"].ID
+	methodSig := contractAbis.SwapRouterABI.Methods["executeOrderGroups"].ID
 	data = append(data, methodSig...)
 
 	//append the orderIds to the data payload
