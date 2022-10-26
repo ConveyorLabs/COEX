@@ -90,9 +90,9 @@ func updateOrderInOrderBook(orderIds []common.Hash) {
 
 }
 
-// TODO: do we need this here?
 func refreshOrder(orderIds []common.Hash) {
 	for _, orderId := range orderIds {
-		fmt.Println(orderId)
+		refreshedOrder := getRemoteOrderById(orderId)
+		ActiveOrders[orderId] = &refreshedOrder
 	}
 }
