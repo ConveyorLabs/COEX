@@ -33,7 +33,6 @@ func initializeEventLogSignatures() {
 }
 
 func ListenForEventLogs() {
-
 	//create a channel to handle incoming events
 	blockHeaderChannel := make(chan *types.Header)
 
@@ -60,22 +59,26 @@ func ListenForEventLogs() {
 
 	limitOrderRouterAddress := config.Configuration.LimitOrderRouterAddress
 
+	//Start listening for new block headers
 	for {
-
 		<-blockHeaderChannel
+		//Check if there are any event logs within the new block
 		eventLogs, err := rpcClient.HTTPClient.FilterLogs(context.Background(), eventLogsFilter)
-
 		if err != nil {
 			continue
 		}
 
+		//Init a structure for logs related to sync/swap updates
 		lpLogs := []types.Log{}
 
 		//Handle logs from limit order router first
 		for _, eventLog := range eventLogs {
-			orderIds := parseOrderIdsFromEventData(eventLog.Data)
 
+			//If the event log is from the limit order router
 			if eventLog.Address == limitOrderRouterAddress {
+				//Get all the orderIds
+				orderIds := parseOrderIdsFromEventData(eventLog.Data)
+
 				switch eventLog.Topics[0] {
 				case orderPlacedEventSignature:
 					addOrderToOrderBook(orderIds)
@@ -89,6 +92,7 @@ func ListenForEventLogs() {
 				case orderRefreshedEventSignature:
 					refreshOrder(orderIds)
 				}
+
 			} else {
 				switch eventLog.Topics[0] {
 				case v2SyncEventSignature:
