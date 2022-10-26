@@ -36,8 +36,23 @@ func Initialize() {
 
 	initializeUSDWETHPool()
 
-	//TODO:
-	//Execute any orders that are ready
+	//Execute orders that meet the execution price
+	orders := []LimitOrder{}
+	for _, order := range ActiveOrders {
+		orders = append(orders, *order)
+	}
+
+	//group orders that have the same in/out
+	ordersGroupedByRoute := groupOrdersByRoute(orders)
+	// filter orders by execution price, dropping orders that are not ready for execution
+	orderGroupsAtExecutionPrice := filterOrdersAtExectuionPrice(ordersGroupedByRoute)
+	groupsOrderedByValue := orderGroupsByValue(orderGroupsAtExecutionPrice)
+	//Simulate all orders and create batches.
+	orderGroupsForExecution := simulateOrderGroups(groupsOrderedByValue)
+
+	if len(orderGroupsForExecution) > 0 {
+		go executeOrders(orderGroupsForExecution)
+	}
 
 }
 
