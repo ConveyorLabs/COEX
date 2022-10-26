@@ -35,11 +35,11 @@ func executeOrders(orderGroups [][]common.Hash) {
 	//Sign and send the transaction
 	txHash := wallet.Wallet.SignAndSendTransaction(&config.Configuration.LimitOrderRouterAddress, data, big.NewInt(0))
 
-	go handlePendingOrderExecution(txHash)
+	go handlePendingTransaction(txHash)
 
 }
 
-func handlePendingOrderExecution(txHash common.Hash) {
+func handlePendingTransaction(txHash common.Hash) {
 	tx := rpcClient.WaitForTransactionToComplete(txHash)
 
 	fmt.Println(tx)
