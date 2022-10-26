@@ -11,23 +11,25 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var PendingExecution map[common.Hash]bool
-var PendingExecutionMutex *sync.Mutex
+var OrderIdsPendingExecution map[common.Hash]bool
+var OrderIdsPendingExecutionMutex *sync.Mutex
 
 func executeOrders(orderGroups [][]common.Hash) {
 	//Create data payload
-	var data []byte
+	data, err := contractAbis.LimitOrderRouterABI.Pack("executeOrderGroups", orderGroups)
 
-	//append the method sig to the data payload
-	methodSig := contractAbis.SwapRouterABI.Methods["executeOrderGroups"].ID
-	data = append(data, methodSig...)
-
-	//append the orderIds to the data payload
-	var orderIdsBytes []byte
-	for _, orderId := range orderIds {
-		orderIdsBytes = append(orderIdsBytes, orderId.Bytes()...)
+	if err != nil {
+		//TODO: handle error
+		fmt.Println("error when packing data", err)
 	}
-	data = append(data, orderIdsBytes...)
+
+	for _, orderGroup := range orderGroups {
+		for _, orderId := range orderGroup {
+			OrderIdsPendingExecutionMutex.Lock()
+			OrderIdsPendingExecution[orderId] = true
+			OrderIdsPendingExecutionMutex.Unlock()
+		}
+	}
 
 	//Sign and send the transaction
 	txHash := wallet.Wallet.SignAndSendTransaction(&config.Configuration.LimitOrderRouterAddress, data, big.NewInt(0))
