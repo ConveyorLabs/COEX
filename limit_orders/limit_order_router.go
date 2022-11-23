@@ -12,19 +12,10 @@ import (
 
 var ActiveOrders map[common.Hash]*LimitOrder
 var TokenToAffectedOrders map[common.Address][]common.Hash
-var GasCreditBalances map[common.Address]*big.Int
 
 // Hash TokenIn and TokenOut for the key. Values are a map of prices to order Ids.
 var ExecutionPrices = make(map[common.Hash]map[float32][]common.Hash)
 var SortedExecutionPricesKeys = []float32{}
-
-func updateGasCreditBalance(address common.Address, amount *big.Int) {
-	GasCreditBalances[address] = amount
-}
-
-func getGasCreditBalance(address common.Address) *big.Int {
-	return GasCreditBalances[address]
-}
 
 // Get an on-chain order by Id from the LimitOrderRouter contract
 func getRemoteOrderById(orderId common.Hash) LimitOrder {

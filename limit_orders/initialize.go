@@ -25,10 +25,9 @@ func Initialize() {
 	initializeMarketStructures()
 	initializeActiveOrders()
 	initializeTokenToAffectedOrders()
-	initializeGasCreditBalances()
 
 	//Populate state structures
-	populateActiveOrdersAndGasCreditsFromLogs()
+	populateActiveOrdersFromLogs()
 	populateMarkets()
 
 	populateTokenToAffectedOrders()
@@ -73,11 +72,7 @@ func initializeTokenToAffectedOrders() {
 	TokenToAffectedOrders = map[common.Address][]common.Hash{}
 }
 
-func initializeGasCreditBalances() {
-	GasCreditBalances = map[common.Address]*big.Int{}
-}
-
-func populateActiveOrdersAndGasCreditsFromLogs() {
+func populateActiveOrdersFromLogs() {
 
 	latestBlock, err := rpcClient.HTTPClient.BlockNumber(context.Background())
 
@@ -90,7 +85,6 @@ func populateActiveOrdersAndGasCreditsFromLogs() {
 	blockIncrement := big.NewInt(100000)
 
 	orderPlacedEventSignature := contractAbis.LimitOrderRouterABI.Events["OrderPlaced"].ID
-	gasCreditEventSignature := contractAbis.LimitOrderRouterABI.Events["GasCreditEvent"].ID
 
 	for i := config.Configuration.LimitOrderRouterCreationBlock; i.Cmp(currentBlockBigInt) < 0; i.Add(i, blockIncrement) {
 
@@ -102,7 +96,7 @@ func populateActiveOrdersAndGasCreditsFromLogs() {
 			ToBlock:   toBlock,
 			Addresses: []common.Address{config.Configuration.LimitOrderRouterAddress},
 			Topics: [][]common.Hash{
-				{orderPlacedEventSignature, gasCreditEventSignature},
+				{orderPlacedEventSignature},
 			},
 		}
 
@@ -116,10 +110,6 @@ func populateActiveOrdersAndGasCreditsFromLogs() {
 			if eventLog.Topics[0] == orderPlacedEventSignature {
 				orderIds := parseOrderIdsFromEventData(eventLog.Data)
 				addOrderToOrderBook(orderIds)
-
-			} else if eventLog.Topics[0] == gasCreditEventSignature {
-				addr, updatedBalance := handleGasCreditEventLog(eventLog)
-				updateGasCreditBalance(addr, updatedBalance)
 
 			}
 

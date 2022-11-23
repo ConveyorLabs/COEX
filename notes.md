@@ -1,15 +1,23 @@
-create toggle where beacon can decide to run taxed or not taxed
+- Tracking market to affected orders
 
+- A market is a collection of pools across the dexes that are being tracked
 
-init with tax bool and tax value
+- When a price update comes in from a pool, we check if that pool is in a market and then update the pool details. 
 
-simulate batch with internal calculations
+- Then check the market to affected orders, execute viable orders
 
-simulate best batch with rpc call
-
-if error, remove the orderid that failed, retry batch
-
-repeat this process until order simulates successfully or no orders remain.
+- 
 
 
 
+## Sandbox Limit Order System
+- Initialize SandboxLimitOrders
+
+## Limit Order System 
+- Initialize LimitOrders
+
+
+
+
+
+Pool to affected orders, if it is a token to token pool, then just check price, otherwise, if it is token to weth pool, check price and also check all limit affected orders.

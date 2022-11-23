@@ -17,7 +17,6 @@ import (
 var orderPlacedEventSignature common.Hash
 var orderCancelledEventSignature common.Hash
 var orderUpdatedEventSignature common.Hash
-var gasCreditEventSignature common.Hash
 var orderRefreshedEventSignature common.Hash
 var v2SyncEventSignature common.Hash
 var v3SwapEventSignature common.Hash
@@ -26,7 +25,6 @@ func initializeEventLogSignatures() {
 	orderPlacedEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderPlaced"].ID
 	orderCancelledEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderCancelled"].ID
 	orderUpdatedEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderUpdated"].ID
-	gasCreditEventSignature = contractAbis.LimitOrderRouterABI.Events["GasCreditEvent"].ID
 	orderRefreshedEventSignature = contractAbis.LimitOrderRouterABI.Events["OrderRefreshed"].ID
 	v2SyncEventSignature = common.HexToHash("0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1")
 	v3SwapEventSignature = common.HexToHash("0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67")
@@ -43,7 +41,6 @@ func ListenForEventLogs() {
 				orderPlacedEventSignature,
 				orderCancelledEventSignature,
 				orderUpdatedEventSignature,
-				gasCreditEventSignature,
 				orderRefreshedEventSignature,
 				v2SyncEventSignature,
 				v3SwapEventSignature,
@@ -86,9 +83,6 @@ func ListenForEventLogs() {
 					removeOrderFromOrderBook(orderIds)
 				case orderUpdatedEventSignature:
 					updateOrderInOrderBook(orderIds)
-				case gasCreditEventSignature:
-					addr, updatedBalance := handleGasCreditEventLog(eventLog)
-					updateGasCreditBalance(addr, updatedBalance)
 				case orderRefreshedEventSignature:
 					refreshOrder(orderIds)
 				}
@@ -162,10 +156,6 @@ func parseOrderIdsFromEventData(eventData []byte) []common.Hash {
 	}
 
 	return orderIds
-}
-
-func handleGasCreditEventLog(gasCreditEventLog types.Log) (common.Address, *big.Int) {
-	return common.BytesToAddress(gasCreditEventLog.Topics[1][:]), big.NewInt(0).SetBytes(gasCreditEventLog.Topics[2][:])
 }
 
 // Returns affected market address
