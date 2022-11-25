@@ -1,4 +1,4 @@
-package limitOrders
+package orders
 
 import "testing"
 

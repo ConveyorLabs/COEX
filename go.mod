@@ -5,7 +5,6 @@ go 1.18
 require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/ethereum/go-ethereum v1.10.21
-	github.com/fatih/color v1.13.0
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8
 	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035
 )

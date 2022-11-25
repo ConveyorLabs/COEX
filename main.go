@@ -3,7 +3,7 @@ package main
 import (
 	"beacon/config"
 	contractAbis "beacon/contract_abis"
-	limitOrders "beacon/limit_orders"
+	"beacon/orders"
 	rpcClient "beacon/rpc_client"
 	"beacon/wallet"
 	"log"
@@ -31,11 +31,11 @@ func main() {
 	wallet.Initialize()
 
 	log.Println("Initializing limit orders...")
-	limitOrders.Initialize()
+	orders.Initialize()
 
 	log.Println("Listening for event logs...")
 	//Start listening for events
-	go limitOrders.ListenForEventLogs()
+	go orders.ListenForEventLogs()
 
 	wg.Wait()
 
