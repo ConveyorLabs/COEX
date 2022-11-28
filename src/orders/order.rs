@@ -9,6 +9,7 @@ use ethers::{
     providers::{JsonRpcClient, JsonRpcClientWrapper, Middleware, Provider},
     types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256},
 };
+use num_bigfloat::BigFloat;
 use pair_sync::pool::Pool;
 
 use crate::{
@@ -105,13 +106,15 @@ impl Order {
                         .expect("Could not convert token into uint")
                         .as_u32() as u16,
 
-                    //TODO: fix price by using rug
-                    price: (limit_order[8]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u128() as f64)
-                        / 2_f64.powf(63 as f64),
+                    price: BigFloat::from_u128(
+                        limit_order[8]
+                            .to_owned()
+                            .into_uint()
+                            .expect("Could not convert token into uint")
+                            .as_u128(),
+                    )
+                    .div(&BigFloat::from_f64(2_f64.powf(63 as f64)))
+                    .to_f64(),
 
                     amount_out_min: limit_order[10]
                         .to_owned()
@@ -168,9 +171,9 @@ impl Order {
                     .expect("Could not convert token into uint")
                     .as_u128();
 
-                //TODO: fix price by using rug
-                oijsdiojsdfioj
-                let price = amount_in_remaining as f64 / amount_out_remaining as f64;
+                let price = BigFloat::from_u128(amount_in_remaining)
+                    .div(&BigFloat::from_u128(amount_out_remaining))
+                    .to_f64();
 
                 Ok(Order::SandboxLimitOrder(SandboxLimitOrder {
                     last_refresh_timestamp: sandbox_limit_order[0]
@@ -554,9 +557,9 @@ pub fn evaluate_and_execute_orders(
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
 
     //Accumulate sandbox limit orders at execution price
-    let mut slo_at_execution_price: Vec<SandboxLimitOrder> = vec![];
+    let mut slo_at_execution_price: Vec<&SandboxLimitOrder> = vec![];
     //Accumulate limit orders at execution price
-    let mut lo_at_execution_price: Vec<LimitOrder> = vec![];
+    let mut lo_at_execution_price: Vec<&LimitOrder> = vec![];
 
     for market_id in affected_markets {
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
@@ -565,14 +568,11 @@ pub fn evaluate_and_execute_orders(
                     if order.can_execute(&markets, weth) {
                         match order {
                             Order::SandboxLimitOrder(sandbox_limit_order) => {
-
-                                //TODO:
-                                // slo_at_execution_price.push(sandbox_limit_order);
+                                slo_at_execution_price.push(sandbox_limit_order);
                             }
 
                             Order::LimitOrder(limit_order) => {
-                                //TODO:
-                                // lo_at_execution_price.push(limit_order);
+                                lo_at_execution_price.push(limit_order);
                             }
                         }
                     }
