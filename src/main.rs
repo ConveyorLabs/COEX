@@ -79,6 +79,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         //Handle order updates
         order::handle_order_updates(order_events, active_orders.clone(), provider.clone()).await?;
+
         //Update markets
         let markets_updated = market::handle_market_updates(
             &pool_events,
@@ -88,7 +89,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         //Evaluate orders for execution
         if markets_updated.len() > 0 {
-            order::evaluate_and_execute_orders(markets_updated, market_to_affected_orders.clone());
+            order::evaluate_and_execute_orders(
+                markets_updated,
+                market_to_affected_orders.clone(),
+                active_orders.clone(),
+                markets.clone(),
+                configuration.weth_address,
+            );
         }
     }
 

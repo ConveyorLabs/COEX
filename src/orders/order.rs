@@ -19,9 +19,13 @@ use crate::{
     },
     error::BeltError,
     events::BeltEvent,
+    markets::market::{self, get_best_market_price, get_market_id},
 };
 
-use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
+use super::{
+    limit_order::{self, LimitOrder},
+    sandbox_limit_order::{self, SandboxLimitOrder},
+};
 
 #[derive(Debug)]
 pub enum Order {
@@ -100,11 +104,13 @@ impl Order {
                         .into_uint()
                         .expect("Could not convert token into uint")
                         .as_u32() as u16,
-                    price: limit_order[8]
+                    price: (limit_order[8]
                         .to_owned()
                         .into_uint()
                         .expect("Could not convert token into uint")
-                        .as_u128(),
+                        .as_u128() as f64)
+                        / 2_f64.powf(63 as f64),
+
                     amount_out_min: limit_order[10]
                         .to_owned()
                         .into_uint()
@@ -148,6 +154,20 @@ impl Order {
                 let sandbox_limit_order =
                     decode(&return_types, data).expect("Could not decode order data");
 
+                let amount_in_remaining = sandbox_limit_order[4]
+                    .to_owned()
+                    .into_uint()
+                    .expect("Could not convert token into uint")
+                    .as_u128();
+
+                let amount_out_remaining = sandbox_limit_order[5]
+                    .to_owned()
+                    .into_uint()
+                    .expect("Could not convert token into uint")
+                    .as_u128();
+
+                let price = amount_in_remaining as f64 / amount_out_remaining as f64;
+
                 Ok(Order::SandboxLimitOrder(SandboxLimitOrder {
                     last_refresh_timestamp: sandbox_limit_order[0]
                         .to_owned()
@@ -169,16 +189,9 @@ impl Order {
                         .into_uint()
                         .expect("Could not convert token into uint")
                         .as_u128(),
-                    amount_in_remaining: sandbox_limit_order[4]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u128(),
-                    amount_out_remaining: sandbox_limit_order[5]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u128(),
+                    amount_in_remaining: amount_in_remaining,
+                    amount_out_remaining: amount_out_remaining,
+                    price: price,
                     execution_credit_remaining: sandbox_limit_order[6]
                         .to_owned()
                         .into_uint()
@@ -194,6 +207,16 @@ impl Order {
                         .expect("Could not convert bytes into H256"),
                 }))
             }
+        }
+    }
+
+    pub fn can_execute(&self, markets: &HashMap<u64, HashMap<H160, Pool>>, weth: H160) -> bool {
+        match self {
+            Order::SandboxLimitOrder(sandbox_limit_order) => {
+                sandbox_limit_order.can_execute(markets, weth)
+            }
+
+            Order::LimitOrder(limit_order) => limit_order.can_execute(markets, weth),
         }
     }
 }
@@ -513,15 +536,40 @@ pub fn update_execution_credit(
 pub fn evaluate_and_execute_orders(
     affected_markets: HashSet<u64>,
     market_to_affected_orders: Arc<Mutex<HashMap<u64, HashSet<H256>>>>,
+    active_orders: Arc<Mutex<HashMap<H256, Order>>>,
+    markets: Arc<Mutex<HashMap<u64, HashMap<H160, Pool>>>>,
+    weth: H160,
 ) {
     let market_to_affected_orders = market_to_affected_orders
         .lock()
         .expect("Could not acquire mutex lock");
 
+    let markets = markets.lock().expect("Could not acquire mutex lock");
+
+    let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
+
+    //Accumulate sandbox limit orders at execution price
+    let mut slo_at_execution_price: Vec<SandboxLimitOrder> = vec![];
+    //Accumulate limit orders at execution price
+    let mut lo_at_execution_price: Vec<LimitOrder> = vec![];
+
     for market_id in affected_markets {
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
+            for order_id in affected_orders {
+                if let Some(order) = active_orders.get(&order_id) {
+                    if order.can_execute(&markets, weth) {
+                        match order {
+                            Order::SandboxLimitOrder(sandbox_limit_order) => {
+                                slo_at_execution_price.push(sandbox_limit_order);
+                            }
 
-            //TODO: check for affected order exectution
+                            Order::LimitOrder(limit_order) => {
+                                lo_at_execution_price.push(limit_order);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

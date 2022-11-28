@@ -14,3 +14,4 @@ tokio = { version = "1.21.1", features = ["full"] }
 serde_derive = "1.0.147"
 pair_sync = "0.3.1"
 thiserror = "1.0.36"
+rug = "1.18.0"
