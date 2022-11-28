@@ -328,7 +328,13 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 .unwrap();
 
                 for order_id in order_placed_log.order_ids {
-                    place_order(order_id.into(), active_orders.clone(), provider.clone()).await?;
+                    place_order(
+                        order_id.into(),
+                        event_log.address,
+                        active_orders.clone(),
+                        provider.clone(),
+                    )
+                    .await?;
                 }
             }
             BeltEvent::OrderCanceled => {
@@ -351,7 +357,13 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 .unwrap();
 
                 for order_id in order_updated_log.order_ids {
-                    update_order(order_id.into(), active_orders.clone(), provider.clone()).await?;
+                    update_order(
+                        order_id.into(),
+                        event_log.address,
+                        active_orders.clone(),
+                        provider.clone(),
+                    )
+                    .await?;
                 }
             }
             BeltEvent::OrderFufilled => {
@@ -445,17 +457,34 @@ pub async fn get_remote_limit_order<P: JsonRpcClient>(
 
 pub async fn place_order<P: JsonRpcClient>(
     order_id: H256,
+    order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
+    let order =
+        get_remote_sandbox_limit_order(order_id, order_book_address, provider.clone()).await?;
+
+    active_orders
+        .lock()
+        .expect("Could not acquire mutex lock.")
+        .insert(order_id, order);
+
     Ok(())
 }
 
 pub async fn update_order<P: JsonRpcClient>(
     order_id: H256,
+    order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
+    let order =
+        get_remote_sandbox_limit_order(order_id, order_book_address, provider.clone()).await?;
+
+    active_orders
+        .lock()
+        .expect("Could not acquire mutex lock.")
+        .insert(order_id, order);
     Ok(())
 }
 
@@ -580,4 +609,6 @@ pub fn evaluate_and_execute_orders(
             }
         }
     }
+
+    //TODO: batch and execute batches
 }
