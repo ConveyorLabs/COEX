@@ -104,6 +104,8 @@ impl Order {
                         .into_uint()
                         .expect("Could not convert token into uint")
                         .as_u32() as u16,
+
+                    //TODO: fix price by using rug
                     price: (limit_order[8]
                         .to_owned()
                         .into_uint()
@@ -166,6 +168,8 @@ impl Order {
                     .expect("Could not convert token into uint")
                     .as_u128();
 
+                //TODO: fix price by using rug
+                oijsdiojsdfioj
                 let price = amount_in_remaining as f64 / amount_out_remaining as f64;
 
                 Ok(Order::SandboxLimitOrder(SandboxLimitOrder {
@@ -191,6 +195,7 @@ impl Order {
                         .as_u128(),
                     amount_in_remaining: amount_in_remaining,
                     amount_out_remaining: amount_out_remaining,
+
                     price: price,
                     execution_credit_remaining: sandbox_limit_order[6]
                         .to_owned()
@@ -560,11 +565,14 @@ pub fn evaluate_and_execute_orders(
                     if order.can_execute(&markets, weth) {
                         match order {
                             Order::SandboxLimitOrder(sandbox_limit_order) => {
-                                slo_at_execution_price.push(sandbox_limit_order);
+
+                                //TODO:
+                                // slo_at_execution_price.push(sandbox_limit_order);
                             }
 
                             Order::LimitOrder(limit_order) => {
-                                lo_at_execution_price.push(limit_order);
+                                //TODO:
+                                // lo_at_execution_price.push(limit_order);
                             }
                         }
                     }
