@@ -568,34 +568,24 @@ pub fn evaluate_and_execute_orders(
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
 
     //Accumulate sandbox limit orders at execution price
-    let mut slo_at_execution_price: HashMap<u64, Vec<&SandboxLimitOrder>> = HashMap::new();
+    //@dev: OrderId to marketId
+    let mut slo_at_execution_price: Vec<&SandboxLimitOrder> = vec![];
     //Accumulate limit orders at execution price
-    let mut lo_at_execution_price: HashMap<u64, Vec<&LimitOrder>> = HashMap::new();
+    let mut lo_at_execution_price: Vec<&LimitOrder> = vec![];
 
     for market_id in affected_markets {
+        //
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
             for order_id in affected_orders {
                 if let Some(order) = active_orders.get(&order_id) {
                     if order.can_execute(&markets, weth) {
                         match order {
                             Order::SandboxLimitOrder(sandbox_limit_order) => {
-                                if let Some(orders) = slo_at_execution_price.get_mut(&market_id) {
-                                    orders.push(sandbox_limit_order);
-                                } else {
-                                    let mut orders = vec![];
-                                    orders.push(sandbox_limit_order);
-                                    slo_at_execution_price.insert(market_id, orders);
-                                }
+                                slo_at_execution_price.push(sandbox_limit_order);
                             }
 
                             Order::LimitOrder(limit_order) => {
-                                if let Some(orders) = lo_at_execution_price.get_mut(&market_id) {
-                                    orders.push(limit_order);
-                                } else {
-                                    let mut orders = vec![];
-                                    orders.push(limit_order);
-                                    lo_at_execution_price.insert(market_id, orders);
-                                }
+                                lo_at_execution_price.push(limit_order);
                             }
                         }
                     }
@@ -604,5 +594,11 @@ pub fn evaluate_and_execute_orders(
         }
     }
 
-    //TODO: batch and execute batches
+    //simulate and batch sandbox limit orders
+
+    //simulate and batch  limit orders
+
+    //execute sandbox limit orders
+
+    //execute  limit orders
 }

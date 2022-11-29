@@ -28,8 +28,7 @@ pub fn get_market_id(token_a: H160, token_b: H160) -> u64 {
     }
 }
 
-//TODO: update this comment with proper docs
-//Returns pool addr to market id markets, market to affected orders,
+//Returns pool addr to market id, markets, market to affected orders,
 pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     dexes: &[Dex],
