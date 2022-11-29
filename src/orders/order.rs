@@ -26,6 +26,7 @@ use crate::{
 use super::{
     limit_order::{self, LimitOrder},
     sandbox_limit_order::{self, SandboxLimitOrder},
+    simulate,
 };
 
 #[derive(Debug)]
@@ -567,25 +568,42 @@ pub fn evaluate_and_execute_orders(
 
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
 
+    let mut simulated_markets: HashMap<u64, HashMap<H160, Pool>> = HashMap::new();
+
     //Accumulate sandbox limit orders at execution price
     //@dev: OrderId to marketId
-    let mut slo_at_execution_price: Vec<&SandboxLimitOrder> = vec![];
+    let mut slo_at_execution_price: HashMap<H256, &SandboxLimitOrder> = HashMap::new();
     //Accumulate limit orders at execution price
-    let mut lo_at_execution_price: Vec<&LimitOrder> = vec![];
+    let mut lo_at_execution_price: HashMap<H256, &LimitOrder> = HashMap::new();
 
     for market_id in affected_markets {
-        //
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
             for order_id in affected_orders {
                 if let Some(order) = active_orders.get(&order_id) {
                     if order.can_execute(&markets, weth) {
+                        //Add the market to the simulation markets structure
+                        simulated_markets.insert(
+                            market_id,
+                            markets
+                                .get(&market_id)
+                                .expect("Could not get market from markets")
+                                .clone(),
+                        );
+
                         match order {
                             Order::SandboxLimitOrder(sandbox_limit_order) => {
-                                slo_at_execution_price.push(sandbox_limit_order);
+                                if let None =
+                                    slo_at_execution_price.get(&sandbox_limit_order.order_id)
+                                {
+                                    slo_at_execution_price
+                                        .insert(sandbox_limit_order.order_id, sandbox_limit_order);
+                                }
                             }
 
                             Order::LimitOrder(limit_order) => {
-                                lo_at_execution_price.push(limit_order);
+                                if let None = lo_at_execution_price.get(&limit_order.order_id) {
+                                    lo_at_execution_price.insert(limit_order.order_id, limit_order);
+                                }
                             }
                         }
                     }
@@ -595,8 +613,9 @@ pub fn evaluate_and_execute_orders(
     }
 
     //simulate and batch sandbox limit orders
+    simulate::simulate_and_batch_sandbox_limit_orders(slo_at_execution_price, simulated_markets)
 
-    //simulate and batch  limit orders
+    //simulate and batch limit orders
 
     //execute sandbox limit orders
 
