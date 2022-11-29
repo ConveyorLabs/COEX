@@ -101,9 +101,9 @@ impl Config {
                     H160::from_str("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270").unwrap();
                 config.weth_decimals = 18;
                 config.limit_order_book =
-                    H160::from_str("0xae8e65249274b51417E33820dbc45224C94C704b").unwrap();
+                    H160::from_str("0x41c36f504BE664982e7519480409Caf36EE4f008").unwrap();
                 config.sandbox_limit_order_book =
-                    H160::from_str("0xbD86fFaC4De6AEcCDe9427Fc8E3950513D455abD").unwrap();
+                    H160::from_str("0x98F3f46A0Cf8b2276513d36d527965C4C36dc733").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(35984674.into());
 
                 config.dexes = vec![
