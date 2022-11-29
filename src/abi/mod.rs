@@ -11,7 +11,7 @@ abigen!(
         event OrderRefreshed(bytes32 indexed orderId, uint32 indexed lastRefreshTimestamp, uint32 indexed expirationTimestamp)
         event OrderExecutionCreditUpdated(bytes32 orderId, uint128 newExecutionCredit)
         event OrderPartialFilled(bytes32 indexed orderId, uint128 indexed amountInRemaining, uint128 indexed amountOutRemaining, uint128 executionCreditRemaining, uint128 feeRemaining)
-        function getSandboxLimitOrderById(bytes32 orderId) external view (bytes memory)
+        function getOrderById(bytes32 orderId) external view (bytes memory)
     ]"#;
 
     ILimitOrderBook,
