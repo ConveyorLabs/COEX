@@ -26,6 +26,7 @@ pub struct Config {
     pub sandbox_limit_order_book: H160,
     pub dexes: Vec<Dex>,
     pub protocol_creation_block: BlockNumber,
+    pub uni_v3_quoter: H160,
     //TODO: signer
 }
 
@@ -41,6 +42,7 @@ impl Default for Config {
             sandbox_limit_order_book: H160::zero(),
             dexes: vec![],
             protocol_creation_block: BlockNumber::Latest,
+            uni_v3_quoter: H160::zero(),
         }
     }
 }
@@ -105,6 +107,7 @@ impl Config {
                 config.sandbox_limit_order_book =
                     H160::from_str("0x98F3f46A0Cf8b2276513d36d527965C4C36dc733").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(35984674.into());
+                config.uni_v3_quoter = H160::from_str("").unwrap();
 
                 config.dexes = vec![
                     //Sushiswap

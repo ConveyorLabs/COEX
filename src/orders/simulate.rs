@@ -6,7 +6,7 @@ use std::{
 
 use ethers::{
     providers::{JsonRpcClient, Provider},
-    types::{H160, H256},
+    types::{H160, H256, U256},
 };
 use pair_sync::pool::Pool;
 
@@ -43,7 +43,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
     for (market_id, orders) in sorted_orders_grouped_by_market {
         for order in orders {
             if let Some(simulated_market) = simulated_markets.get(&market_id) {
-                let mut best_amount_out = 0 as u128;
+                let mut best_amount_out = U256::zero();
                 let mut best_pool = &H160::zero();
 
                 for (pool_address, pool) in simulated_market {
@@ -58,7 +58,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
                                         order.token_in,
                                         order.amount_in_remaining,
                                         v3_quoter_address,
-                                        provider,
+                                        provider.clone(),
                                     )
                                     .await?
                             }

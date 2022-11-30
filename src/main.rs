@@ -95,6 +95,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 active_orders.clone(),
                 markets.clone(),
                 configuration.weth_address,
+                configuration.uni_v3_quoter,
+                provider.clone(),
             );
         }
     }

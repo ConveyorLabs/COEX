@@ -553,12 +553,14 @@ pub fn update_execution_credit(
     }
 }
 
-pub fn evaluate_and_execute_orders(
+pub fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     affected_markets: HashSet<u64>,
     market_to_affected_orders: Arc<Mutex<HashMap<u64, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     markets: Arc<Mutex<HashMap<u64, HashMap<H160, Pool>>>>,
     weth: H160,
+    v3_quoter_address: H160,
+    provider: Arc<Provider<P>>,
 ) {
     let market_to_affected_orders = market_to_affected_orders
         .lock()
@@ -613,7 +615,12 @@ pub fn evaluate_and_execute_orders(
     }
 
     //simulate and batch sandbox limit orders
-    simulate::simulate_and_batch_sandbox_limit_orders(slo_at_execution_price, simulated_markets)
+    simulate::simulate_and_batch_sandbox_limit_orders(
+        slo_at_execution_price,
+        simulated_markets,
+        v3_quoter_address,
+        provider,
+    );
 
     //simulate and batch limit orders
 
