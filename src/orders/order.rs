@@ -1,13 +1,17 @@
 use std::{
     collections::{HashMap, HashSet},
+    str::FromStr,
     sync::{Arc, Mutex},
 };
 
 use ethers::{
-    abi::{decode, ethabi::Bytes, Detokenize, Param, ParamType, RawLog, Tokenizable},
-    prelude::EthLogDecode,
+    abi::{decode, Detokenize, Param, ParamType, RawLog, Tokenizable},
+    prelude::{Bytes, EthLogDecode},
     providers::{JsonRpcClient, JsonRpcClientWrapper, Middleware, Provider},
-    types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256},
+    types::{
+        transaction::eip2718::TypedTransaction, BlockNumber, Eip1559TransactionRequest, Filter,
+        Log, TransactionRequest, ValueOrArray, H160, H256,
+    },
 };
 use num_bigfloat::BigFloat;
 use pair_sync::pool::Pool;
@@ -18,6 +22,7 @@ use crate::{
         OrderFufilledFilter, OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter,
         OrderUpdatedFilter,
     },
+    config::Chain,
     error::BeltError,
     events::BeltEvent,
     markets::market::{self, get_best_market_price, get_market_id},
@@ -627,4 +632,27 @@ pub fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     //execute sandbox limit orders
 
     //execute  limit orders
+}
+
+async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
+    execution_address: H160,
+    data: Bytes,
+    provider: Arc<Provider<P>>,
+    chain: Chain,
+) -> Result<TransactionRequest, BeltError<P>> {
+    match chain {
+        Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
+            let tx = Eip1559TransactionRequest::new()
+                .to(execution_address)
+                .data(data);
+            //Estimate gas and gas price
+            let gas = provider.get_gas_price().await?;
+            tx.gas(gas);
+
+            let eip1559_fees = provider.estimate_eip1559_fees().await?;
+
+            Ok(tx.into())
+        }
+        Chain::BSC | Chain::Cronos => Ok(TransactionRequest::new()),
+    }
 }

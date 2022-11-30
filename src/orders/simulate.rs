@@ -10,17 +10,14 @@ use ethers::{
 };
 use pair_sync::pool::{Pool, UniswapV2Pool};
 
-use crate::{
-    error::BeltError,
-    markets::market::{self, get_market_id},
-};
+use crate::{error::BeltError, markets::market::get_market_id};
 
 use super::sandbox_limit_order::SandboxLimitOrder;
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
 pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>(
     sandbox_limit_orders: HashMap<H256, &SandboxLimitOrder>,
-    mut simulated_markets: HashMap<u64, HashMap<H160, Pool>>,
+    simulated_markets: HashMap<u64, HashMap<H160, Pool>>,
     v3_quoter_address: H160,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
@@ -46,7 +43,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
                 let mut best_amount_out = U256::zero();
                 let mut best_pool = &Pool::UniswapV2(UniswapV2Pool::default());
 
-                for (pool_address, pool) in simulated_market {
+                for (_, pool) in simulated_market {
                     if pool.calculate_price(order.token_in) >= order.price {
                         //simulate the swap and get the amount out
                         let amount_out = match pool {
@@ -74,7 +71,25 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
                 if best_amount_out.as_u128() >= order.amount_out_remaining {
                     //update reserves with simulated swap values
                     match best_pool {
-                        Pool::UniswapV2(uniswap_v2_pool) => {}
+                        Pool::UniswapV2(mut uniswap_v2_pool) => {
+                            if order.token_out == uniswap_v2_pool.token_b {
+                                if uniswap_v2_pool.a_to_b {
+                                    uniswap_v2_pool.reserve_1 -= best_amount_out.as_u128();
+                                    uniswap_v2_pool.reserve_0 += order.amount_in_remaining;
+                                } else {
+                                    uniswap_v2_pool.reserve_0 -= best_amount_out.as_u128();
+                                    uniswap_v2_pool.reserve_1 += order.amount_in_remaining;
+                                }
+                            } else {
+                                if uniswap_v2_pool.a_to_b {
+                                    uniswap_v2_pool.reserve_0 -= best_amount_out.as_u128();
+                                    uniswap_v2_pool.reserve_1 += order.amount_in_remaining;
+                                } else {
+                                    uniswap_v2_pool.reserve_1 -= best_amount_out.as_u128();
+                                    uniswap_v2_pool.reserve_0 += order.amount_in_remaining;
+                                }
+                            }
+                        }
                         Pool::UniswapV3(uniswap_v3_pool) => {}
                     }
                 } else {
@@ -86,6 +101,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
 
     //When the market is tapped out for the orders, move onto the next market
 
+    //TODO: Return the calldata
     Ok(())
 }
 
@@ -98,5 +114,3 @@ fn sort_sandbox_limit_orders_by_amount_in(
     }
     orders_grouped_by_market
 }
-
-fn simulate_sandbox_limit_order() {}
