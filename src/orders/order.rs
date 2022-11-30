@@ -640,19 +640,37 @@ async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
     provider: Arc<Provider<P>>,
     chain: Chain,
 ) -> Result<TransactionRequest, BeltError<P>> {
+    //TODO: For the love of god, refactor the transaction composition
+
     match chain {
         Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
             let tx = Eip1559TransactionRequest::new()
                 .to(execution_address)
                 .data(data);
-            //Estimate gas and gas price
-            let gas = provider.get_gas_price().await?;
-            tx.gas(gas);
 
-            let eip1559_fees = provider.estimate_eip1559_fees().await?;
+            //Update transaction gas fees
+            let (max_priority_fee_per_gas, max_fee_per_gas) =
+                provider.estimate_eip1559_fees(None).await?;
+            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
+            let tx = tx.max_fee_per_gas(max_fee_per_gas);
+
+            let mut tx: TypedTransaction = tx.into();
+            let gas_limit = provider.estimate_gas(&tx).await?;
+            tx.set_gas(gas_limit);
 
             Ok(tx.into())
         }
-        Chain::BSC | Chain::Cronos => Ok(TransactionRequest::new()),
+        Chain::BSC | Chain::Cronos => {
+            let tx = TransactionRequest::new().to(execution_address).data(data);
+
+            let gas_price = provider.get_gas_price().await?;
+            let tx = tx.gas_price(gas_price);
+
+            let mut tx: TypedTransaction = tx.into();
+            let gas_limit = provider.estimate_gas(&tx).await?;
+            tx.set_gas(gas_limit);
+
+            Ok(tx.into())
+        }
     }
 }
