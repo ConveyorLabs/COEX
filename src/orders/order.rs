@@ -50,6 +50,7 @@ impl Order {
         data: &[u8],
         order_variant: OrderVariant,
     ) -> Result<Order, BeltError<P>> {
+        //TODO: refactor this so that there is a from bytes for sandbox limit order struct and limit order struct
         match order_variant {
             OrderVariant::LimitOrder => {
                 let return_types = vec![
@@ -177,8 +178,9 @@ impl Order {
                     .expect("Could not convert token into uint")
                     .as_u128();
 
-                let price = BigFloat::from_u128(amount_in_remaining)
-                    .div(&BigFloat::from_u128(amount_out_remaining))
+                //TODO: need to account for decimals and get the common decimals of the two before calculating the price
+                let price = BigFloat::from_u128(amount_out_remaining)
+                    .div(&BigFloat::from_u128(amount_in_remaining))
                     .to_f64();
 
                 Ok(Order::SandboxLimitOrder(SandboxLimitOrder {
@@ -570,9 +572,7 @@ pub fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     let market_to_affected_orders = market_to_affected_orders
         .lock()
         .expect("Could not acquire mutex lock");
-
     let markets = markets.lock().expect("Could not acquire mutex lock");
-
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
 
     let mut simulated_markets: HashMap<u64, HashMap<H160, Pool>> = HashMap::new();

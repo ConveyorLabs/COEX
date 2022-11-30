@@ -35,6 +35,8 @@ impl LimitOrder {
         markets: &HashMap<u64, HashMap<H160, Pool>>,
         weth: H160,
     ) -> f64 {
+        //TODO: need to check buy or sell on the order
+
         //Check if the order is at execution price
         let mut best_market_price = 0.0;
 
