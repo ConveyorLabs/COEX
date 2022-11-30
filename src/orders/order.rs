@@ -560,7 +560,7 @@ pub fn update_execution_credit(
     }
 }
 
-pub fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
+pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     affected_markets: HashSet<u64>,
     market_to_affected_orders: Arc<Mutex<HashMap<u64, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
@@ -568,7 +568,7 @@ pub fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     weth: H160,
     v3_quoter_address: H160,
     provider: Arc<Provider<P>>,
-) {
+) -> Result<(), BeltError<P>> {
     let market_to_affected_orders = market_to_affected_orders
         .lock()
         .expect("Could not acquire mutex lock");
@@ -625,13 +625,16 @@ pub fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
         simulated_markets,
         v3_quoter_address,
         provider,
-    );
+    )
+    .await?;
 
     //simulate and batch limit orders
 
     //execute sandbox limit orders
 
     //execute  limit orders
+
+    Ok(())
 }
 
 async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
