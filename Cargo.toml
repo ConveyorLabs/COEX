@@ -12,6 +12,6 @@ serde = "1.0.145"
 ethers = { version = "0.17.0", features = ["abigen", "ws", "ipc", "rustls"] }
 tokio = { version = "1.21.1", features = ["full"] }
 serde_derive = "1.0.147"
-pair_sync = "0.4.2"
+pair_sync = "0.4.3"
 thiserror = "1.0.36"
 num-bigfloat = "1.6.0"

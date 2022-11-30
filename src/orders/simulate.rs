@@ -8,7 +8,7 @@ use ethers::{
     providers::{JsonRpcClient, Provider},
     types::{H160, H256, U256},
 };
-use pair_sync::pool::Pool;
+use pair_sync::pool::{Pool, UniswapV2Pool};
 
 use crate::{
     error::BeltError,
@@ -44,7 +44,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
         for order in orders {
             if let Some(simulated_market) = simulated_markets.get(&market_id) {
                 let mut best_amount_out = U256::zero();
-                let mut best_pool = &H160::zero();
+                let mut best_pool = &Pool::UniswapV2(UniswapV2Pool::default());
 
                 for (pool_address, pool) in simulated_market {
                     if pool.calculate_price(order.token_in) >= order.price {
@@ -66,9 +66,19 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
 
                         if amount_out > best_amount_out {
                             best_amount_out = amount_out;
-                            best_pool = pool_address;
+                            best_pool = pool;
                         }
                     }
+                }
+
+                if best_amount_out.as_u128() >= order.amount_out_remaining {
+                    //update reserves with simulated swap values
+                    match best_pool {
+                        Pool::UniswapV2(uniswap_v2_pool) => {}
+                        Pool::UniswapV3(uniswap_v3_pool) => {}
+                    }
+                } else {
+                    //Partial fill and add the partial fill calldata to the execution calldata
                 }
             }
         }
