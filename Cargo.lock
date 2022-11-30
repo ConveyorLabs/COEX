@@ -1886,9 +1886,9 @@ checksum = "9b7820b9daea5457c9f21c69448905d723fbd21136ccf521748f23fd49e723ee"
 
 [[package]]
 name = "pair_sync"
-version = "0.3.1"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cafdbaf5715127fc92575e3d047139009fcfc7f9d9d1f60e9701c4ad28bc30bd"
+checksum = "15cd430878efe0bc5d2c2ccd183f1d38040d13d223411ac17d2a21b28c86b5fa"
 dependencies = [
  "async-trait",
  "ethers",
