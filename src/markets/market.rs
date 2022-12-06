@@ -5,26 +5,29 @@ use std::{
 };
 
 use ethers::{
-    abi::{decode, ParamType},
+    abi::{decode, token, ParamType},
+    prelude::k256::{elliptic_curve::bigint::Encoding, sha2::Sha256, U256},
     providers::{JsonRpcClient, Provider},
     types::{Log, H160, H256},
+    utils::keccak256,
 };
 use pair_sync::{dex::Dex, pool::Pool};
+use sha3::digest::consts::U25;
 
 use crate::{
     error::BeltError,
     orders::order::{self, Order},
 };
 
-pub fn get_market_id(token_a: H160, token_b: H160) -> u64 {
-    let mut hasher = DefaultHasher::new();
-
+pub fn get_market_id(token_a: H160, token_b: H160) -> U256 {
     if token_a > token_b {
-        token_a.hash(&mut hasher);
-        hasher.finish()
+        U256::from_le_bytes(keccak256(
+            vec![token_a.as_bytes(), token_b.as_bytes()].as_ref(),
+        ))
     } else {
-        token_b.hash(&mut hasher);
-        hasher.finish()
+        U256::from_le_bytes(keccak256(
+            vec![token_b.as_bytes(), token_a.as_bytes()].as_ref(),
+        ))
     }
 }
 
