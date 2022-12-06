@@ -39,68 +39,53 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
     for (market_id, orders) in sorted_orders_grouped_by_market {
         for order in orders {
             if let Some(simulated_market) = simulated_markets.get(&market_id) {
-                let mut best_amount_out = U256::zero();
-                let mut best_pool = &Pool::UniswapV2(UniswapV2Pool::default());
+                let (best_amount_out, best_pool) = get_best_pool_for_sandbox_order(
+                    simulated_market,
+                    order,
+                    v3_quoter_address,
+                    provider.clone(),
+                )
+                .await?;
 
-                for (_, pool) in simulated_market {
-                    if pool.calculate_price(order.token_in) >= order.price {
-                        //simulate the swap and get the amount out
-                        let amount_out = match pool {
-                            Pool::UniswapV2(uniswap_v2_pool) => uniswap_v2_pool
-                                .simulate_swap(order.token_in, order.amount_in_remaining),
+                if best_pool.is_some() {
+                    if best_amount_out.as_u128() >= order.amount_out_remaining {
+                        //update reserves with simulated swap values
+                        match best_pool.unwrap() {
+                            //TODO: write a function to make this cleaner and easier to read
+                            Pool::UniswapV2(mut uniswap_v2_pool) => {
+                                if order.token_out == uniswap_v2_pool.token_b {
+                                    if uniswap_v2_pool.a_to_b {
+                                        uniswap_v2_pool.reserve_0 += order.amount_in_remaining
+                                            - (order.amount_in_remaining
+                                                * uniswap_v2_pool.fee as u128);
+
+                                        uniswap_v2_pool.reserve_1 -= best_amount_out.as_u128();
+                                    } else {
+                                        uniswap_v2_pool.reserve_0 -= best_amount_out.as_u128();
+                                        uniswap_v2_pool.reserve_1 += order.amount_in_remaining
+                                            - (order.amount_in_remaining
+                                                * uniswap_v2_pool.fee as u128);
+                                    }
+                                } else {
+                                    if uniswap_v2_pool.a_to_b {
+                                        uniswap_v2_pool.reserve_0 -= best_amount_out.as_u128();
+                                        uniswap_v2_pool.reserve_1 += order.amount_in_remaining
+                                            - (order.amount_in_remaining
+                                                * uniswap_v2_pool.fee as u128);
+                                    } else {
+                                        uniswap_v2_pool.reserve_1 -= best_amount_out.as_u128();
+                                        uniswap_v2_pool.reserve_0 += order.amount_in_remaining
+                                            - (order.amount_in_remaining
+                                                * uniswap_v2_pool.fee as u128);
+                                    }
+                                }
+                            }
+
                             Pool::UniswapV3(uniswap_v3_pool) => {
-                                uniswap_v3_pool
-                                    .simulate_swap(
-                                        order.token_in,
-                                        order.amount_in_remaining,
-                                        v3_quoter_address,
-                                        provider.clone(),
-                                    )
-                                    .await?
-                            }
-                        };
-
-                        if amount_out > best_amount_out {
-                            best_amount_out = amount_out;
-                            best_pool = pool;
-                        }
-                    }
-                }
-
-                if best_amount_out.as_u128() >= order.amount_out_remaining {
-                    //update reserves with simulated swap values
-                    match best_pool {
-                        //TODO: write a function to make this cleaner and easier to read
-                        Pool::UniswapV2(mut uniswap_v2_pool) => {
-                            if order.token_out == uniswap_v2_pool.token_b {
-                                if uniswap_v2_pool.a_to_b {
-                                    uniswap_v2_pool.reserve_0 += order.amount_in_remaining
-                                        - (order.amount_in_remaining * uniswap_v2_pool.fee as u128);
-
-                                    uniswap_v2_pool.reserve_1 -= best_amount_out.as_u128();
-                                } else {
-                                    uniswap_v2_pool.reserve_0 -= best_amount_out.as_u128();
-                                    uniswap_v2_pool.reserve_1 += order.amount_in_remaining
-                                        - (order.amount_in_remaining * uniswap_v2_pool.fee as u128);
-                                }
-                            } else {
-                                if uniswap_v2_pool.a_to_b {
-                                    uniswap_v2_pool.reserve_0 -= best_amount_out.as_u128();
-                                    uniswap_v2_pool.reserve_1 += order.amount_in_remaining
-                                        - (order.amount_in_remaining * uniswap_v2_pool.fee as u128);
-                                } else {
-                                    uniswap_v2_pool.reserve_1 -= best_amount_out.as_u128();
-                                    uniswap_v2_pool.reserve_0 += order.amount_in_remaining
-                                        - (order.amount_in_remaining * uniswap_v2_pool.fee as u128);
-                                }
+                                //TODO:
                             }
                         }
-
-                        Pool::UniswapV3(uniswap_v3_pool) => {
-                            //TODO:
-                        }
                     }
-
                     //TODO: add the calldata to the execution calldata to fill the entire sandbox limit order
                 } else {
                     //Partial fill and add the partial fill calldata to the execution calldata
@@ -113,6 +98,45 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
 
     //TODO: Return the calldata
     Ok(())
+}
+
+//Returns best amount out and pool
+async fn get_best_pool_for_sandbox_order<'a, P: 'static + JsonRpcClient>(
+    market: &'a HashMap<H160, Pool>,
+    order: &'a SandboxLimitOrder,
+    v3_quoter_address: H160,
+    provider: Arc<Provider<P>>,
+) -> Result<(U256, Option<&'a Pool>), BeltError<P>> {
+    let mut best_amount_out = U256::zero();
+    let mut best_pool = None;
+
+    for (_, pool) in market {
+        if pool.calculate_price(order.token_in) >= order.price {
+            //simulate the swap and get the amount out
+            let amount_out = match pool {
+                Pool::UniswapV2(uniswap_v2_pool) => {
+                    uniswap_v2_pool.simulate_swap(order.token_in, order.amount_in_remaining)
+                }
+                Pool::UniswapV3(uniswap_v3_pool) => {
+                    uniswap_v3_pool
+                        .simulate_swap(
+                            order.token_in,
+                            order.amount_in_remaining,
+                            v3_quoter_address,
+                            provider.clone(),
+                        )
+                        .await?
+                }
+            };
+
+            if amount_out > best_amount_out {
+                best_amount_out = amount_out;
+                best_pool = Some(pool);
+            }
+        }
+    }
+
+    Ok((best_amount_out, best_pool))
 }
 
 fn sort_sandbox_limit_orders_by_amount_in(
