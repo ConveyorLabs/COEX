@@ -12,7 +12,7 @@ use pair_sync::pool::{Pool, UniswapV2Pool};
 
 use crate::{error::BeltError, markets::market::get_market_id};
 
-use super::sandbox_limit_order::SandboxLimitOrder;
+use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
 pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>(
@@ -123,4 +123,14 @@ fn sort_sandbox_limit_orders_by_amount_in(
         order_group.sort_by(|a, b| a.amount_in_remaining.cmp(&b.amount_in_remaining))
     }
     orders_grouped_by_market
+}
+
+//Takes a hashmap of market to sandbox limit orders that are ready to execute
+pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
+    limit_orders: HashMap<H256, &LimitOrder>,
+    simulated_markets: HashMap<u64, HashMap<H160, Pool>>,
+    v3_quoter_address: H160,
+    provider: Arc<Provider<P>>,
+) -> Result<(), BeltError<P>> {
+    Ok(())
 }
