@@ -620,15 +620,23 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     }
 
     //simulate and batch sandbox limit orders
-    simulate::simulate_and_batch_sandbox_limit_orders(
-        slo_at_execution_price,
+    // simulate::simulate_and_batch_sandbox_limit_orders(
+    //     slo_at_execution_price,
+    //     simulated_markets,
+    //     v3_quoter_address,
+    //     provider,
+    // )
+    // .await?;
+
+    //simulate and batch limit orders
+
+    simulate::simulate_and_batch_limit_orders(
+        lo_at_execution_price,
         simulated_markets,
         v3_quoter_address,
         provider,
     )
     .await?;
-
-    //simulate and batch limit orders
 
     //execute sandbox limit orders
 

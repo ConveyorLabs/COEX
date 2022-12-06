@@ -5,6 +5,7 @@ use std::{
 };
 
 use ethers::{
+    abi::ethabi::Bytes,
     providers::{JsonRpcClient, Provider},
     types::{H160, H256, U256},
 };
@@ -39,7 +40,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
     for (market_id, orders) in sorted_orders_grouped_by_market {
         for order in orders {
             if let Some(simulated_market) = simulated_markets.get(&market_id) {
-                let (best_amount_out, best_pool) = get_best_pool_for_sandbox_order(
+                let (best_amount_out, best_pool) = get_best_pool_for_sandbox_limit_order(
                     simulated_market,
                     order,
                     v3_quoter_address,
@@ -101,7 +102,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
 }
 
 //Returns best amount out and pool
-async fn get_best_pool_for_sandbox_order<'a, P: 'static + JsonRpcClient>(
+async fn get_best_pool_for_sandbox_limit_order<'a, P: 'static + JsonRpcClient>(
     market: &'a HashMap<H160, Pool>,
     order: &'a SandboxLimitOrder,
     v3_quoter_address: H160,
@@ -168,6 +169,40 @@ pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
     }
 
     let sorted_orders_grouped_by_market = sort_limit_orders_by_amount_in(orders_grouped_by_market);
+    let execution_calldata: Vec<Bytes> = vec![];
+
+    //Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
+    for (market_id, orders) in sorted_orders_grouped_by_market {
+        for order in orders {
+            if let Some(simulated_market) = simulated_markets.get(&market_id) {
+                //TODO: this needs to be two hop, not just one pool
+                let (best_amount_out, best_pool) = get_best_pool_for_limit_order(
+                    simulated_market,
+                    order,
+                    v3_quoter_address,
+                    provider.clone(),
+                )
+                .await?;
+
+                if best_pool.is_some() {
+                    if best_amount_out.as_u128() >= order.amount_out_min {
+                        //TODO: append calldata to execution calldata
+
+                        //update reserves with simulated swap values
+                        match best_pool.unwrap() {
+                            Pool::UniswapV2(uniswap_v2_pool) => {
+
+                                //TODO: update pool reserves
+                            }
+                            Pool::UniswapV3(uniswap_v2_pool) => {
+                                //TODO: update pool reserves
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Ok(())
 }
@@ -181,4 +216,43 @@ fn sort_limit_orders_by_amount_in(
     }
 
     orders_grouped_by_market
+}
+
+//Returns best amount out and pool
+async fn get_best_pool_for_limit_order<'a, P: 'static + JsonRpcClient>(
+    market: &'a HashMap<H160, Pool>,
+    order: &'a LimitOrder,
+    v3_quoter_address: H160,
+    provider: Arc<Provider<P>>,
+) -> Result<(U256, Option<&'a Pool>), BeltError<P>> {
+    let mut best_amount_out = U256::zero();
+    let mut best_pool = None;
+
+    for (_, pool) in market {
+        if pool.calculate_price(order.token_in) >= order.price {
+            //simulate the swap and get the amount out
+            let amount_out = match pool {
+                Pool::UniswapV2(uniswap_v2_pool) => {
+                    uniswap_v2_pool.simulate_swap(order.token_in, order.quantity)
+                }
+                Pool::UniswapV3(uniswap_v3_pool) => {
+                    uniswap_v3_pool
+                        .simulate_swap(
+                            order.token_in,
+                            order.quantity,
+                            v3_quoter_address,
+                            provider.clone(),
+                        )
+                        .await?
+                }
+            };
+
+            if amount_out > best_amount_out {
+                best_amount_out = amount_out;
+                best_pool = Some(pool);
+            }
+        }
+    }
+
+    Ok((best_amount_out, best_pool))
 }

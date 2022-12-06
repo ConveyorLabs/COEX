@@ -95,7 +95,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 configuration.weth_address,
                 configuration.uni_v3_quoter,
                 provider.clone(),
-            );
+            )
+            .await?;
         }
     }
 
