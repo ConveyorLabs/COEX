@@ -132,5 +132,29 @@ pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
     v3_quoter_address: H160,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
+    //Go through the slice of sandbox limit orders and group the orders by market
+    let mut orders_grouped_by_market: HashMap<u64, Vec<&LimitOrder>> = HashMap::new();
+    for (_, order) in limit_orders {
+        let market_id = get_market_id(order.token_in, order.token_out);
+        if let Some(order_group) = orders_grouped_by_market.get_mut(&market_id) {
+            order_group.push(order);
+        } else {
+            orders_grouped_by_market.insert(market_id, vec![order]);
+        }
+    }
+
+    let sorted_orders_grouped_by_market = sort_limit_orders_by_amount_in(orders_grouped_by_market);
+
     Ok(())
+}
+
+fn sort_limit_orders_by_amount_in(
+    mut orders_grouped_by_market: HashMap<u64, Vec<&LimitOrder>>,
+) -> HashMap<u64, Vec<&LimitOrder>> {
+    //Go through each group of orders and sort it by amount_in
+    for (_, order_group) in orders_grouped_by_market.borrow_mut() {
+        order_group.sort_by(|a, b| a.quantity.cmp(&b.quantity))
+    }
+
+    orders_grouped_by_market
 }
