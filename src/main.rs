@@ -66,9 +66,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let mut order_events: Vec<(BeltEvent, Log)> = vec![];
         let mut pool_events: Vec<Log> = vec![];
         for log in event_logs {
-            let belt_event = event_sig_to_belt_event.get(&log.topics[0]);
-            if belt_event.is_some() {
-                let belt_event = belt_event.unwrap();
+            if let Some(belt_event) = event_sig_to_belt_event.get(&log.topics[0]) {
                 match belt_event {
                     BeltEvent::UniswapV2PoolUpdate => pool_events.push(log),
                     BeltEvent::UniswapV3PoolUpdate => pool_events.push(log),

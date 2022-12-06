@@ -1,13 +1,17 @@
 use std::{
     collections::{HashMap, HashSet},
+    str::FromStr,
     sync::{Arc, Mutex},
 };
 
 use ethers::{
-    abi::{decode, ethabi::Bytes, Detokenize, Param, ParamType, RawLog, Tokenizable},
-    prelude::EthLogDecode,
+    abi::{decode, Detokenize, Param, ParamType, RawLog, Tokenizable},
+    prelude::{Bytes, EthLogDecode},
     providers::{JsonRpcClient, JsonRpcClientWrapper, Middleware, Provider},
-    types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256},
+    types::{
+        transaction::eip2718::TypedTransaction, BlockNumber, Eip1559TransactionRequest, Filter,
+        Log, TransactionRequest, ValueOrArray, H160, H256,
+    },
 };
 use num_bigfloat::BigFloat;
 use pair_sync::pool::Pool;
@@ -18,6 +22,7 @@ use crate::{
         OrderFufilledFilter, OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter,
         OrderUpdatedFilter,
     },
+    config::Chain,
     error::BeltError,
     events::BeltEvent,
     markets::market::{self, get_best_market_price, get_market_id},
@@ -45,6 +50,7 @@ impl Order {
         data: &[u8],
         order_variant: OrderVariant,
     ) -> Result<Order, BeltError<P>> {
+        //TODO: refactor this so that there is a from bytes for sandbox limit order struct and limit order struct
         match order_variant {
             OrderVariant::LimitOrder => {
                 let return_types = vec![
@@ -172,8 +178,9 @@ impl Order {
                     .expect("Could not convert token into uint")
                     .as_u128();
 
-                let price = BigFloat::from_u128(amount_in_remaining)
-                    .div(&BigFloat::from_u128(amount_out_remaining))
+                //TODO: need to account for decimals and get the common decimals of the two before calculating the price
+                let price = BigFloat::from_u128(amount_out_remaining)
+                    .div(&BigFloat::from_u128(amount_in_remaining))
                     .to_f64();
 
                 Ok(Order::SandboxLimitOrder(SandboxLimitOrder {
@@ -553,7 +560,7 @@ pub fn update_execution_credit(
     }
 }
 
-pub fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
+pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     affected_markets: HashSet<u64>,
     market_to_affected_orders: Arc<Mutex<HashMap<u64, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
@@ -561,13 +568,11 @@ pub fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     weth: H160,
     v3_quoter_address: H160,
     provider: Arc<Provider<P>>,
-) {
+) -> Result<(), BeltError<P>> {
     let market_to_affected_orders = market_to_affected_orders
         .lock()
         .expect("Could not acquire mutex lock");
-
     let markets = markets.lock().expect("Could not acquire mutex lock");
-
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
 
     let mut simulated_markets: HashMap<u64, HashMap<H160, Pool>> = HashMap::new();
@@ -620,11 +625,55 @@ pub fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
         simulated_markets,
         v3_quoter_address,
         provider,
-    );
+    )
+    .await?;
 
     //simulate and batch limit orders
 
     //execute sandbox limit orders
 
     //execute  limit orders
+
+    Ok(())
+}
+
+async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
+    execution_address: H160,
+    data: Bytes,
+    provider: Arc<Provider<P>>,
+    chain: Chain,
+) -> Result<TransactionRequest, BeltError<P>> {
+    //TODO: For the love of god, refactor the transaction composition
+
+    match chain {
+        Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
+            let tx = Eip1559TransactionRequest::new()
+                .to(execution_address)
+                .data(data);
+
+            //Update transaction gas fees
+            let (max_priority_fee_per_gas, max_fee_per_gas) =
+                provider.estimate_eip1559_fees(None).await?;
+            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
+            let tx = tx.max_fee_per_gas(max_fee_per_gas);
+
+            let mut tx: TypedTransaction = tx.into();
+            let gas_limit = provider.estimate_gas(&tx).await?;
+            tx.set_gas(gas_limit);
+
+            Ok(tx.into())
+        }
+        Chain::BSC | Chain::Cronos => {
+            let tx = TransactionRequest::new().to(execution_address).data(data);
+
+            let gas_price = provider.get_gas_price().await?;
+            let tx = tx.gas_price(gas_price);
+
+            let mut tx: TypedTransaction = tx.into();
+            let gas_limit = provider.estimate_gas(&tx).await?;
+            tx.set_gas(gas_limit);
+
+            Ok(tx.into())
+        }
+    }
 }

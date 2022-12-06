@@ -35,19 +35,12 @@ impl LimitOrder {
         markets: &HashMap<u64, HashMap<H160, Pool>>,
         weth: H160,
     ) -> f64 {
-        //Check if the order is at execution price
-        let mut best_market_price = 0.0;
+        //TODO: need to check buy or sell on the order
 
         //Check a -> weth -> b price
         let a_to_weth_price = get_best_market_price(self.token_in, weth, &markets);
         let weth_to_b_price = get_best_market_price(weth, self.token_out, &markets);
 
-        let a_to_weth_to_b_price = a_to_weth_price / weth_to_b_price;
-
-        if a_to_weth_to_b_price > best_market_price {
-            best_market_price = a_to_weth_to_b_price;
-        }
-
-        best_market_price
+        a_to_weth_price * weth_to_b_price
     }
 }
