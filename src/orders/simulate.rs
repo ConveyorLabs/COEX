@@ -1,6 +1,7 @@
 use std::{
     borrow::BorrowMut,
     collections::{HashMap, HashSet},
+    default,
     hash::{Hash, Hasher},
     sync::Arc,
 };
@@ -125,11 +126,15 @@ pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
                 .get(&get_market_id(order.token_in, weth))
                 .expect("Could not get token_a to weth markets");
 
-            let (amount_out, route) = find_best_route_across_markets(
+            let (amount_out, mut route) = find_best_route_across_markets(
                 order.quantity,
                 order.token_in,
                 vec![a_to_weth_market, weth_to_b_market],
             );
+
+            if amount_out >= order.amount_out_min {
+                update_reserves_along_route(order.quantity, &mut route);
+            }
         }
     }
 
@@ -142,11 +147,30 @@ fn find_best_route_across_markets<'a>(
     token_in: H160,
     markets: Vec<&Market>,
 ) -> (u128, Vec<&'a Pool>) {
-    //NOTE: placeholder
-    return (0, vec![]);
+    let mut amount_out = amount_in;
+    let mut route = vec![];
+
+    for market in markets {
+        let mut best_amount_out = 0;
+        let mut best_pool = &Pool::UniswapV2(UniswapV2Pool::default());
+
+        for (_, pool) in market {
+            //let swap_amount_out = pool.simulate_swap();
+            // if swap_amount_out > best_amount_out {
+            // best_amount_out = swap_amount_out;
+            // best_pool = pool;
+        }
+
+        // amount_out = best_amount_out;
+        // route.push(best_pool);
+    }
+
+    (amount_out, route)
 }
 
 fn simulate_swap_along_route() {}
+
+fn update_reserves_along_route(amount_in: u128, route: &mut [&Pool]) {}
 
 fn group_orders_by_market(
     limit_orders: HashMap<H256, &LimitOrder>,

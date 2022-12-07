@@ -633,6 +633,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
         lo_at_execution_price,
         simulated_markets,
         v3_quoter_address,
+        weth,
         provider,
     )
     .await?;
