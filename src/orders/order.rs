@@ -578,7 +578,6 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     let mut simulated_markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
 
     //Accumulate sandbox limit orders at execution price
-    //@dev: OrderId to marketId
     let mut slo_at_execution_price: HashMap<H256, &SandboxLimitOrder> = HashMap::new();
     //Accumulate limit orders at execution price
     let mut lo_at_execution_price: HashMap<H256, &LimitOrder> = HashMap::new();

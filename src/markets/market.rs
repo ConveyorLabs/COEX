@@ -12,12 +12,13 @@ use ethers::{
     utils::keccak256,
 };
 use pair_sync::{dex::Dex, pool::Pool};
-use sha3::digest::consts::U25;
 
 use crate::{
     error::BeltError,
     orders::order::{self, Order},
 };
+
+pub type Market = HashMap<H160, Pool>;
 
 pub fn get_market_id(token_a: H160, token_b: H160) -> U256 {
     if token_a > token_b {
@@ -174,6 +175,7 @@ async fn update_market_structures<P: 'static + JsonRpcClient>(
     Ok(())
 }
 
+//TODO: need to finish this function
 async fn get_market<P: 'static + JsonRpcClient>(
     token_a: H160,
     token_b: H160,

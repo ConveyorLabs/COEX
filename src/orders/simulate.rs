@@ -12,7 +12,10 @@ use ethers::{
 };
 use pair_sync::pool::{Pool, UniswapV2Pool};
 
-use crate::{error::BeltError, markets::market::get_market_id};
+use crate::{
+    error::BeltError,
+    markets::market::{get_market_id, Market},
+};
 
 use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
 
@@ -39,61 +42,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
 
     //For each order that can execute, add it to the execution calldata, including partial fills
     for (market_id, orders) in sorted_orders_grouped_by_market {
-        for order in orders {
-            if let Some(simulated_market) = simulated_markets.get(&market_id) {
-                let (best_amount_out, best_pool) = get_best_pool_for_sandbox_limit_order(
-                    simulated_market,
-                    order,
-                    v3_quoter_address,
-                    provider.clone(),
-                )
-                .await?;
-
-                if best_pool.is_some() {
-                    if best_amount_out.as_u128() >= order.amount_out_remaining {
-                        //update reserves with simulated swap values
-                        match best_pool.unwrap() {
-                            //TODO: write a function to make this cleaner and easier to read
-                            Pool::UniswapV2(mut uniswap_v2_pool) => {
-                                if order.token_out == uniswap_v2_pool.token_b {
-                                    if uniswap_v2_pool.a_to_b {
-                                        uniswap_v2_pool.reserve_0 += order.amount_in_remaining
-                                            - (order.amount_in_remaining
-                                                * uniswap_v2_pool.fee as u128);
-
-                                        uniswap_v2_pool.reserve_1 -= best_amount_out.as_u128();
-                                    } else {
-                                        uniswap_v2_pool.reserve_0 -= best_amount_out.as_u128();
-                                        uniswap_v2_pool.reserve_1 += order.amount_in_remaining
-                                            - (order.amount_in_remaining
-                                                * uniswap_v2_pool.fee as u128);
-                                    }
-                                } else {
-                                    if uniswap_v2_pool.a_to_b {
-                                        uniswap_v2_pool.reserve_0 -= best_amount_out.as_u128();
-                                        uniswap_v2_pool.reserve_1 += order.amount_in_remaining
-                                            - (order.amount_in_remaining
-                                                * uniswap_v2_pool.fee as u128);
-                                    } else {
-                                        uniswap_v2_pool.reserve_1 -= best_amount_out.as_u128();
-                                        uniswap_v2_pool.reserve_0 += order.amount_in_remaining
-                                            - (order.amount_in_remaining
-                                                * uniswap_v2_pool.fee as u128);
-                                    }
-                                }
-                            }
-
-                            Pool::UniswapV3(uniswap_v3_pool) => {
-                                //TODO:
-                            }
-                        }
-                    }
-                    //TODO: add the calldata to the execution calldata to fill the entire sandbox limit order
-                } else {
-                    //Partial fill and add the partial fill calldata to the execution calldata
-                }
-            }
-        }
+        for order in orders {}
     }
 
     //When the market is tapped out for the orders, move onto the next market
@@ -156,9 +105,52 @@ pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
     limit_orders: HashMap<H256, &LimitOrder>,
     simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
     v3_quoter_address: H160,
+    weth: H160,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
     //Go through the slice of sandbox limit orders and group the orders by market
+    let orders_grouped_by_market = group_orders_by_market(limit_orders);
+    let sorted_orders_grouped_by_market = sort_limit_orders_by_amount_in(orders_grouped_by_market);
+    // let execution_calldata: Vec<Bytes> = vec![];
+
+    //Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
+    for (_, orders) in sorted_orders_grouped_by_market {
+        for order in orders {
+            //Simulate order along route for token_a -> weth -> token_b
+
+            let a_to_weth_market = simulated_markets
+                .get(&get_market_id(order.token_in, weth))
+                .expect("Could not get token_a to weth markets");
+            let weth_to_b_market = simulated_markets
+                .get(&get_market_id(order.token_in, weth))
+                .expect("Could not get token_a to weth markets");
+
+            let (amount_out, route) = find_best_route_across_markets(
+                order.quantity,
+                order.token_in,
+                vec![a_to_weth_market, weth_to_b_market],
+            );
+        }
+    }
+
+    Ok(())
+}
+
+//Returns the amount out and a reference to the pools that it took through the route
+fn find_best_route_across_markets<'a>(
+    amount_in: u128,
+    token_in: H160,
+    markets: Vec<&Market>,
+) -> (u128, Vec<&'a Pool>) {
+    //NOTE: placeholder
+    return (0, vec![]);
+}
+
+fn simulate_swap_along_route() {}
+
+fn group_orders_by_market(
+    limit_orders: HashMap<H256, &LimitOrder>,
+) -> HashMap<U256, Vec<&LimitOrder>> {
     let mut orders_grouped_by_market: HashMap<U256, Vec<&LimitOrder>> = HashMap::new();
     for (_, order) in limit_orders {
         let market_id = get_market_id(order.token_in, order.token_out);
@@ -169,43 +161,7 @@ pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
         }
     }
 
-    let sorted_orders_grouped_by_market = sort_limit_orders_by_amount_in(orders_grouped_by_market);
-    let execution_calldata: Vec<Bytes> = vec![];
-
-    //Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
-    for (market_id, orders) in sorted_orders_grouped_by_market {
-        for order in orders {
-            if let Some(simulated_market) = simulated_markets.get(&market_id) {
-                //TODO: this needs to be two hop, not just one pool
-                let (best_amount_out, best_pool) = get_best_pool_for_limit_order(
-                    simulated_market,
-                    order,
-                    v3_quoter_address,
-                    provider.clone(),
-                )
-                .await?;
-
-                if best_pool.is_some() {
-                    if best_amount_out.as_u128() >= order.amount_out_min {
-                        //TODO: append calldata to execution calldata
-
-                        //update reserves with simulated swap values
-                        match best_pool.unwrap() {
-                            Pool::UniswapV2(uniswap_v2_pool) => {
-
-                                //TODO: update pool reserves
-                            }
-                            Pool::UniswapV3(uniswap_v2_pool) => {
-                                //TODO: update pool reserves
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(())
+    orders_grouped_by_market
 }
 
 fn sort_limit_orders_by_amount_in(
