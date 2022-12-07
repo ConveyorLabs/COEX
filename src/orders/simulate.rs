@@ -52,45 +52,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
     Ok(())
 }
 
-//Returns best amount out and pool
-async fn get_best_pool_for_sandbox_limit_order<'a, P: 'static + JsonRpcClient>(
-    market: &'a HashMap<H160, Pool>,
-    order: &'a SandboxLimitOrder,
-    v3_quoter_address: H160,
-    provider: Arc<Provider<P>>,
-) -> Result<(U256, Option<&'a Pool>), BeltError<P>> {
-    let mut best_amount_out = U256::zero();
-    let mut best_pool = None;
-
-    for (_, pool) in market {
-        if pool.calculate_price(order.token_in) >= order.price {
-            //simulate the swap and get the amount out
-            let amount_out = match pool {
-                Pool::UniswapV2(uniswap_v2_pool) => {
-                    uniswap_v2_pool.simulate_swap(order.token_in, order.amount_in_remaining)
-                }
-                Pool::UniswapV3(uniswap_v3_pool) => {
-                    uniswap_v3_pool
-                        .simulate_swap(
-                            order.token_in,
-                            order.amount_in_remaining,
-                            v3_quoter_address,
-                            provider.clone(),
-                        )
-                        .await?
-                }
-            };
-
-            if amount_out > best_amount_out {
-                best_amount_out = amount_out;
-                best_pool = Some(pool);
-            }
-        }
-    }
-
-    Ok((best_amount_out, best_pool))
-}
-
 fn sort_sandbox_limit_orders_by_amount_in(
     mut orders_grouped_by_market: HashMap<U256, Vec<&SandboxLimitOrder>>,
 ) -> HashMap<U256, Vec<&SandboxLimitOrder>> {
@@ -102,13 +63,11 @@ fn sort_sandbox_limit_orders_by_amount_in(
 }
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
-pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
+pub fn simulate_and_batch_limit_orders(
     limit_orders: HashMap<H256, &LimitOrder>,
     simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
-    v3_quoter_address: H160,
     weth: H160,
-    provider: Arc<Provider<P>>,
-) -> Result<Vec<u8>, BeltError<P>> {
+) -> Vec<u8> {
     //Go through the slice of sandbox limit orders and group the orders by market
     let orders_grouped_by_market = group_orders_by_market(limit_orders);
     let sorted_orders_grouped_by_market = sort_limit_orders_by_amount_in(orders_grouped_by_market);
@@ -158,9 +117,10 @@ pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
         );
     }
 
-    Ok(execution_calldata)
+    execution_calldata
 }
 
+//TODO:
 //Returns the amount out and a reference to the pools that it took through the route
 fn find_best_route_across_markets<'a>(
     amount_in: u128,
@@ -188,6 +148,7 @@ fn find_best_route_across_markets<'a>(
     (amount_out, route)
 }
 
+//TODO:
 fn update_reserves_along_route(token_in: H160, amount_in: u128, route: &mut [&Pool]) {
     for pool in route {
         // pool.simulate_swap_mut(token_in, amount_in);
@@ -219,43 +180,4 @@ fn sort_limit_orders_by_amount_in(
     }
 
     orders_grouped_by_market
-}
-
-//Returns best amount out and pool
-async fn get_best_pool_for_limit_order<'a, P: 'static + JsonRpcClient>(
-    market: &'a HashMap<H160, Pool>,
-    order: &'a LimitOrder,
-    v3_quoter_address: H160,
-    provider: Arc<Provider<P>>,
-) -> Result<(U256, Option<&'a Pool>), BeltError<P>> {
-    let mut best_amount_out = U256::zero();
-    let mut best_pool = None;
-
-    for (_, pool) in market {
-        if pool.calculate_price(order.token_in) >= order.price {
-            //simulate the swap and get the amount out
-            let amount_out = match pool {
-                Pool::UniswapV2(uniswap_v2_pool) => {
-                    uniswap_v2_pool.simulate_swap(order.token_in, order.quantity)
-                }
-                Pool::UniswapV3(uniswap_v3_pool) => {
-                    uniswap_v3_pool
-                        .simulate_swap(
-                            order.token_in,
-                            order.quantity,
-                            v3_quoter_address,
-                            provider.clone(),
-                        )
-                        .await?
-                }
-            };
-
-            if amount_out > best_amount_out {
-                best_amount_out = amount_out;
-                best_pool = Some(pool);
-            }
-        }
-    }
-
-    Ok((best_amount_out, best_pool))
 }

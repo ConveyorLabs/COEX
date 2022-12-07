@@ -629,14 +629,9 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
 
     //simulate and batch limit orders
 
-    simulate::simulate_and_batch_limit_orders(
-        lo_at_execution_price,
-        simulated_markets,
-        v3_quoter_address,
-        weth,
-        provider,
-    )
-    .await?;
+    //TODO: need to check if calldata len is > 0
+    let execution_calldata =
+        simulate::simulate_and_batch_limit_orders(lo_at_execution_price, simulated_markets, weth);
 
     //execute sandbox limit orders
 
