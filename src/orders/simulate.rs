@@ -19,12 +19,12 @@ use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
 pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>(
     sandbox_limit_orders: HashMap<H256, &SandboxLimitOrder>,
-    simulated_markets: HashMap<u64, HashMap<H160, Pool>>,
+    simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
     v3_quoter_address: H160,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
     //Go through the slice of sandbox limit orders and group the orders by market
-    let mut orders_grouped_by_market: HashMap<u64, Vec<&SandboxLimitOrder>> = HashMap::new();
+    let mut orders_grouped_by_market: HashMap<U256, Vec<&SandboxLimitOrder>> = HashMap::new();
     for (_, order) in sandbox_limit_orders {
         let market_id = get_market_id(order.token_in, order.token_out);
         if let Some(order_group) = orders_grouped_by_market.get_mut(&market_id) {
@@ -142,8 +142,8 @@ async fn get_best_pool_for_sandbox_limit_order<'a, P: 'static + JsonRpcClient>(
 }
 
 fn sort_sandbox_limit_orders_by_amount_in(
-    mut orders_grouped_by_market: HashMap<u64, Vec<&SandboxLimitOrder>>,
-) -> HashMap<u64, Vec<&SandboxLimitOrder>> {
+    mut orders_grouped_by_market: HashMap<U256, Vec<&SandboxLimitOrder>>,
+) -> HashMap<U256, Vec<&SandboxLimitOrder>> {
     //Go through each group of orders and sort it by amount_in
     for (_, order_group) in orders_grouped_by_market.borrow_mut() {
         order_group.sort_by(|a, b| a.amount_in_remaining.cmp(&b.amount_in_remaining))
@@ -154,12 +154,12 @@ fn sort_sandbox_limit_orders_by_amount_in(
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
 pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
     limit_orders: HashMap<H256, &LimitOrder>,
-    simulated_markets: HashMap<u64, HashMap<H160, Pool>>,
+    simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
     v3_quoter_address: H160,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
     //Go through the slice of sandbox limit orders and group the orders by market
-    let mut orders_grouped_by_market: HashMap<u64, Vec<&LimitOrder>> = HashMap::new();
+    let mut orders_grouped_by_market: HashMap<U256, Vec<&LimitOrder>> = HashMap::new();
     for (_, order) in limit_orders {
         let market_id = get_market_id(order.token_in, order.token_out);
         if let Some(order_group) = orders_grouped_by_market.get_mut(&market_id) {
@@ -209,8 +209,8 @@ pub async fn simulate_and_batch_limit_orders<P: 'static + JsonRpcClient>(
 }
 
 fn sort_limit_orders_by_amount_in(
-    mut orders_grouped_by_market: HashMap<u64, Vec<&LimitOrder>>,
-) -> HashMap<u64, Vec<&LimitOrder>> {
+    mut orders_grouped_by_market: HashMap<U256, Vec<&LimitOrder>>,
+) -> HashMap<U256, Vec<&LimitOrder>> {
     //Go through each group of orders and sort it by amount_in
     for (_, order_group) in orders_grouped_by_market.borrow_mut() {
         order_group.sort_by(|a, b| a.quantity.cmp(&b.quantity))

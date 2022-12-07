@@ -6,9 +6,9 @@ use std::{
 
 use ethers::{
     abi::{decode, token, ParamType},
-    prelude::k256::{elliptic_curve::bigint::Encoding, sha2::Sha256, U256},
+    prelude::k256::elliptic_curve::bigint::Encoding,
     providers::{JsonRpcClient, Provider},
-    types::{Log, H160, H256},
+    types::{Log, H160, H256, U256},
     utils::keccak256,
 };
 use pair_sync::{dex::Dex, pool::Pool};
@@ -21,12 +21,12 @@ use crate::{
 
 pub fn get_market_id(token_a: H160, token_b: H160) -> U256 {
     if token_a > token_b {
-        U256::from_le_bytes(keccak256(
-            vec![token_a.as_bytes(), token_b.as_bytes()].as_ref(),
+        U256::from_little_endian(&keccak256(
+            vec![token_a.as_bytes(), token_b.as_bytes()].concat(),
         ))
     } else {
-        U256::from_le_bytes(keccak256(
-            vec![token_b.as_bytes(), token_a.as_bytes()].as_ref(),
+        U256::from_little_endian(&keccak256(
+            vec![token_b.as_bytes(), token_a.as_bytes()].concat(),
         ))
     }
 }
@@ -39,16 +39,16 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
     provider: Arc<Provider<P>>,
 ) -> Result<
     (
-        HashMap<H160, u64>,
-        Arc<Mutex<HashMap<u64, HashMap<H160, Pool>>>>,
-        Arc<Mutex<HashMap<u64, HashSet<H256>>>>,
+        HashMap<H160, U256>,
+        Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
+        Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     ),
     BeltError<P>,
 > {
-    let mut pool_address_to_market_id: HashMap<H160, u64> = HashMap::new();
-    let mut market_initialized: HashSet<u64> = HashSet::new();
-    let mut markets: HashMap<u64, HashMap<H160, Pool>> = HashMap::new();
-    let mut market_to_affected_orders: HashMap<u64, HashSet<H256>> = HashMap::new();
+    let mut pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
+    let mut market_initialized: HashSet<U256> = HashSet::new();
+    let mut markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
+    let mut market_to_affected_orders: HashMap<U256, HashSet<H256>> = HashMap::new();
 
     for (_, order) in active_orders
         .lock()
@@ -142,10 +142,10 @@ async fn update_market_structures<P: 'static + JsonRpcClient>(
     order_id: H256,
     token_a: H160,
     token_b: H160,
-    pool_address_to_market_id: &mut HashMap<H160, u64>,
-    market_initialized: &mut HashSet<u64>,
-    markets: &mut HashMap<u64, HashMap<H160, Pool>>,
-    market_to_affected_orders: &mut HashMap<u64, HashSet<H256>>,
+    pool_address_to_market_id: &mut HashMap<H160, U256>,
+    market_initialized: &mut HashSet<U256>,
+    markets: &mut HashMap<U256, HashMap<H160, Pool>>,
+    market_to_affected_orders: &mut HashMap<U256, HashSet<H256>>,
     dexes: &[Dex],
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
@@ -199,10 +199,10 @@ async fn get_market<P: 'static + JsonRpcClient>(
 //Returns markets affected
 pub fn handle_market_updates(
     pool_events: &[Log],
-    pool_address_to_market_id: &HashMap<H160, u64>,
-    markets: Arc<Mutex<HashMap<u64, HashMap<H160, Pool>>>>,
-) -> HashSet<u64> {
-    let mut markets_updated: HashSet<u64> = HashSet::new();
+    pool_address_to_market_id: &HashMap<H160, U256>,
+    markets: Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
+) -> HashSet<U256> {
+    let mut markets_updated: HashSet<U256> = HashSet::new();
 
     for event_log in pool_events {
         if let Some(market_id) = pool_address_to_market_id.get(&event_log.address) {
@@ -265,7 +265,7 @@ pub fn handle_market_updates(
 pub fn get_best_market_price(
     token_in: H160,
     token_out: H160,
-    markets: &HashMap<u64, HashMap<H160, Pool>>,
+    markets: &HashMap<U256, HashMap<H160, Pool>>,
 ) -> f64 {
     let mut best_price = 0.0;
 

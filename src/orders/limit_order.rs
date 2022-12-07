@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ethers::types::{H160, H256};
+use ethers::types::{H160, H256, U256};
 use pair_sync::pool::Pool;
 
 use crate::markets::market::get_best_market_price;
@@ -26,20 +26,20 @@ pub struct LimitOrder {
 }
 
 impl LimitOrder {
-    pub fn can_execute(&self, markets: &HashMap<u64, HashMap<H160, Pool>>, weth: H160) -> bool {
+    pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
         self.price >= self.get_best_market_price(markets, weth)
     }
 
     pub fn get_best_market_price(
         &self,
-        markets: &HashMap<u64, HashMap<H160, Pool>>,
+        markets: &HashMap<U256, HashMap<H160, Pool>>,
         weth: H160,
     ) -> f64 {
         //TODO: need to check buy or sell on the order
 
         //Check a -> weth -> b price
-        let a_to_weth_price = get_best_market_price(self.token_in, weth, &markets);
-        let weth_to_b_price = get_best_market_price(weth, self.token_out, &markets);
+        let a_to_weth_price = get_best_market_price(self.token_in, weth, markets);
+        let weth_to_b_price = get_best_market_price(weth, self.token_out, markets);
 
         a_to_weth_price * weth_to_b_price
     }

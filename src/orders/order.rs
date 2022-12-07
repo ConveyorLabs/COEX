@@ -10,7 +10,7 @@ use ethers::{
     providers::{JsonRpcClient, JsonRpcClientWrapper, Middleware, Provider},
     types::{
         transaction::eip2718::TypedTransaction, BlockNumber, Eip1559TransactionRequest, Filter,
-        Log, TransactionRequest, ValueOrArray, H160, H256,
+        Log, TransactionRequest, ValueOrArray, H160, H256, U256,
     },
 };
 use num_bigfloat::BigFloat;
@@ -226,7 +226,7 @@ impl Order {
         }
     }
 
-    pub fn can_execute(&self, markets: &HashMap<u64, HashMap<H160, Pool>>, weth: H160) -> bool {
+    pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
         match self {
             Order::SandboxLimitOrder(sandbox_limit_order) => {
                 sandbox_limit_order.can_execute(markets, weth)
@@ -561,10 +561,10 @@ pub fn update_execution_credit(
 }
 
 pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
-    affected_markets: HashSet<u64>,
-    market_to_affected_orders: Arc<Mutex<HashMap<u64, HashSet<H256>>>>,
+    affected_markets: HashSet<U256>,
+    market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
-    markets: Arc<Mutex<HashMap<u64, HashMap<H160, Pool>>>>,
+    markets: Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
     weth: H160,
     v3_quoter_address: H160,
     provider: Arc<Provider<P>>,
@@ -575,7 +575,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     let markets = markets.lock().expect("Could not acquire mutex lock");
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
 
-    let mut simulated_markets: HashMap<u64, HashMap<H160, Pool>> = HashMap::new();
+    let mut simulated_markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
 
     //Accumulate sandbox limit orders at execution price
     //@dev: OrderId to marketId
