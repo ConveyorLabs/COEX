@@ -568,19 +568,25 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     weth: H160,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
+    //:: Acquire the lock on all of the data structures that have a mutex
     let market_to_affected_orders = market_to_affected_orders
         .lock()
         .expect("Could not acquire mutex lock");
     let markets = markets.lock().expect("Could not acquire mutex lock");
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
 
+    //:: Initialize a new structure to hold a clone of the current state of the markets.
+    //:: This will allow you to simulate order execution and mutate the simluated markets without having to change/unwind the market state.
+
     let mut simulated_markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
 
+    //:: group all of the orders that are ready to execute and separate them by sandbox limit orders and limit orders
     //Accumulate sandbox limit orders at execution price
     let mut slo_at_execution_price: HashMap<H256, &SandboxLimitOrder> = HashMap::new();
     //Accumulate limit orders at execution price
     let mut lo_at_execution_price: HashMap<H256, &LimitOrder> = HashMap::new();
 
+    //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
     for market_id in affected_markets {
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
             for order_id in affected_orders {
@@ -617,6 +623,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
         }
     }
 
+    //:: Simulate sandbox limit orders and generate execution transaction calldata
     //simulate and batch sandbox limit orders
     // simulate::simulate_and_batch_sandbox_limit_orders(
     //     slo_at_execution_price,
@@ -628,6 +635,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
 
     //simulate and batch limit orders
 
+    //:: Simulate sandbox limit orders and generate execution transaction calldata
     //TODO: need to check if calldata len is > 0
     let execution_calldata =
         simulate::simulate_and_batch_limit_orders(lo_at_execution_price, simulated_markets, weth);
