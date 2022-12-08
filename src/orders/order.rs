@@ -566,7 +566,6 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     markets: Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
     weth: H160,
-    v3_quoter_address: H160,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
     let market_to_affected_orders = market_to_affected_orders
