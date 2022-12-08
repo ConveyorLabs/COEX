@@ -85,6 +85,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             markets.clone(),
         );
 
+        //TODO: add logic to check order cancelation and refresh orders
+
         //Evaluate orders for execution
         if markets_updated.len() > 0 {
             order::evaluate_and_execute_orders(

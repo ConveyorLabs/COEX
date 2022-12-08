@@ -25,7 +25,7 @@ use crate::{
     config::Chain,
     error::BeltError,
     events::BeltEvent,
-    markets::market::{self, get_best_market_price, get_market_id},
+    markets::market::{self, get_best_market_price, get_market_id, Market},
 };
 
 use super::{
@@ -564,7 +564,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     affected_markets: HashSet<U256>,
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
-    markets: Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
+    markets: Arc<Mutex<HashMap<U256, Market>>>,
     weth: H160,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
@@ -578,7 +578,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     //:: Initialize a new structure to hold a clone of the current state of the markets.
     //:: This will allow you to simulate order execution and mutate the simluated markets without having to change/unwind the market state.
 
-    let mut simulated_markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
+    let mut simulated_markets: HashMap<U256, Market> = HashMap::new();
 
     //:: group all of the orders that are ready to execute and separate them by sandbox limit orders and limit orders
     //Accumulate sandbox limit orders at execution price
@@ -637,12 +637,13 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
 
     //:: Simulate sandbox limit orders and generate execution transaction calldata
     //TODO: need to check if calldata len is > 0
-    let execution_calldata =
+    let order_groups_for_execution =
         simulate::simulate_and_batch_limit_orders(lo_at_execution_price, simulated_markets, weth);
 
     //execute sandbox limit orders
 
     //execute  limit orders
+    //TODO: decide of we are going to execute through a multicall or execute order groups one by one
 
     Ok(())
 }
@@ -656,6 +657,7 @@ async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
     //TODO: For the love of god, refactor the transaction composition
 
     match chain {
+        //:: EIP 1559 transaction
         Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
             let tx = Eip1559TransactionRequest::new()
                 .to(execution_address)
@@ -673,6 +675,8 @@ async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
 
             Ok(tx.into())
         }
+
+        //:: Legacy transaction
         Chain::BSC | Chain::Cronos => {
             let tx = TransactionRequest::new().to(execution_address).data(data);
 
