@@ -644,6 +644,13 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
 
     //execute  limit orders
     //TODO: decide of we are going to execute through a multicall or execute order groups one by one
+    //TODO: maybe we check if there is more than one order group and if so, we use multicall
+
+    for order_group in order_groups_for_execution {
+
+        //TODO: Create a new transaction and execute the order
+        //TODO: add the transaction to in flight orders and juggle the nonces
+    }
 
     Ok(())
 }
