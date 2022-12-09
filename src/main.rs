@@ -12,6 +12,7 @@ pub mod orders;
 
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
+use ethers::signers::{LocalWallet, Wallet};
 use ethers::types::Log;
 use events::BeltEvent;
 use markets::market::{self};
@@ -95,6 +96,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 active_orders.clone(),
                 markets.clone(),
                 configuration.weth_address,
+                configuration.sandbox_limit_order_book,
+                configuration.limit_order_book,
+                configuration.wallet,
+                &configuration.chain,
                 provider.clone(),
             )
             .await?;

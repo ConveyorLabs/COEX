@@ -1,8 +1,13 @@
-use std::{fs::read_to_string, str::FromStr, vec};
+use std::{fs::read_to_string, str::FromStr, sync::Arc, vec};
 
-use ethers::types::{BlockNumber, H160};
+use ethers::{
+    prelude::rand::random,
+    signers::LocalWallet,
+    types::{BlockNumber, H160},
+};
 
 use pair_sync::dex::{Dex, DexVariant};
+use rand::Rng;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -26,7 +31,8 @@ pub struct Config {
     pub sandbox_limit_order_book: H160,
     pub dexes: Vec<Dex>,
     pub protocol_creation_block: BlockNumber,
-    //TODO: signer
+    pub wallet: Arc<LocalWallet>,
+    pub chain: Chain,
 }
 
 impl Default for Config {
@@ -41,6 +47,8 @@ impl Default for Config {
             sandbox_limit_order_book: H160::zero(),
             dexes: vec![],
             protocol_creation_block: BlockNumber::Latest,
+            wallet: Arc::new(LocalWallet::new(&mut rand::thread_rng())),
+            chain: Chain::Ethereum,
         }
     }
 }
@@ -90,7 +98,17 @@ impl Config {
 
         let mut config = Config::default();
 
-        match Chain::from_str(&belt_toml.chain_name) {
+        config.wallet = Arc::new(
+            belt_toml
+                .private_key
+                .parse()
+                .expect("Could not parse private key"),
+        );
+
+        let chain = Chain::from_str(&belt_toml.chain_name);
+        config.chain = chain;
+
+        match chain {
             Chain::Ethereum => {}
 
             Chain::Polygon => {

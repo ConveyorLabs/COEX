@@ -8,6 +8,7 @@ use ethers::{
     abi::{decode, Detokenize, Param, ParamType, RawLog, Tokenizable},
     prelude::{Bytes, EthLogDecode},
     providers::{JsonRpcClient, JsonRpcClientWrapper, Middleware, Provider},
+    signers::{LocalWallet, Wallet},
     types::{
         transaction::eip2718::TypedTransaction, BlockNumber, Eip1559TransactionRequest, Filter,
         Log, TransactionRequest, ValueOrArray, H160, H256, U256,
@@ -561,6 +562,10 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     weth: H160,
+    sandbox_limit_order_router: H160,
+    limit_order_router: H160,
+    wallet: Arc<LocalWallet>,
+    chain: &Chain,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
     //:: Acquire the lock on all of the data structures that have a mutex
@@ -642,6 +647,14 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     //TODO: maybe we check if there is more than one order group and if so, we use multicall
 
     for order_group in limit_order_execution_bundle.order_groups {
+        let signed_tx = construct_signed_lo_execution_transaction(
+            limit_order_router,
+            order_group.order_ids,
+            wallet.clone(),
+            provider.clone(),
+            chain,
+        )
+        .await?;
 
         //TODO: Create a new transaction and execute the order
         //TODO: add the transaction to in flight orders and juggle the nonces
@@ -650,11 +663,13 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     Ok(())
 }
 
-async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
+//Construct a sandbox limit order execution transaction
+async fn construct_signed_slo_execution_transaction<P: 'static + JsonRpcClient>(
     execution_address: H160,
     data: Bytes,
     provider: Arc<Provider<P>>,
-    chain: Chain,
+    wallet: LocalWallet,
+    chain: &Chain,
 ) -> Result<TransactionRequest, BeltError<P>> {
     //TODO: For the love of god, refactor the transaction composition
 
@@ -675,6 +690,8 @@ async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
             let gas_limit = provider.estimate_gas(&tx).await?;
             tx.set_gas(gas_limit);
 
+            wallet.sign_transaction_sync(&tx);
+
             Ok(tx.into())
         }
 
@@ -688,6 +705,65 @@ async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
             let mut tx: TypedTransaction = tx.into();
             let gas_limit = provider.estimate_gas(&tx).await?;
             tx.set_gas(gas_limit);
+
+            wallet.sign_transaction_sync(&tx);
+
+            Ok(tx.into())
+        }
+    }
+}
+
+//Construct a limit order execution transaction
+async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClient>(
+    execution_address: H160,
+    order_ids: Vec<[u8; 32]>,
+    wallet: Arc<LocalWallet>,
+    provider: Arc<Provider<P>>,
+    chain: &Chain,
+) -> Result<TransactionRequest, BeltError<P>> {
+    //TODO: For the love of god, refactor the transaction composition
+
+    let calldata = abi::ILimitOrderRouter::new(execution_address, provider.clone())
+        .execute_orders(order_ids)
+        .calldata()
+        .unwrap();
+
+    match chain {
+        //:: EIP 1559 transaction
+        Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
+            let tx = Eip1559TransactionRequest::new()
+                .to(execution_address)
+                .data(calldata);
+
+            //Update transaction gas fees
+            let (max_priority_fee_per_gas, max_fee_per_gas) =
+                provider.estimate_eip1559_fees(None).await?;
+            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
+            let tx = tx.max_fee_per_gas(max_fee_per_gas);
+
+            let mut tx: TypedTransaction = tx.into();
+            let gas_limit = provider.estimate_gas(&tx).await?;
+            tx.set_gas(gas_limit);
+
+            wallet.sign_transaction_sync(&tx);
+
+            Ok(tx.into())
+        }
+
+        //:: Legacy transaction
+        Chain::BSC | Chain::Cronos => {
+            let tx = TransactionRequest::new()
+                .to(execution_address)
+                .data(calldata);
+
+            let gas_price = provider.get_gas_price().await?;
+            let tx = tx.gas_price(gas_price);
+
+            let mut tx: TypedTransaction = tx.into();
+            let gas_limit = provider.estimate_gas(&tx).await?;
+            tx.set_gas(gas_limit);
+
+            wallet.sign_transaction_sync(&tx);
 
             Ok(tx.into())
         }

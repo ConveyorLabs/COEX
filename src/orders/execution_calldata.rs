@@ -64,7 +64,7 @@ impl ExecutionCalldata for LimitOrderExecutionBundle {
 
 #[derive(Default)]
 pub struct LimitOrderExecutionOrderIds {
-    pub order_ids: Vec<H256>, // bytes32[] calldata orderIds
+    pub order_ids: Vec<[u8; 32]>, // bytes32[] calldata orderIds
 }
 
 impl LimitOrderExecutionOrderIds {
@@ -73,7 +73,7 @@ impl LimitOrderExecutionOrderIds {
     }
 
     pub fn add_order_id(&mut self, order_id: H256) {
-        self.order_ids.push(order_id);
+        self.order_ids.push(order_id.to_fixed_bytes());
     }
 }
 
@@ -83,7 +83,7 @@ impl ExecutionCalldata for LimitOrderExecutionOrderIds {
             &self
                 .order_ids
                 .iter()
-                .map(|order_id| Token::FixedBytes(order_id.as_fixed_bytes().to_vec()))
+                .map(|order_id| Token::FixedBytes(order_id.to_vec()))
                 .collect::<Vec<Token>>(),
         )
     }

@@ -175,6 +175,7 @@ dependencies = [
  "ethers",
  "num-bigfloat",
  "pair_sync",
+ "rand",
  "serde",
  "serde_derive",
  "serde_json",
