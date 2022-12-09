@@ -18,21 +18,16 @@ use pair_sync::pool::Pool;
 
 use crate::{
     abi::{
-        self, ISandboxLimitOrderBook, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter,
-        OrderFufilledFilter, OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter,
-        OrderUpdatedFilter,
+        self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFufilledFilter,
+        OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
     },
     config::Chain,
     error::BeltError,
     events::BeltEvent,
-    markets::market::{self, get_best_market_price, get_market_id, Market},
+    markets::market::{self, Market},
 };
 
-use super::{
-    limit_order::{self, LimitOrder},
-    sandbox_limit_order::{self, SandboxLimitOrder},
-    simulate,
-};
+use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, simulate};
 
 #[derive(Debug)]
 pub enum Order {

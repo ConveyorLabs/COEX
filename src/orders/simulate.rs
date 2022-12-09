@@ -85,10 +85,12 @@ pub fn simulate_and_batch_limit_orders(
     // in the execution calldata
     let mut order_ids_in_calldata: HashSet<H256> = HashSet::new();
 
+    //:: This is a vec of order groups, ie vec of vec of bytes32
     let mut execution_order_groups: Vec<Token> = vec![];
 
     //:: Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
     for (_, orders) in sorted_orders_grouped_by_market {
+        //:: Create a new order group which will hold all the order IDs
         let mut order_group_to_execute: Vec<Token> = vec![];
 
         for order in orders {
