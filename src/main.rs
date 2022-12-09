@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 configuration.weth_address,
                 configuration.sandbox_limit_order_book,
                 configuration.limit_order_book,
-                configuration.wallet,
+                configuration.wallet.clone(),
                 &configuration.chain,
                 provider.clone(),
             )

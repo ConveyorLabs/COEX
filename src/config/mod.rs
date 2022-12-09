@@ -108,7 +108,7 @@ impl Config {
         let chain = Chain::from_str(&belt_toml.chain_name);
         config.chain = chain;
 
-        match chain {
+        match config.chain {
             Chain::Ethereum => {}
 
             Chain::Polygon => {
