@@ -2,9 +2,12 @@ use std::collections::HashMap;
 
 use ethers::{
     abi::{ethabi::Bytes, Event},
-    types::{Filter, H256},
+    types::{Filter, Log, H256},
 };
-use pair_sync::dex::{Dex, DexVariant};
+use pair_sync::{
+    dex::{Dex, DexVariant},
+    pool,
+};
 
 use crate::abi;
 
@@ -161,6 +164,26 @@ pub fn initialize_block_filter(dexes: Vec<Dex>) -> Filter {
 
     //Create a new filter
     Filter::new().topic0(event_signatures)
+}
+
+pub fn sort_events(
+    event_logs: &[Log],
+    event_sig_to_belt_event: &HashMap<H256, BeltEvent>,
+) -> (Vec<(BeltEvent, Log)>, Vec<Log>) {
+    //Separate order event logs and pool event logs
+    let mut order_events: Vec<(BeltEvent, Log)> = vec![];
+    let mut pool_events: Vec<Log> = vec![];
+    for log in event_logs {
+        if let Some(belt_event) = event_sig_to_belt_event.get(&log.topics[0]) {
+            match belt_event {
+                BeltEvent::UniswapV2PoolUpdate => pool_events.push(log.to_owned()),
+                BeltEvent::UniswapV3PoolUpdate => pool_events.push(log.to_owned()),
+                _ => order_events.push((*belt_event, log.to_owned())),
+            }
+        }
+    }
+
+    (order_events, pool_events)
 }
 
 #[cfg(test)]

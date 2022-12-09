@@ -652,7 +652,8 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
         )
         .await?;
 
-        //TODO: Create a new transaction and execute the order
+        let pending_tx = provider.send_transaction(signed_tx, None).await?;
+
         //TODO: add the transaction to in flight orders and juggle the nonces
     }
 

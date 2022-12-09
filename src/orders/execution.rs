@@ -102,7 +102,7 @@ pub async fn construct_signed_slo_execution_transaction<P: 'static + JsonRpcClie
     provider: Arc<Provider<P>>,
     wallet: LocalWallet,
     chain: &Chain,
-) -> Result<TransactionRequest, BeltError<P>> {
+) -> Result<TypedTransaction, BeltError<P>> {
     //TODO: For the love of god, refactor the transaction composition
 
     match chain {
@@ -124,7 +124,7 @@ pub async fn construct_signed_slo_execution_transaction<P: 'static + JsonRpcClie
 
             wallet.sign_transaction_sync(&tx);
 
-            Ok(tx.into())
+            Ok(tx)
         }
 
         //:: Legacy transaction
@@ -140,7 +140,7 @@ pub async fn construct_signed_slo_execution_transaction<P: 'static + JsonRpcClie
 
             wallet.sign_transaction_sync(&tx);
 
-            Ok(tx.into())
+            Ok(tx)
         }
     }
 }
@@ -152,7 +152,7 @@ pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClien
     wallet: Arc<LocalWallet>,
     provider: Arc<Provider<P>>,
     chain: &Chain,
-) -> Result<TransactionRequest, BeltError<P>> {
+) -> Result<TypedTransaction, BeltError<P>> {
     //TODO: For the love of god, refactor the transaction composition
 
     let calldata = abi::ILimitOrderRouter::new(execution_address, provider.clone())
@@ -179,7 +179,7 @@ pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClien
 
             wallet.sign_transaction_sync(&tx);
 
-            Ok(tx.into())
+            Ok(tx)
         }
 
         //:: Legacy transaction
@@ -197,7 +197,7 @@ pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClien
 
             wallet.sign_transaction_sync(&tx);
 
-            Ok(tx.into())
+            Ok(tx)
         }
     }
 }

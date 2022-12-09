@@ -54,27 +54,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
-        //Update block filter to get logs from the header block number
-        let block_filter = block_filter.clone().from_block(
-            block
-                .number
-                .expect("Could not unwrap block number from block header"),
+        let (order_events, pool_events) = events::sort_events(
+            &provider
+                .get_logs(
+                    &block_filter.clone().from_block(
+                        block
+                            .number
+                            .expect("Could not unwrap block number from block header"),
+                    ),
+                )
+                .await?,
+            &event_sig_to_belt_event,
         );
-
-        let event_logs = provider.get_logs(&block_filter).await?;
-
-        //Separate order event logs and pool event logs
-        let mut order_events: Vec<(BeltEvent, Log)> = vec![];
-        let mut pool_events: Vec<Log> = vec![];
-        for log in event_logs {
-            if let Some(belt_event) = event_sig_to_belt_event.get(&log.topics[0]) {
-                match belt_event {
-                    BeltEvent::UniswapV2PoolUpdate => pool_events.push(log),
-                    BeltEvent::UniswapV3PoolUpdate => pool_events.push(log),
-                    _ => order_events.push((*belt_event, log)),
-                }
-            }
-        }
 
         //Handle order updates
         order::handle_order_updates(order_events, active_orders.clone(), provider.clone()).await?;
@@ -86,7 +77,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             markets.clone(),
         );
 
-        //TODO: add logic to check order cancelation and refresh orders
+        //TODO: add logic to check order cancellation and refresh orders
 
         //Evaluate orders for execution
         if markets_updated.len() > 0 {
