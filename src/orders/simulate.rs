@@ -28,16 +28,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
     //Go through the slice of sandbox limit orders and group the orders by market
-    let mut orders_grouped_by_market: HashMap<U256, Vec<&SandboxLimitOrder>> = HashMap::new();
-    for (_, order) in sandbox_limit_orders {
-        let market_id = get_market_id(order.token_in, order.token_out);
-        if let Some(order_group) = orders_grouped_by_market.get_mut(&market_id) {
-            order_group.push(order);
-        } else {
-            orders_grouped_by_market.insert(market_id, vec![order]);
-        }
-    }
-
+    let mut orders_grouped_by_market = group_sandbox_limit_orders_by_market(sandbox_limit_orders);
     let sorted_orders_grouped_by_market =
         sort_sandbox_limit_orders_by_amount_in(orders_grouped_by_market);
 
@@ -50,6 +41,22 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
 
     //TODO: Return the calldata
     Ok(())
+}
+
+fn group_sandbox_limit_orders_by_market(
+    limit_orders: HashMap<H256, &SandboxLimitOrder>,
+) -> HashMap<U256, Vec<&SandboxLimitOrder>> {
+    let mut orders_grouped_by_market: HashMap<U256, Vec<&SandboxLimitOrder>> = HashMap::new();
+    for (_, order) in limit_orders {
+        let market_id = get_market_id(order.token_in, order.token_out);
+        if let Some(order_group) = orders_grouped_by_market.get_mut(&market_id) {
+            order_group.push(order);
+        } else {
+            orders_grouped_by_market.insert(market_id, vec![order]);
+        }
+    }
+
+    orders_grouped_by_market
 }
 
 fn sort_sandbox_limit_orders_by_amount_in(
@@ -70,7 +77,7 @@ pub fn simulate_and_batch_limit_orders(
 ) -> Vec<Token> {
     //:: First group the orders by market and sort each of the orders by the amount in (ie quantity)
     //Go through the slice of sandbox limit orders and group the orders by market
-    let orders_grouped_by_market = group_orders_by_market(limit_orders);
+    let orders_grouped_by_market = group_limit_orders_by_market(limit_orders);
     let sorted_orders_grouped_by_market = sort_limit_orders_by_amount_in(orders_grouped_by_market);
 
     //TODO: update this comment later, but we add order ids to this hashset so that we dont recalc orders for execution viability if they are already in an order group
@@ -109,7 +116,7 @@ pub fn simulate_and_batch_limit_orders(
                 if amount_out >= order.amount_out_min {
                     update_pools_along_route(order.token_in, order.quantity, &mut route);
 
-                    //:: For each order group, there is a new array that is intialized and order ids that are ready for execution are added to this array.
+                    //:: For each order group, there is a new array that is initialized and order ids that are ready for execution are added to this array.
                     //:: Then that array is appended to the execution calldata
                     order_group_to_execute.push(Token::FixedBytes(FixedBytes::from(
                         order.order_id.as_bytes(),
@@ -139,7 +146,7 @@ fn find_best_route_across_markets<'a>(
         let mut best_pool = &Pool::UniswapV2(UniswapV2Pool::default());
 
         for (_, pool) in market {
-            //let swap_amount_out = pool.simulate_swap();
+            // let swap_amount_out = pool.simulate_swap();
             // if swap_amount_out > best_amount_out {
             // best_amount_out = swap_amount_out;
             // best_pool = pool;
@@ -159,7 +166,7 @@ fn update_pools_along_route(token_in: H160, amount_in: u128, route: &mut [&Pool]
     }
 }
 
-fn group_orders_by_market(
+fn group_limit_orders_by_market(
     limit_orders: HashMap<H256, &LimitOrder>,
 ) -> HashMap<U256, Vec<&LimitOrder>> {
     let mut orders_grouped_by_market: HashMap<U256, Vec<&LimitOrder>> = HashMap::new();
