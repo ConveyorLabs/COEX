@@ -18,7 +18,10 @@ use crate::{
     markets::market::{get_market_id, Market},
 };
 
-use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
+use super::{
+    execution_calldata::LimitOrderExecutionBundle, limit_order::LimitOrder,
+    sandbox_limit_order::SandboxLimitOrder,
+};
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
 pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>(
@@ -74,7 +77,7 @@ pub fn simulate_and_batch_limit_orders(
     limit_orders: HashMap<H256, &LimitOrder>,
     simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
-) -> Vec<Token> {
+) -> LimitOrderExecutionBundle {
     //:: First group the orders by market and sort each of the orders by the amount in (ie quantity)
     //Go through the slice of sandbox limit orders and group the orders by market
     let orders_grouped_by_market = group_limit_orders_by_market(limit_orders);
@@ -86,12 +89,11 @@ pub fn simulate_and_batch_limit_orders(
     let mut order_ids_in_calldata: HashSet<H256> = HashSet::new();
 
     //:: This is a vec of order groups, ie vec of vec of bytes32
-    let mut execution_order_groups: Vec<Token> = vec![];
-
+    let mut execution_calldata = LimitOrderExecutionBundle::new();
     //:: Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
     for (_, orders) in sorted_orders_grouped_by_market {
         //:: Create a new order group which will hold all the order IDs
-        let mut order_group_to_execute: Vec<Token> = vec![];
+        execution_calldata.add_empty_order_group();
 
         for order in orders {
             //:: If the order is not already added to calldata, continue simulating and checking for execution
@@ -120,17 +122,13 @@ pub fn simulate_and_batch_limit_orders(
 
                     //:: For each order group, there is a new array that is initialized and order ids that are ready for execution are added to this array.
                     //:: Then that array is appended to the execution calldata
-                    order_group_to_execute.push(Token::FixedBytes(FixedBytes::from(
-                        order.order_id.as_bytes(),
-                    )));
+                    execution_calldata.append_order_id_to_latest_order_group(order.order_id);
                 }
             }
         }
-
-        execution_order_groups.push(Token::Array(order_group_to_execute));
     }
 
-    execution_order_groups
+    execution_calldata
 }
 
 //TODO:

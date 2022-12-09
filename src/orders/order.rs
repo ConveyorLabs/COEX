@@ -632,7 +632,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
 
     //:: Simulate sandbox limit orders and generate execution transaction calldata
     //TODO: need to check if calldata len is > 0
-    let order_groups_for_execution =
+    let limit_order_execution_bundle =
         simulate::simulate_and_batch_limit_orders(lo_at_execution_price, simulated_markets, weth);
 
     //execute sandbox limit orders
@@ -641,7 +641,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     //TODO: decide of we are going to execute through a multicall or execute order groups one by one
     //TODO: maybe we check if there is more than one order group and if so, we use multicall
 
-    for order_group in order_groups_for_execution {
+    for order_group in limit_order_execution_bundle.order_groups {
 
         //TODO: Create a new transaction and execute the order
         //TODO: add the transaction to in flight orders and juggle the nonces

@@ -21,4 +21,6 @@ where
     JoinError(#[from] JoinError),
     #[error("Pair sync error")]
     PairSyncError(#[from] PairSyncError<P>),
+    #[error("Invalid order group index")]
+    InvalidOrderGroupIndex(),
 }
