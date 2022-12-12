@@ -96,35 +96,6 @@ pub fn simulate_and_batch_limit_orders(
         execution_calldata.add_empty_order_group();
 
         for order in orders {
-<<<<<<< HEAD
-            if let Some(simulated_market) = simulated_markets.get(&market_id) {
-                let mut best_amount_out = U256::zero();
-                let mut best_pool = &Pool::UniswapV2(UniswapV2Pool::default());
-
-                for (_, pool) in simulated_market {
-                    if pool.calculate_price(order.token_in) >= order.price {
-                        //simulate the swap and get the amount out
-                        let amount_out = match pool {
-                            Pool::UniswapV2(uniswap_v2_pool) => uniswap_v2_pool
-                                .simulate_swap(order.token_in, order.amount_in_remaining),
-                            Pool::UniswapV3(uniswap_v3_pool) => {
-                                uniswap_v3_pool
-                                    .simulate_swap(
-                                        order.token_in,
-                                        order.amount_in_remaining,
-                                        provider.clone(),
-                                    )
-                                    .await?
-                            }
-                        };
-
-                        if amount_out > best_amount_out {
-                            best_amount_out = amount_out;
-                            best_pool = pool;
-                        }
-                    }
-                }
-=======
             //:: If the order is not already added to calldata, continue simulating and checking for execution
             if let None = order_ids_in_calldata.get(&order.order_id) {
                 order_ids_in_calldata.insert(order.order_id);
@@ -144,7 +115,6 @@ pub fn simulate_and_batch_limit_orders(
                     order.token_in,
                     vec![a_to_weth_market, weth_to_b_market],
                 );
->>>>>>> 0xKitsune/limit-order-simulation
 
                 //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
                 if amount_out >= order.amount_out_min {

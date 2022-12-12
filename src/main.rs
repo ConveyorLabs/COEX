@@ -11,6 +11,7 @@ pub mod error;
 pub mod events;
 pub mod markets;
 pub mod orders;
+pub mod pending_transactions;
 
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;

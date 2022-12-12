@@ -1,11 +1,7 @@
 use std::collections::HashMap;
 
 use cfmms::pool::Pool;
-<<<<<<< HEAD
-use ethers::types::{H160, H256};
-=======
 use ethers::types::{H160, H256, U256};
->>>>>>> 0xKitsune/limit-order-simulation
 
 use crate::markets::market::get_best_market_price;
 
