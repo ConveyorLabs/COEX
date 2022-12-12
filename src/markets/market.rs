@@ -14,7 +14,7 @@ use ethers::{
 };
 
 use crate::{
-    error::BeltError,
+    error::ExecutorError,
     orders::order::{self, Order},
 };
 
@@ -44,7 +44,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
         Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
         Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     ),
-    BeltError<P>,
+    ExecutorError<P>,
 > {
     let mut pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
     let mut market_initialized: HashSet<U256> = HashSet::new();
@@ -149,7 +149,7 @@ async fn update_market_structures<P: 'static + JsonRpcClient>(
     market_to_affected_orders: &mut HashMap<U256, HashSet<H256>>,
     dexes: &[Dex],
     provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
+) -> Result<(), ExecutorError<P>> {
     //Initialize a to b market
     let market_id = get_market_id(token_a, token_b);
     if market_initialized.get(&market_id).is_some() {
@@ -181,7 +181,7 @@ async fn get_market<P: 'static + JsonRpcClient>(
     token_b: H160,
     provider: Arc<Provider<P>>,
     dexes: &[Dex],
-) -> Result<Option<HashMap<H160, Pool>>, BeltError<P>> {
+) -> Result<Option<HashMap<H160, Pool>>, ExecutorError<P>> {
     let mut market = HashMap::new();
 
     for dex in dexes {

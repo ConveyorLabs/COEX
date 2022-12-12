@@ -14,7 +14,7 @@ use ethers::{
 };
 
 use crate::{
-    error::BeltError,
+    error::ExecutorError,
     markets::market::{get_market_id, Market},
 };
 
@@ -29,7 +29,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
     simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
     v3_quoter_address: H160,
     provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
+) -> Result<(), ExecutorError<P>> {
     //Go through the slice of sandbox limit orders and group the orders by market
     let mut orders_grouped_by_market = group_sandbox_limit_orders_by_market(sandbox_limit_orders);
     let sorted_orders_grouped_by_market =

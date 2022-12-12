@@ -16,7 +16,7 @@ use ethers::{
 use crate::{
     abi,
     config::{self, Chain},
-    error::BeltError,
+    error::ExecutorError,
     markets::market::Market,
 };
 
@@ -115,7 +115,7 @@ pub async fn construct_signed_slo_execution_transaction<P: 'static + JsonRpcClie
     provider: Arc<Provider<P>>,
     wallet: LocalWallet,
     chain: &Chain,
-) -> Result<TypedTransaction, BeltError<P>> {
+) -> Result<TypedTransaction, ExecutorError<P>> {
     //TODO: For the love of god, refactor the transaction composition
 
     match chain {
@@ -165,7 +165,7 @@ pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClien
     wallet: Arc<LocalWallet>,
     provider: Arc<Provider<P>>,
     chain: &Chain,
-) -> Result<TypedTransaction, BeltError<P>> {
+) -> Result<TypedTransaction, ExecutorError<P>> {
     //TODO: For the love of god, refactor the transaction composition
 
     let calldata = abi::ILimitOrderRouter::new(execution_address, provider.clone())
@@ -222,7 +222,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     configuration: &config::Config,
     provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
+) -> Result<(), ExecutorError<P>> {
     //:: Acquire the lock on all of the data structures that have a mutex
     let market_to_affected_orders = market_to_affected_orders
         .lock()

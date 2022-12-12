@@ -19,7 +19,7 @@ use crate::{
         OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
     },
     config::Chain,
-    error::BeltError,
+    error::ExecutorError,
     events::BeltEvent,
     markets::market::{self, Market},
 };
@@ -41,7 +41,7 @@ impl Order {
     fn from_bytes<P: JsonRpcClient>(
         data: &[u8],
         order_variant: OrderVariant,
-    ) -> Result<Order, BeltError<P>> {
+    ) -> Result<Order, ExecutorError<P>> {
         //TODO: refactor this so that there is a from bytes for sandbox limit order struct and limit order struct
         match order_variant {
             OrderVariant::LimitOrder => {
@@ -234,7 +234,7 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
     limit_order_book_address: H160,
     protocol_creation_block: BlockNumber,
     provider: Arc<Provider<P>>,
-) -> Result<Arc<Mutex<HashMap<H256, Order>>>, BeltError<P>> {
+) -> Result<Arc<Mutex<HashMap<H256, Order>>>, ExecutorError<P>> {
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
@@ -310,7 +310,7 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
     order_events: Vec<(BeltEvent, Log)>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
+) -> Result<(), ExecutorError<P>> {
     //Handle order updates
     for order_event in order_events {
         let belt_event = order_event.0;
@@ -431,7 +431,7 @@ pub async fn get_remote_order<P: JsonRpcClient>(
     order_id: H256,
     order_book_address: H160,
     provider: Arc<Provider<P>>,
-) -> Result<Order, BeltError<P>> {
+) -> Result<Order, ExecutorError<P>> {
     let slob = abi::ISandboxLimitOrderBook::new(order_book_address, provider);
 
     let order_bytes = slob.get_order_by_id(order_id.into()).call().await?;
@@ -444,7 +444,7 @@ pub async fn place_order<P: JsonRpcClient>(
     order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
+) -> Result<(), ExecutorError<P>> {
     let order = get_remote_order(order_id, order_book_address, provider.clone()).await?;
 
     active_orders
@@ -460,7 +460,7 @@ pub async fn update_order<P: JsonRpcClient>(
     order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
+) -> Result<(), ExecutorError<P>> {
     let order = get_remote_order(order_id, order_book_address, provider.clone()).await?;
 
     active_orders

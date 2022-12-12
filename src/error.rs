@@ -7,7 +7,7 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 #[derive(Error, Debug)]
-pub enum BeltError<P>
+pub enum ExecutorError<P>
 where
     P: JsonRpcClient,
 {

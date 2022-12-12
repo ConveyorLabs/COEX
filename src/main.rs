@@ -1,7 +1,9 @@
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use ethers::providers::{Http, Provider, Ws};
+use error::ExecutorError;
+use ethers::providers::{Http, JsonRpcClient, Provider, ProviderError, Ws};
 
 pub mod abi;
 pub mod config;
@@ -13,14 +15,50 @@ pub mod orders;
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
 use ethers::signers::{LocalWallet, Wallet};
-use ethers::types::Log;
+use ethers::types::{Log, H160, H256, U256};
 use events::BeltEvent;
-use markets::market::{self};
+use markets::market::{self, Market};
 use orders::execution;
-use orders::order::{self};
+use orders::order::{self, Order};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let (
+        configuration,
+        provider,
+        stream_provider,
+        active_orders,
+        pool_address_to_market_id,
+        markets,
+        market_to_affected_orders,
+    ) = initialize_executor().await?;
+
+    run_loop(
+        configuration,
+        provider,
+        stream_provider,
+        active_orders,
+        pool_address_to_market_id,
+        markets,
+        market_to_affected_orders,
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn initialize_executor() -> Result<
+    (
+        config::Config,                           //configuration
+        Arc<Provider<Http>>,                      //provider
+        Provider<Ws>,                             // stream provider
+        Arc<Mutex<HashMap<H256, Order>>>,         //active orders
+        HashMap<H160, U256>,                      //pool_address_to_market_id
+        Arc<Mutex<HashMap<U256, Market>>>,        //markets
+        Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
+    ),
+    ProviderError,
+> {
     let configuration = config::Config::new();
 
     let provider: Arc<Provider<Http>> = Arc::new(
@@ -36,7 +74,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         configuration.protocol_creation_block,
         provider.clone(),
     )
-    .await?;
+    .await
+    .expect("There was an issue while initializing active orders");
 
     //initialize markets
     let (pool_address_to_market_id, markets, market_to_affected_orders) =
@@ -46,8 +85,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
             configuration.weth_address,
             provider.clone(),
         )
-        .await?;
+        .await
+        .expect("There was an issue while initializing market structures");
 
+    Ok((
+        configuration,
+        provider,
+        stream_provider,
+        active_orders,
+        pool_address_to_market_id,
+        markets,
+        market_to_affected_orders,
+    ))
+}
+
+async fn run_loop<P: 'static + JsonRpcClient>(
+    configuration: config::Config,
+    provider: Arc<Provider<Http>>,
+    stream_provider: Provider<Ws>,
+    active_orders: Arc<Mutex<HashMap<H256, Order>>>,
+    pool_address_to_market_id: HashMap<H160, U256>,
+    markets: Arc<Mutex<HashMap<U256, Market>>>,
+    market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
+) -> Result<(), ExecutorError<P>> {
     let mut block_stream = stream_provider.subscribe_blocks().await?;
     let block_filter = events::initialize_block_filter(&configuration.dexes);
     //Get a mapping of event signature to event for quick lookup
