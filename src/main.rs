@@ -23,16 +23,16 @@ use orders::order::{self, Order};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let (
-        configuration,
-        provider,
-        stream_provider,
-        active_orders,
-        pool_address_to_market_id,
-        markets,
-        market_to_affected_orders,
-    ) = initialize_executor().await?;
+    //Initialize a new configuration
+    let configuration = config::Config::new();
+    //Initialize the providers
+    let provider: Arc<Provider<Http>> = Arc::new(Provider::try_from(&configuration.http_endpoint)?);
+    let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
+    //Initialize the markets and order structures
+    let (active_orders, pool_address_to_market_id, markets, market_to_affected_orders) =
+        initialize_executor(&configuration, provider.clone()).await?;
 
+    //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
         configuration,
         provider,
@@ -47,26 +47,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn initialize_executor() -> Result<
+async fn initialize_executor<P: 'static + JsonRpcClient>(
+    configuration: &config::Config,
+    provider: Arc<Provider<P>>,
+) -> Result<
     (
-        config::Config,                           //configuration
-        Arc<Provider<Http>>,                      //provider
-        Provider<Ws>,                             // stream provider
         Arc<Mutex<HashMap<H256, Order>>>,         //active orders
         HashMap<H160, U256>,                      //pool_address_to_market_id
         Arc<Mutex<HashMap<U256, Market>>>,        //markets
         Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
     ),
-    ProviderError,
+    ExecutorError<P>,
 > {
-    let configuration = config::Config::new();
-
-    let provider: Arc<Provider<Http>> = Arc::new(
-        Provider::try_from(&configuration.http_endpoint)
-            .expect("Could not initialize http provider from endpoint"),
-    );
-    let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
-
     //Initialize active orders
     let active_orders = orders::order::initialize_active_orders(
         configuration.sandbox_limit_order_book,
@@ -89,9 +81,6 @@ async fn initialize_executor() -> Result<
         .expect("There was an issue while initializing market structures");
 
     Ok((
-        configuration,
-        provider,
-        stream_provider,
         active_orders,
         pool_address_to_market_id,
         markets,
@@ -101,7 +90,7 @@ async fn initialize_executor() -> Result<
 
 async fn run_loop<P: 'static + JsonRpcClient>(
     configuration: config::Config,
-    provider: Arc<Provider<Http>>,
+    provider: Arc<Provider<P>>,
     stream_provider: Provider<Ws>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     pool_address_to_market_id: HashMap<H160, U256>,
