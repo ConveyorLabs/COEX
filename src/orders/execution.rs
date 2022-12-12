@@ -201,3 +201,107 @@ pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClien
         }
     }
 }
+
+pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
+    affected_markets: HashSet<U256>,
+    market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
+    active_orders: Arc<Mutex<HashMap<H256, Order>>>,
+    markets: Arc<Mutex<HashMap<U256, Market>>>,
+    weth: H160,
+    sandbox_limit_order_router: H160,
+    limit_order_router: H160,
+    wallet: Arc<LocalWallet>,
+    chain: &Chain,
+    provider: Arc<Provider<P>>,
+) -> Result<(), BeltError<P>> {
+    //:: Acquire the lock on all of the data structures that have a mutex
+    let market_to_affected_orders = market_to_affected_orders
+        .lock()
+        .expect("Could not acquire mutex lock");
+    let markets = markets.lock().expect("Could not acquire mutex lock");
+    let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
+
+    //:: Initialize a new structure to hold a clone of the current state of the markets.
+    //:: This will allow you to simulate order execution and mutate the simluated markets without having to change/unwind the market state.
+
+    let mut simulated_markets: HashMap<U256, Market> = HashMap::new();
+
+    //:: group all of the orders that are ready to execute and separate them by sandbox limit orders and limit orders
+    //Accumulate sandbox limit orders at execution price
+    let mut slo_at_execution_price: HashMap<H256, &SandboxLimitOrder> = HashMap::new();
+    //Accumulate limit orders at execution price
+    let mut lo_at_execution_price: HashMap<H256, &LimitOrder> = HashMap::new();
+
+    //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
+    for market_id in affected_markets {
+        if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
+            for order_id in affected_orders {
+                if let Some(order) = active_orders.get(&order_id) {
+                    if order.can_execute(&markets, weth) {
+                        //Add the market to the simulation markets structure
+                        simulated_markets.insert(
+                            market_id,
+                            markets
+                                .get(&market_id)
+                                .expect("Could not get market from markets")
+                                .clone(),
+                        );
+
+                        match order {
+                            Order::SandboxLimitOrder(sandbox_limit_order) => {
+                                if let None =
+                                    slo_at_execution_price.get(&sandbox_limit_order.order_id)
+                                {
+                                    slo_at_execution_price
+                                        .insert(sandbox_limit_order.order_id, sandbox_limit_order);
+                                }
+                            }
+
+                            Order::LimitOrder(limit_order) => {
+                                if let None = lo_at_execution_price.get(&limit_order.order_id) {
+                                    lo_at_execution_price.insert(limit_order.order_id, limit_order);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //:: Simulate sandbox limit orders and generate execution transaction calldata
+    //simulate and batch sandbox limit orders
+    // simulate::simulate_and_batch_sandbox_limit_orders(
+    //     slo_at_execution_price,
+    //     simulated_markets,
+    //     v3_quoter_address,
+    //     provider,
+    // )
+    // .await?;
+
+    //simulate and batch limit orders
+
+    //:: Simulate sandbox limit orders and generate execution transaction calldata
+    let limit_order_execution_bundle =
+        simulate::simulate_and_batch_limit_orders(lo_at_execution_price, simulated_markets, weth);
+
+    //execute sandbox limit orders
+
+    //execute  limit orders
+    for order_group in limit_order_execution_bundle.order_groups {
+        let signed_tx = execution::construct_signed_lo_execution_transaction(
+            limit_order_router,
+            order_group.order_ids,
+            wallet.clone(),
+            provider.clone(),
+            chain,
+        )
+        .await?;
+
+        let pending_tx = provider.send_transaction(signed_tx, None).await?;
+
+        //TODO: add the transaction to in flight orders and juggle the nonces
+    }
+
+    Ok(())
+}
