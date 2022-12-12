@@ -144,7 +144,7 @@ pub fn initialize_block_filter(dexes: Vec<Dex>) -> Filter {
 
     //Add the swap/sync event signature for each dex variant
     for dex in dexes {
-        let sync_event_signature = dex.dex_variant.sync_event_signature();
+        let sync_event_signature = dex.sync_event_signature();
         if !event_signatures.contains(&sync_event_signature) {
             event_signatures.push(sync_event_signature);
         }
