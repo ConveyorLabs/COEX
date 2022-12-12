@@ -1,8 +1,8 @@
+use cfmms::error::CFFMError;
 use ethers::{
     prelude::{AbiError, ContractError},
     providers::{JsonRpcClient, Provider, ProviderError},
 };
-use pair_sync::error::PairSyncError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -20,7 +20,7 @@ where
     #[error("Join error")]
     JoinError(#[from] JoinError),
     #[error("Pair sync error")]
-    PairSyncError(#[from] PairSyncError<P>),
+    PairSyncError(#[from] CFFMError<P>),
     #[error("Invalid order group index")]
     InvalidOrderGroupIndex(),
 }

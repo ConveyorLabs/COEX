@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
+use cfmms::{
+    dex::{Dex, DexVariant},
+    pool,
+};
 use ethers::{
     abi::{ethabi::Bytes, Event},
     types::{Filter, Log, H256},
-};
-use pair_sync::{
-    dex::{Dex, DexVariant},
-    pool,
 };
 
 use crate::abi;

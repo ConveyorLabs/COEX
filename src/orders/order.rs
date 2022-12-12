@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use cfmms::pool::Pool;
 use ethers::{
     abi::{decode, ParamType, RawLog, Tokenizable},
     prelude::EthLogDecode,
@@ -11,7 +12,6 @@ use ethers::{
     types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U256},
 };
 use num_bigfloat::BigFloat;
-use pair_sync::pool::Pool;
 
 use crate::{
     abi::{

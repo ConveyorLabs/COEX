@@ -12,7 +12,7 @@ serde = "1.0.145"
 ethers = { version = "0.17.0", features = ["abigen", "ws", "ipc", "rustls"] }
 tokio = { version = "1.21.1", features = ["full"] }
 serde_derive = "1.0.147"
-cffms = "0.1.1"
+cfmms = "0.1.1"
 thiserror = "1.0.36"
 num-bigfloat = "1.6.0"
 uniswap_v3_math = "0.1.0"

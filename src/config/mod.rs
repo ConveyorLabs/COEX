@@ -6,7 +6,7 @@ use ethers::{
     types::{BlockNumber, H160},
 };
 
-use pair_sync::dex::{Dex, DexVariant};
+use cfmms::dex::{Dex, DexVariant};
 use rand::Rng;
 use serde::Deserialize;
 

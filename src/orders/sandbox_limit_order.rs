@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use cfmms::pool::Pool;
 use ethers::types::{H160, H256, U256};
-use pair_sync::pool::Pool;
 
 use crate::markets::market::get_best_market_price;
 

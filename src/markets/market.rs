@@ -4,6 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use cfmms::{dex::Dex, pool::Pool};
 use ethers::{
     abi::{decode, token, ParamType},
     prelude::k256::elliptic_curve::bigint::Encoding,
@@ -11,7 +12,6 @@ use ethers::{
     types::{Log, H160, H256, U256},
     utils::keccak256,
 };
-use pair_sync::{dex::Dex, pool::Pool};
 
 use crate::{
     error::BeltError,

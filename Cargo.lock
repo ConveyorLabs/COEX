@@ -172,9 +172,9 @@ checksum = "2dabbe35f96fb9507f7330793dc490461b2962659ac5d427181e451a623751d1"
 name = "belt"
 version = "0.1.0"
 dependencies = [
+ "cfmms",
  "ethers",
  "num-bigfloat",
- "pair_sync",
  "rand",
  "serde",
  "serde_derive",
@@ -183,7 +183,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "toml",
- "uniswap_v3_math",
+ "uniswap_v3_math 0.1.0",
 ]
 
 [[package]]
@@ -458,6 +458,24 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "cfmms"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e61c58410114b952a5045124989ad095cbaa57ac80234c7466795e30979b03b7"
+dependencies = [
+ "async-trait",
+ "ethers",
+ "futures",
+ "indicatif 0.17.2",
+ "num-bigfloat",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "uniswap_v3_math 0.2.2",
+]
 
 [[package]]
 name = "chrono"
@@ -1980,23 +1998,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b7820b9daea5457c9f21c69448905d723fbd21136ccf521748f23fd49e723ee"
 
 [[package]]
-name = "pair_sync"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e16413d24a61ad2e34fbd1944534952094f0eb19b5e54b090b70255ba9dbe599"
-dependencies = [
- "async-trait",
- "ethers",
- "futures",
- "indicatif 0.17.2",
- "num-bigfloat",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "parity-scale-codec"
 version = "3.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3384,6 +3385,16 @@ name = "uniswap_v3_math"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "996989d993a91bfd4f6cbca87854c4b885cb13f7147e4af1d3cadd4f0cd2e0dc"
+dependencies = [
+ "ethers",
+ "thiserror",
+]
+
+[[package]]
+name = "uniswap_v3_math"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acab27de1db04fe8a114d595bb8be629b7a6bf4a7775b2ec7e8084d36d7bcce9"
 dependencies = [
  "ethers",
  "thiserror",

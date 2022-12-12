@@ -6,12 +6,12 @@ use std::{
     sync::Arc,
 };
 
+use cfmms::pool::{Pool, UniswapV2Pool};
 use ethers::{
     abi::{self, ethabi::Bytes, FixedBytes, Token},
     providers::{JsonRpcClient, Provider},
     types::{H160, H256, U256},
 };
-use pair_sync::pool::{Pool, UniswapV2Pool};
 
 use crate::{
     error::BeltError,

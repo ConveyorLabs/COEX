@@ -16,6 +16,7 @@ use ethers::signers::{LocalWallet, Wallet};
 use ethers::types::Log;
 use events::BeltEvent;
 use markets::market::{self};
+use orders::execution;
 use orders::order::{self};
 
 #[tokio::main]
@@ -81,7 +82,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         //Evaluate orders for execution
         if markets_updated.len() > 0 {
-            order::evaluate_and_execute_orders(
+            execution::evaluate_and_execute_orders(
                 markets_updated,
                 market_to_affected_orders.clone(),
                 active_orders.clone(),
