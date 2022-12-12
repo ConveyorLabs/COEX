@@ -14,13 +14,12 @@ pub mod orders;
 
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
-use ethers::signers::{LocalWallet, Wallet};
-use ethers::types::{Log, H160, H256, U256};
-use events::BeltEvent;
+use ethers::types::{H160, H256, U256};
 use markets::market::{self, Market};
 use orders::execution;
 use orders::order::{self, Order};
 
+//TODO: move this to bin
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     //Initialize a new configuration
