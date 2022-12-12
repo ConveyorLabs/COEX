@@ -13,7 +13,12 @@ use ethers::{
     },
 };
 
-use crate::{abi, config::Chain, error::BeltError, markets::market::Market};
+use crate::{
+    abi,
+    config::{self, Chain},
+    error::BeltError,
+    markets::market::Market,
+};
 
 use super::{
     limit_order::LimitOrder,
@@ -215,11 +220,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     markets: Arc<Mutex<HashMap<U256, Market>>>,
-    weth: H160,
-    sandbox_limit_order_router: H160,
-    limit_order_router: H160,
-    wallet: Arc<LocalWallet>,
-    chain: &Chain,
+    configuration: &config::Config,
     provider: Arc<Provider<P>>,
 ) -> Result<(), BeltError<P>> {
     //:: Acquire the lock on all of the data structures that have a mutex
@@ -245,7 +246,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
             for order_id in affected_orders {
                 if let Some(order) = active_orders.get(&order_id) {
-                    if order.can_execute(&markets, weth) {
+                    if order.can_execute(&markets, configuration.weth_address) {
                         //Add the market to the simulation markets structure
                         simulated_markets.insert(
                             market_id,
@@ -290,19 +291,22 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     //simulate and batch limit orders
 
     //:: Simulate sandbox limit orders and generate execution transaction calldata
-    let limit_order_execution_bundle =
-        simulate::simulate_and_batch_limit_orders(lo_at_execution_price, simulated_markets, weth);
+    let limit_order_execution_bundle = simulate::simulate_and_batch_limit_orders(
+        lo_at_execution_price,
+        simulated_markets,
+        configuration.weth_address,
+    );
 
     //execute sandbox limit orders
 
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
         let signed_tx = construct_signed_lo_execution_transaction(
-            limit_order_router,
+            configuration.limit_order_book,
             order_group.order_ids,
-            wallet.clone(),
+            configuration.wallet.clone(),
             provider.clone(),
-            chain,
+            &configuration.chain,
         )
         .await?;
 

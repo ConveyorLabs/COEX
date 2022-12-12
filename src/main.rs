@@ -24,10 +24,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let configuration = config::Config::new();
 
     let provider: Arc<Provider<Http>> = Arc::new(
-        Provider::try_from(configuration.http_endpoint)
+        Provider::try_from(&configuration.http_endpoint)
             .expect("Could not initialize http provider from endpoint"),
     );
-    let stream_provider = Provider::<Ws>::connect(configuration.ws_endpoint).await?;
+    let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
 
     //Initialize active orders
     let active_orders = orders::order::initialize_active_orders(
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await?;
 
     let mut block_stream = stream_provider.subscribe_blocks().await?;
-    let block_filter = events::initialize_block_filter(configuration.dexes);
+    let block_filter = events::initialize_block_filter(&configuration.dexes);
     //Get a mapping of event signature to event for quick lookup
     let event_sig_to_belt_event = events::get_event_signature_to_belt_event();
 
@@ -87,11 +87,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 market_to_affected_orders.clone(),
                 active_orders.clone(),
                 markets.clone(),
-                configuration.weth_address,
-                configuration.sandbox_limit_order_book,
-                configuration.limit_order_book,
-                configuration.wallet.clone(),
-                &configuration.chain,
+                &configuration,
                 provider.clone(),
             )
             .await?;

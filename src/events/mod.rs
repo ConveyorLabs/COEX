@@ -138,7 +138,7 @@ pub fn get_event_signature_to_belt_event() -> HashMap<H256, BeltEvent> {
 
 //Initializes a new filter to listen for price updates
 //Returns a Filter and Hashset to check
-pub fn initialize_block_filter(dexes: Vec<Dex>) -> Filter {
+pub fn initialize_block_filter(dexes: &[Dex]) -> Filter {
     //Create the event log signature
     let mut event_signatures: Vec<H256> = vec![];
 
