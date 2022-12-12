@@ -2,7 +2,7 @@ use std::{fs::read_to_string, str::FromStr, vec};
 
 use ethers::types::{BlockNumber, H160};
 
-use pair_sync::dex::{Dex, DexVariant};
+use cfmms::dex::{Dex, DexVariant};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

@@ -4,6 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use cfmms::pool::Pool;
 use ethers::{
     abi::{decode, Detokenize, Param, ParamType, RawLog, Tokenizable},
     prelude::{Bytes, EthLogDecode},
@@ -14,7 +15,6 @@ use ethers::{
     },
 };
 use num_bigfloat::BigFloat;
-use pair_sync::pool::Pool;
 
 use crate::{
     abi::{

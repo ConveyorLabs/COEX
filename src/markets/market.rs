@@ -4,12 +4,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use cfmms::{dex::Dex, pool::Pool};
 use ethers::{
     abi::{decode, ParamType},
     providers::{JsonRpcClient, Provider},
     types::{Log, H160, H256},
 };
-use pair_sync::{dex::Dex, pool::Pool};
 
 use crate::{
     error::BeltError,

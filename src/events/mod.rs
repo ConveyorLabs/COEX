@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
+use cfmms::dex::{Dex, DexVariant};
 use ethers::{
-    abi::{ethabi::Bytes, Event},
+    abi::Event,
     types::{Filter, H256},
 };
-use pair_sync::dex::{Dex, DexVariant};
-
-use crate::abi;
 
 #[derive(Copy, Clone)]
 pub enum BeltEvent {

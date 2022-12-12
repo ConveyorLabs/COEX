@@ -4,11 +4,11 @@ use std::{
     sync::Arc,
 };
 
+use cfmms::pool::{Pool, UniswapV2Pool};
 use ethers::{
     providers::{JsonRpcClient, Provider},
     types::{H160, H256, U256},
 };
-use pair_sync::pool::{Pool, UniswapV2Pool};
 
 use crate::{error::BeltError, markets::market::get_market_id};
 
@@ -53,7 +53,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>
                                     .simulate_swap(
                                         order.token_in,
                                         order.amount_in_remaining,
-                                        v3_quoter_address,
                                         provider.clone(),
                                     )
                                     .await?

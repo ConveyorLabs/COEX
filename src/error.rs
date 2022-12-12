@@ -1,8 +1,8 @@
+use cfmms::error::PairSyncError;
 use ethers::{
     prelude::{AbiError, ContractError},
     providers::{JsonRpcClient, Provider, ProviderError},
 };
-use pair_sync::error::PairSyncError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
