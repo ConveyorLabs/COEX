@@ -1,38 +1,30 @@
 use std::{
     collections::{HashMap, HashSet},
-    str::FromStr,
     sync::{Arc, Mutex},
 };
 
 use cfmms::pool::Pool;
 use ethers::{
-    abi::{decode, Detokenize, Param, ParamType, RawLog, Tokenizable},
-    prelude::{Bytes, EthLogDecode},
-    providers::{JsonRpcClient, JsonRpcClientWrapper, Middleware, Provider},
-    types::{
-        transaction::eip2718::TypedTransaction, BlockNumber, Eip1559TransactionRequest, Filter,
-        Log, TransactionRequest, ValueOrArray, H160, H256,
-    },
+    abi::{decode, ParamType, RawLog, Tokenizable},
+    prelude::EthLogDecode,
+    providers::{JsonRpcClient, Middleware, Provider},
+    signers::LocalWallet,
+    types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U256},
 };
 use num_bigfloat::BigFloat;
 
 use crate::{
     abi::{
-        self, ISandboxLimitOrderBook, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter,
-        OrderFufilledFilter, OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter,
-        OrderUpdatedFilter,
+        self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFufilledFilter,
+        OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
     },
     config::Chain,
-    error::BeltError,
+    error::ExecutorError,
     events::BeltEvent,
-    markets::market::{self, get_best_market_price, get_market_id},
+    markets::market::{self, Market},
 };
 
-use super::{
-    limit_order::{self, LimitOrder},
-    sandbox_limit_order::{self, SandboxLimitOrder},
-    simulate,
-};
+use super::{execution, limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, simulate};
 
 #[derive(Debug)]
 pub enum Order {
@@ -49,7 +41,7 @@ impl Order {
     fn from_bytes<P: JsonRpcClient>(
         data: &[u8],
         order_variant: OrderVariant,
-    ) -> Result<Order, BeltError<P>> {
+    ) -> Result<Order, ExecutorError<P>> {
         //TODO: refactor this so that there is a from bytes for sandbox limit order struct and limit order struct
         match order_variant {
             OrderVariant::LimitOrder => {
@@ -226,7 +218,7 @@ impl Order {
         }
     }
 
-    pub fn can_execute(&self, markets: &HashMap<u64, HashMap<H160, Pool>>, weth: H160) -> bool {
+    pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
         match self {
             Order::SandboxLimitOrder(sandbox_limit_order) => {
                 sandbox_limit_order.can_execute(markets, weth)
@@ -242,7 +234,7 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
     limit_order_book_address: H160,
     protocol_creation_block: BlockNumber,
     provider: Arc<Provider<P>>,
-) -> Result<Arc<Mutex<HashMap<H256, Order>>>, BeltError<P>> {
+) -> Result<Arc<Mutex<HashMap<H256, Order>>>, ExecutorError<P>> {
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
@@ -318,7 +310,7 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
     order_events: Vec<(BeltEvent, Log)>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
+) -> Result<(), ExecutorError<P>> {
     //Handle order updates
     for order_event in order_events {
         let belt_event = order_event.0;
@@ -439,7 +431,7 @@ pub async fn get_remote_order<P: JsonRpcClient>(
     order_id: H256,
     order_book_address: H160,
     provider: Arc<Provider<P>>,
-) -> Result<Order, BeltError<P>> {
+) -> Result<Order, ExecutorError<P>> {
     let slob = abi::ISandboxLimitOrderBook::new(order_book_address, provider);
 
     let order_bytes = slob.get_order_by_id(order_id.into()).call().await?;
@@ -452,7 +444,7 @@ pub async fn place_order<P: JsonRpcClient>(
     order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
+) -> Result<(), ExecutorError<P>> {
     let order = get_remote_order(order_id, order_book_address, provider.clone()).await?;
 
     active_orders
@@ -468,7 +460,7 @@ pub async fn update_order<P: JsonRpcClient>(
     order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
+) -> Result<(), ExecutorError<P>> {
     let order = get_remote_order(order_id, order_book_address, provider.clone()).await?;
 
     active_orders
@@ -556,124 +548,6 @@ pub fn update_execution_credit(
             Order::LimitOrder(limit_order) => {
                 limit_order.execution_credit = updated_execution_credit;
             }
-        }
-    }
-}
-
-pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
-    affected_markets: HashSet<u64>,
-    market_to_affected_orders: Arc<Mutex<HashMap<u64, HashSet<H256>>>>,
-    active_orders: Arc<Mutex<HashMap<H256, Order>>>,
-    markets: Arc<Mutex<HashMap<u64, HashMap<H160, Pool>>>>,
-    weth: H160,
-    v3_quoter_address: H160,
-    provider: Arc<Provider<P>>,
-) -> Result<(), BeltError<P>> {
-    let market_to_affected_orders = market_to_affected_orders
-        .lock()
-        .expect("Could not acquire mutex lock");
-    let markets = markets.lock().expect("Could not acquire mutex lock");
-    let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
-
-    let mut simulated_markets: HashMap<u64, HashMap<H160, Pool>> = HashMap::new();
-
-    //Accumulate sandbox limit orders at execution price
-    //@dev: OrderId to marketId
-    let mut slo_at_execution_price: HashMap<H256, &SandboxLimitOrder> = HashMap::new();
-    //Accumulate limit orders at execution price
-    let mut lo_at_execution_price: HashMap<H256, &LimitOrder> = HashMap::new();
-
-    for market_id in affected_markets {
-        if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
-            for order_id in affected_orders {
-                if let Some(order) = active_orders.get(&order_id) {
-                    if order.can_execute(&markets, weth) {
-                        //Add the market to the simulation markets structure
-                        simulated_markets.insert(
-                            market_id,
-                            markets
-                                .get(&market_id)
-                                .expect("Could not get market from markets")
-                                .clone(),
-                        );
-
-                        match order {
-                            Order::SandboxLimitOrder(sandbox_limit_order) => {
-                                if let None =
-                                    slo_at_execution_price.get(&sandbox_limit_order.order_id)
-                                {
-                                    slo_at_execution_price
-                                        .insert(sandbox_limit_order.order_id, sandbox_limit_order);
-                                }
-                            }
-
-                            Order::LimitOrder(limit_order) => {
-                                if let None = lo_at_execution_price.get(&limit_order.order_id) {
-                                    lo_at_execution_price.insert(limit_order.order_id, limit_order);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    //simulate and batch sandbox limit orders
-    simulate::simulate_and_batch_sandbox_limit_orders(
-        slo_at_execution_price,
-        simulated_markets,
-        v3_quoter_address,
-        provider,
-    )
-    .await?;
-
-    //simulate and batch limit orders
-
-    //execute sandbox limit orders
-
-    //execute  limit orders
-
-    Ok(())
-}
-
-async fn construct_execution_transaction<P: 'static + JsonRpcClient>(
-    execution_address: H160,
-    data: Bytes,
-    provider: Arc<Provider<P>>,
-    chain: Chain,
-) -> Result<TransactionRequest, BeltError<P>> {
-    //TODO: For the love of god, refactor the transaction composition
-
-    match chain {
-        Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
-            let tx = Eip1559TransactionRequest::new()
-                .to(execution_address)
-                .data(data);
-
-            //Update transaction gas fees
-            let (max_priority_fee_per_gas, max_fee_per_gas) =
-                provider.estimate_eip1559_fees(None).await?;
-            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
-            let tx = tx.max_fee_per_gas(max_fee_per_gas);
-
-            let mut tx: TypedTransaction = tx.into();
-            let gas_limit = provider.estimate_gas(&tx).await?;
-            tx.set_gas(gas_limit);
-
-            Ok(tx.into())
-        }
-        Chain::BSC | Chain::Cronos => {
-            let tx = TransactionRequest::new().to(execution_address).data(data);
-
-            let gas_price = provider.get_gas_price().await?;
-            let tx = tx.gas_price(gas_price);
-
-            let mut tx: TypedTransaction = tx.into();
-            let gas_limit = provider.estimate_gas(&tx).await?;
-            tx.set_gas(gas_limit);
-
-            Ok(tx.into())
         }
     }
 }

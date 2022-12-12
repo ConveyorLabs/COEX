@@ -1,4 +1,4 @@
-use cfmms::error::PairSyncError;
+use cfmms::error::CFFMError;
 use ethers::{
     prelude::{AbiError, ContractError},
     providers::{JsonRpcClient, Provider, ProviderError},
@@ -7,7 +7,7 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 #[derive(Error, Debug)]
-pub enum BeltError<P>
+pub enum ExecutorError<P>
 where
     P: JsonRpcClient,
 {
@@ -20,5 +20,7 @@ where
     #[error("Join error")]
     JoinError(#[from] JoinError),
     #[error("Pair sync error")]
-    PairSyncError(#[from] PairSyncError<P>),
+    PairSyncError(#[from] CFFMError<P>),
+    #[error("Invalid order group index")]
+    InvalidOrderGroupIndex(),
 }

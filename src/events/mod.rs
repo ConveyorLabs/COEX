@@ -1,10 +1,15 @@
 use std::collections::HashMap;
 
-use cfmms::dex::{Dex, DexVariant};
-use ethers::{
-    abi::Event,
-    types::{Filter, H256},
+use cfmms::{
+    dex::{Dex, DexVariant},
+    pool,
 };
+use ethers::{
+    abi::{ethabi::Bytes, Event},
+    types::{Filter, Log, H256},
+};
+
+use crate::abi;
 
 #[derive(Copy, Clone)]
 pub enum BeltEvent {
@@ -133,13 +138,13 @@ pub fn get_event_signature_to_belt_event() -> HashMap<H256, BeltEvent> {
 
 //Initializes a new filter to listen for price updates
 //Returns a Filter and Hashset to check
-pub fn initialize_block_filter(dexes: Vec<Dex>) -> Filter {
+pub fn initialize_block_filter(dexes: &[Dex]) -> Filter {
     //Create the event log signature
     let mut event_signatures: Vec<H256> = vec![];
 
     //Add the swap/sync event signature for each dex variant
     for dex in dexes {
-        let sync_event_signature = dex.dex_variant.sync_event_signature();
+        let sync_event_signature = dex.sync_event_signature();
         if !event_signatures.contains(&sync_event_signature) {
             event_signatures.push(sync_event_signature);
         }
@@ -159,6 +164,26 @@ pub fn initialize_block_filter(dexes: Vec<Dex>) -> Filter {
 
     //Create a new filter
     Filter::new().topic0(event_signatures)
+}
+
+pub fn sort_events(
+    event_logs: &[Log],
+    event_sig_to_belt_event: &HashMap<H256, BeltEvent>,
+) -> (Vec<(BeltEvent, Log)>, Vec<Log>) {
+    //Separate order event logs and pool event logs
+    let mut order_events: Vec<(BeltEvent, Log)> = vec![];
+    let mut pool_events: Vec<Log> = vec![];
+    for log in event_logs {
+        if let Some(belt_event) = event_sig_to_belt_event.get(&log.topics[0]) {
+            match belt_event {
+                BeltEvent::UniswapV2PoolUpdate => pool_events.push(log.to_owned()),
+                BeltEvent::UniswapV3PoolUpdate => pool_events.push(log.to_owned()),
+                _ => order_events.push((*belt_event, log.to_owned())),
+            }
+        }
+    }
+
+    (order_events, pool_events)
 }
 
 #[cfg(test)]

@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 
 use cfmms::pool::Pool;
+<<<<<<< HEAD
 use ethers::types::{H160, H256};
+=======
+use ethers::types::{H160, H256, U256};
+>>>>>>> 0xKitsune/limit-order-simulation
 
 use crate::markets::market::get_best_market_price;
 
@@ -22,13 +26,13 @@ pub struct SandboxLimitOrder {
 }
 
 impl SandboxLimitOrder {
-    pub fn can_execute(&self, markets: &HashMap<u64, HashMap<H160, Pool>>, weth: H160) -> bool {
+    pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
         self.price >= self.get_best_market_price(markets, weth)
     }
 
     pub fn get_best_market_price(
         &self,
-        markets: &HashMap<u64, HashMap<H160, Pool>>,
+        markets: &HashMap<U256, HashMap<H160, Pool>>,
         weth: H160,
     ) -> f64 {
         //Check if the order is at execution price

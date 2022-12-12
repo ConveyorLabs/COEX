@@ -175,9 +175,11 @@ dependencies = [
  "cfmms",
  "ethers",
  "num-bigfloat",
+ "rand",
  "serde",
  "serde_derive",
  "serde_json",
+ "sha3",
  "thiserror",
  "tokio",
  "toml",
@@ -459,9 +461,15 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cfmms"
+<<<<<<< HEAD
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e61c58410114b952a5045124989ad095cbaa57ac80234c7466795e30979b03b7"
+=======
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bdda3095e88e5e14877cc4d55e42e4cc80b6ac4ed5270ae3c4569fb190309d6"
+>>>>>>> 0xKitsune/limit-order-simulation
 dependencies = [
  "async-trait",
  "ethers",

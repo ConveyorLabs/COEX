@@ -1,7 +1,9 @@
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use ethers::providers::{Http, Provider, Ws};
+use error::ExecutorError;
+use ethers::providers::{Http, JsonRpcClient, Provider, ProviderError, Ws};
 
 pub mod abi;
 pub mod config;
@@ -12,21 +14,50 @@ pub mod orders;
 
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
-use ethers::types::Log;
-use events::BeltEvent;
-use markets::market::{self};
-use orders::order::{self};
+use ethers::types::{H160, H256, U256};
+use markets::market::{self, Market};
+use orders::execution;
+use orders::order::{self, Order};
 
+//TODO: move this to bin
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    //Initialize a new configuration
     let configuration = config::Config::new();
+    //Initialize the providers
+    let provider: Arc<Provider<Http>> = Arc::new(Provider::try_from(&configuration.http_endpoint)?);
+    let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
+    //Initialize the markets and order structures
+    let (active_orders, pool_address_to_market_id, markets, market_to_affected_orders) =
+        initialize_executor(&configuration, provider.clone()).await?;
 
-    let provider: Arc<Provider<Http>> = Arc::new(
-        Provider::try_from(configuration.http_endpoint)
-            .expect("Could not initialize http provider from endpoint"),
-    );
-    let stream_provider = Provider::<Ws>::connect(configuration.ws_endpoint).await?;
+    //Run an infinite loop, executing orders that are ready and updating local structures with each new block
+    run_loop(
+        configuration,
+        provider,
+        stream_provider,
+        active_orders,
+        pool_address_to_market_id,
+        markets,
+        market_to_affected_orders,
+    )
+    .await?;
 
+    Ok(())
+}
+
+async fn initialize_executor<P: 'static + JsonRpcClient>(
+    configuration: &config::Config,
+    provider: Arc<Provider<P>>,
+) -> Result<
+    (
+        Arc<Mutex<HashMap<H256, Order>>>,         //active orders
+        HashMap<H160, U256>,                      //pool_address_to_market_id
+        Arc<Mutex<HashMap<U256, Market>>>,        //markets
+        Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
+    ),
+    ExecutorError<P>,
+> {
     //Initialize active orders
     let active_orders = orders::order::initialize_active_orders(
         configuration.sandbox_limit_order_book,
@@ -34,7 +65,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         configuration.protocol_creation_block,
         provider.clone(),
     )
-    .await?;
+    .await
+    .expect("There was an issue while initializing active orders");
 
     //initialize markets
     let (pool_address_to_market_id, markets, market_to_affected_orders) =
@@ -44,36 +76,45 @@ async fn main() -> Result<(), Box<dyn Error>> {
             configuration.weth_address,
             provider.clone(),
         )
-        .await?;
+        .await
+        .expect("There was an issue while initializing market structures");
 
+    Ok((
+        active_orders,
+        pool_address_to_market_id,
+        markets,
+        market_to_affected_orders,
+    ))
+}
+
+async fn run_loop<P: 'static + JsonRpcClient>(
+    configuration: config::Config,
+    provider: Arc<Provider<P>>,
+    stream_provider: Provider<Ws>,
+    active_orders: Arc<Mutex<HashMap<H256, Order>>>,
+    pool_address_to_market_id: HashMap<H160, U256>,
+    markets: Arc<Mutex<HashMap<U256, Market>>>,
+    market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
+) -> Result<(), ExecutorError<P>> {
     let mut block_stream = stream_provider.subscribe_blocks().await?;
-    let block_filter = events::initialize_block_filter(configuration.dexes);
+    let block_filter = events::initialize_block_filter(&configuration.dexes);
     //Get a mapping of event signature to event for quick lookup
     let event_sig_to_belt_event = events::get_event_signature_to_belt_event();
 
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
-        //Update block filter to get logs from the header block number
-        let block_filter = block_filter.clone().from_block(
-            block
-                .number
-                .expect("Could not unwrap block number from block header"),
+        let (order_events, pool_events) = events::sort_events(
+            &provider
+                .get_logs(
+                    &block_filter.clone().from_block(
+                        block
+                            .number
+                            .expect("Could not unwrap block number from block header"),
+                    ),
+                )
+                .await?,
+            &event_sig_to_belt_event,
         );
-
-        let event_logs = provider.get_logs(&block_filter).await?;
-
-        //Separate order event logs and pool event logs
-        let mut order_events: Vec<(BeltEvent, Log)> = vec![];
-        let mut pool_events: Vec<Log> = vec![];
-        for log in event_logs {
-            if let Some(belt_event) = event_sig_to_belt_event.get(&log.topics[0]) {
-                match belt_event {
-                    BeltEvent::UniswapV2PoolUpdate => pool_events.push(log),
-                    BeltEvent::UniswapV3PoolUpdate => pool_events.push(log),
-                    _ => order_events.push((*belt_event, log)),
-                }
-            }
-        }
 
         //Handle order updates
         order::handle_order_updates(order_events, active_orders.clone(), provider.clone()).await?;
@@ -85,17 +126,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
             markets.clone(),
         );
 
+        //TODO: add logic to check order cancellation and refresh orders
+
         //Evaluate orders for execution
         if markets_updated.len() > 0 {
-            order::evaluate_and_execute_orders(
+            execution::evaluate_and_execute_orders(
                 markets_updated,
                 market_to_affected_orders.clone(),
                 active_orders.clone(),
                 markets.clone(),
-                configuration.weth_address,
-                configuration.uni_v3_quoter,
+                &configuration,
                 provider.clone(),
-            );
+            )
+            .await?;
         }
     }
 
