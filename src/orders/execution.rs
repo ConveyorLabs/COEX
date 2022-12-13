@@ -1,3 +1,4 @@
+use core::slice::SlicePattern;
 use std::{
     collections::{HashMap, HashSet},
     future::pending,
@@ -223,6 +224,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     configuration: &config::Config,
     provider: Arc<Provider<P>>,
+    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
 ) -> Result<(), ExecutorError<P>> {
     //:: Acquire the lock on all of the data structures that have a mutex
     let market_to_affected_orders = market_to_affected_orders
@@ -313,7 +315,23 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
 
         let pending_tx = provider.send_transaction(signed_tx, None).await?;
 
-        //TODO: add the transaction to in flight orders and juggle the nonces
+        let x = order_group.clone();
+
+        order_group
+            .order_ids
+            .clone()
+            .iter()
+            .map(|f| H256::from_slice(f.as_slice()))
+            .collect::<Vec<H256>>();
+
+        // pending_transactions_sender.send((
+        //     pending_tx.tx_hash(),
+        //     order_group
+        //         .order_ids
+        //         .into_iter()
+        //         .map(|f| H256::from_slice(f.as_slice()))
+        //         .collect(),
+        // ));
     }
 
     Ok(())

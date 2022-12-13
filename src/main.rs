@@ -19,6 +19,8 @@ use ethers::types::{H160, H256, U256};
 use markets::market::{self, Market};
 use orders::execution;
 use orders::order::{self, Order};
+use pending_transactions::handle_pending_transactions;
+use tokio::sync::mpsc::Sender;
 
 //TODO: move this to bin
 #[tokio::main]
@@ -29,8 +31,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let provider: Arc<Provider<Http>> = Arc::new(Provider::try_from(&configuration.http_endpoint)?);
     let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
     //Initialize the markets and order structures
-    let (active_orders, pool_address_to_market_id, markets, market_to_affected_orders) =
-        initialize_executor(&configuration, provider.clone()).await?;
+    let (
+        active_orders,
+        pending_order_ids,
+        pool_address_to_market_id,
+        markets,
+        market_to_affected_orders,
+    ) = initialize_executor(&configuration, provider.clone()).await?;
+
+    let pending_transactions_sender =
+        Arc::new(handle_pending_transactions(pending_order_ids, provider.clone()).await);
 
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
@@ -41,6 +51,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         pool_address_to_market_id,
         markets,
         market_to_affected_orders,
+        pending_transactions_sender,
     )
     .await?;
 
@@ -53,6 +64,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
 ) -> Result<
     (
         Arc<Mutex<HashMap<H256, Order>>>,         //active orders
+        Arc<Mutex<HashSet<H256>>>,                //pending_order_ids
         HashMap<H160, U256>,                      //pool_address_to_market_id
         Arc<Mutex<HashMap<U256, Market>>>,        //markets
         Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
@@ -82,6 +94,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
 
     Ok((
         active_orders,
+        Arc::new(Mutex::new(HashSet::new())),
         pool_address_to_market_id,
         markets,
         market_to_affected_orders,
@@ -96,6 +109,7 @@ async fn run_loop<P: 'static + JsonRpcClient>(
     pool_address_to_market_id: HashMap<H160, U256>,
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
+    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
 ) -> Result<(), ExecutorError<P>> {
     let mut block_stream = stream_provider.subscribe_blocks().await?;
     let block_filter = events::initialize_block_filter(&configuration.dexes);
@@ -138,6 +152,7 @@ async fn run_loop<P: 'static + JsonRpcClient>(
                 markets.clone(),
                 &configuration,
                 provider.clone(),
+                pending_transactions_sender.clone(),
             )
             .await?;
         }
