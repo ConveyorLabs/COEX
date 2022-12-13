@@ -22,6 +22,7 @@ use crate::{
     error::ExecutorError,
     events::BeltEvent,
     markets::market::{self, Market},
+    orders::order,
 };
 
 use super::{execution, limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, simulate};
@@ -274,18 +275,25 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
                 topics: log.topics,
                 data: log.data.to_vec(),
             })
-            .unwrap();
+            .expect("Error when decoding log");
 
             if log.address == sandbox_limit_order_book_address {
                 for order_id in order_placed_log.order_ids {
                     let order_id = H256::from(order_id);
 
-                    let order = get_remote_order(
+                    let order = if let Ok(order) = get_remote_order(
                         order_id,
                         sandbox_limit_order_book_address,
                         provider.clone(),
                     )
-                    .await?;
+                    .await
+                    {
+                        println!("exists {:?}", order_id);
+                        order
+                    } else {
+                        println!("does not exist {:?}", order_id);
+                        continue;
+                    };
 
                     active_orders.insert(order_id, order);
                 }
@@ -293,9 +301,15 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
                 for order_id in order_placed_log.order_ids {
                     let order_id = H256::from(order_id);
 
-                    let order =
-                        get_remote_order(order_id, limit_order_book_address, provider.clone())
-                            .await?;
+                    let order = if let Ok(order) =
+                        get_remote_order(order_id, limit_order_book_address, provider.clone()).await
+                    {
+                        println!("exists {:?}", order_id);
+                        order
+                    } else {
+                        println!("does not exist {:?}", order_id);
+                        continue;
+                    };
 
                     active_orders.insert(order_id, order);
                 }
@@ -433,7 +447,6 @@ pub async fn get_remote_order<P: JsonRpcClient>(
     provider: Arc<Provider<P>>,
 ) -> Result<Order, ExecutorError<P>> {
     let slob = abi::ISandboxLimitOrderBook::new(order_book_address, provider);
-
     let order_bytes = slob.get_order_by_id(order_id.into()).call().await?;
 
     Order::from_bytes(&order_bytes, OrderVariant::SandboxLimitOrder)
