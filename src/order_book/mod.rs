@@ -1,3 +1,5 @@
+use ethers::types::H160;
+
 pub struct SandboxLimitOrderBook(H160);
 pub struct LimitOrderBook(H160);
 

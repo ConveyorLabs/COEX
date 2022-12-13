@@ -11,6 +11,7 @@ pub mod config;
 pub mod error;
 pub mod events;
 pub mod markets;
+pub mod order_book;
 pub mod orders;
 pub mod pending_transactions;
 
