@@ -1,4 +1,3 @@
-use core::slice::SlicePattern;
 use std::{
     collections::{HashMap, HashSet},
     future::pending,
@@ -306,7 +305,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     for order_group in limit_order_execution_bundle.order_groups {
         let signed_tx = construct_signed_lo_execution_transaction(
             configuration.limit_order_book,
-            order_group.order_ids,
+            order_group.order_ids.clone(),
             configuration.wallet.clone(),
             provider.clone(),
             &configuration.chain,
@@ -315,23 +314,15 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
 
         let pending_tx = provider.send_transaction(signed_tx, None).await?;
 
-        let x = order_group.clone();
-
-        order_group
+        let order_ids = order_group
             .order_ids
-            .clone()
             .iter()
             .map(|f| H256::from_slice(f.as_slice()))
             .collect::<Vec<H256>>();
 
-        // pending_transactions_sender.send((
-        //     pending_tx.tx_hash(),
-        //     order_group
-        //         .order_ids
-        //         .into_iter()
-        //         .map(|f| H256::from_slice(f.as_slice()))
-        //         .collect(),
-        // ));
+        pending_transactions_sender
+            .send((pending_tx.tx_hash(), order_ids))
+            .await?;
     }
 
     Ok(())

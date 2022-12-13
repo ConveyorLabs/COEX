@@ -2,6 +2,7 @@ use cfmms::error::CFFMError;
 use ethers::{
     prelude::{AbiError, ContractError},
     providers::{JsonRpcClient, Provider, ProviderError},
+    types::H256,
 };
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -23,4 +24,6 @@ where
     PairSyncError(#[from] CFFMError<P>),
     #[error("Invalid order group index")]
     InvalidOrderGroupIndex(),
+    #[error("tokio::sync::mpsc error")]
+    PendingTransactionSendError(#[from] tokio::sync::mpsc::error::SendError<(H256, Vec<H256>)>),
 }
