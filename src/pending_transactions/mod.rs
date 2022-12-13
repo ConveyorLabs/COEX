@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use ethers::{
@@ -12,6 +13,7 @@ use ethers::{
 //TODO: pass in pending order ids
 pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
     pending_order_ids: Arc<Mutex<HashSet<H256>>>,
+    pending_tx_interval: Duration,
     provider: Arc<Provider<P>>,
 ) -> tokio::sync::mpsc::Sender<(H256, Vec<H256>)> {
     let (tx, mut rx): (
@@ -71,7 +73,9 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
                 }
             }
 
-            //TODO: sleep if any
+            if !pending_tx_interval.is_zero() {
+                tokio::time::sleep(pending_tx_interval);
+            }
         }
     });
 

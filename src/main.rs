@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use error::ExecutorError;
 use ethers::providers::{Http, JsonRpcClient, Provider, ProviderError, Ws};
@@ -20,7 +21,6 @@ use markets::market::{self, Market};
 use orders::execution;
 use orders::order::{self, Order};
 use pending_transactions::handle_pending_transactions;
-use tokio::sync::mpsc::Sender;
 
 //TODO: move this to bin
 #[tokio::main]
@@ -39,8 +39,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         market_to_affected_orders,
     ) = initialize_executor(&configuration, provider.clone()).await?;
 
-    let pending_transactions_sender =
-        Arc::new(handle_pending_transactions(pending_order_ids, provider.clone()).await);
+    let pending_transactions_sender = Arc::new(
+        handle_pending_transactions(
+            pending_order_ids,
+            Duration::new(0, 500000000), //500 ms
+            provider.clone(),
+        )
+        .await,
+    );
 
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
