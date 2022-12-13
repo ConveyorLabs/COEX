@@ -33,7 +33,7 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
         while let Some(pending_transaction) = rx.recv().await {
             pending_transactions_0
                 .lock()
-                .expect("Could not aquire lock on pending transactions")
+                .expect("Could not acquire lock on pending transactions")
                 .insert(pending_transaction.0, pending_transaction.1);
         }
     });
@@ -44,7 +44,7 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
         loop {
             let pending_transactions = pending_transactions_1
                 .lock()
-                .expect("Could not aquire lock on pending transactions")
+                .expect("Could not acquire lock on pending transactions")
                 .clone();
 
             for pending_transaction in pending_transactions {
@@ -56,13 +56,13 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
                         if tx_receipt.is_some() {
                             pending_transactions_1
                                 .lock()
-                                .expect("Could not aquire lock on pending transactions")
+                                .expect("Could not acquire lock on pending transactions")
                                 .remove(&pending_transaction.0);
 
                             for order_id in pending_transaction.1 {
                                 pending_order_ids
                                     .lock()
-                                    .expect("Could not aquire lock on pending_order_ids")
+                                    .expect("Could not acquire lock on pending_order_ids")
                                     .remove(&order_id);
                             }
                         }
@@ -73,8 +73,13 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
                 }
             }
 
-            if !pending_tx_interval.is_zero() {
-                tokio::time::sleep(pending_tx_interval);
+            if !pending_tx_interval.is_zero()
+                && !pending_order_ids
+                    .lock()
+                    .expect("Could not acquire lock on pending_order_ids")
+                    .is_empty()
+            {
+                tokio::time::sleep(pending_tx_interval).await;
             }
         }
     });
