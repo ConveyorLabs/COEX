@@ -21,7 +21,7 @@ where
     #[error("Join error")]
     JoinError(#[from] JoinError),
     #[error("Pair sync error")]
-    PairSyncError(#[from] CFFMError<P>),
+    CFFMError(#[from] CFFMError<P>),
     #[error("Invalid order group index")]
     InvalidOrderGroupIndex(),
     #[error("tokio::sync::mpsc error")]

@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await,
     );
 
-    //TODO: execute orders that are ready but the pool hasnt changed
+    //TODO: execute orders that are ready before any pool updates
 
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
@@ -79,6 +79,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
     ),
     ExecutorError<P>,
 > {
+    //TODO: add info logging
     //Initialize active orders
     let active_orders = orders::order::initialize_active_orders(
         configuration.sandbox_limit_order_book,
