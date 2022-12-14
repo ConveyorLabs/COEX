@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::Debug,
     sync::{Arc, Mutex},
 };
 
@@ -10,6 +11,7 @@ use ethers::{
     providers::{JsonRpcClient, Middleware, Provider},
     types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U256},
 };
+use tracing::{event, info};
 
 use crate::{
     abi::{
@@ -154,8 +156,10 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
 
         let order_variant = if event_log.address == sandbox_limit_order_book_address {
             OrderVariant::SandboxLimitOrder
-        } else {
+        } else if event_log.address == limit_order_book_address {
             OrderVariant::LimitOrder
+        } else {
+            panic!("Unexpected event log address: {:?}", event_log.address);
         };
 
         match belt_event {
@@ -167,6 +171,8 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 .unwrap();
 
                 for order_id in order_placed_log.order_ids {
+                    info!("{:?} Order Placed: {:?}", order_variant, order_id);
+
                     place_order(
                         order_id.into(),
                         event_log.address,
@@ -185,6 +191,8 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 .unwrap();
 
                 for order_id in order_canceled_log.order_ids {
+                    info!("{:?} Order Canceled: {:?}", order_variant, order_id);
+
                     cancel_order(order_id.into(), active_orders.clone());
                 }
             }
@@ -197,6 +205,8 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 .unwrap();
 
                 for order_id in order_updated_log.order_ids {
+                    info!("{:?} Order Updated: {:?}", order_variant, order_id);
+
                     update_order(
                         order_id.into(),
                         event_log.address,
@@ -207,13 +217,15 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                     .await?;
                 }
             }
-            BeltEvent::OrderFufilled => {
+            BeltEvent::OrderFilled => {
                 let order_fufilled_log: OrderFufilledFilter = EthLogDecode::decode_log(&RawLog {
                     topics: event_log.topics,
                     data: event_log.data.to_vec(),
                 })
                 .unwrap();
                 for order_id in order_fufilled_log.order_ids {
+                    info!("{:?} Order Filled: {:?}", order_variant, order_id);
+
                     fufill_order(order_id.into(), active_orders.clone())
                 }
             }
@@ -224,6 +236,12 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                         data: event_log.data.to_vec(),
                     })
                     .unwrap();
+
+                info!(
+                    "{:?} Order Partial Filled: {:?}",
+                    order_variant,
+                    H256::from(order_partial_filled_log.order_id)
+                );
 
                 partial_fill_order(
                     order_partial_filled_log.order_id.into(),
@@ -241,6 +259,12 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 })
                 .unwrap();
 
+                info!(
+                    "{:?} Order Refreshed: {:?}",
+                    order_variant,
+                    H256::from(order_refreshed_log.order_id)
+                );
+
                 refresh_order(
                     order_refreshed_log.order_id.into(),
                     order_refreshed_log.last_refresh_timestamp,
@@ -255,6 +279,12 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                         data: event_log.data.to_vec(),
                     })
                     .unwrap();
+
+                info!(
+                    "{:?} Order Refreshed: {:?}",
+                    order_variant,
+                    H256::from(order_execution_credit_updated_log.order_id)
+                );
 
                 update_execution_credit(
                     order_execution_credit_updated_log.order_id.into(),

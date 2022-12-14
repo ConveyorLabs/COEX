@@ -19,6 +19,7 @@ use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
 use ethers::types::{H160, H256, U256};
 use markets::market::{self, Market};
+use order::OrderVariant;
 use orders::execution;
 use orders::order::{self, Order};
 use pending_transactions::handle_pending_transactions;
@@ -26,11 +27,14 @@ use pending_transactions::handle_pending_transactions;
 //TODO: move this to bin
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let _default_guard = traces::init_tracing();
+
     //Initialize a new configuration
     let configuration = config::Config::new();
     //Initialize the providers
     let provider: Arc<Provider<Http>> = Arc::new(Provider::try_from(&configuration.http_endpoint)?);
     let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
+
     //Initialize the markets and order structures
     let (
         active_orders,
@@ -80,7 +84,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
     ),
     ExecutorError<P>,
 > {
-    //TODO: add info logging
+    info!("Initializing active orders...");
     //Initialize active orders
     let active_orders = orders::order::initialize_active_orders(
         configuration.sandbox_limit_order_book,
@@ -91,9 +95,9 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
     .await
     .expect("There was an issue while initializing active orders");
 
-    println!("Here");
-    info!("Active orders successfully initialized");
+    info!("Active orders initialized");
 
+    info!("Initializing markets...");
     //initialize markets
     let (pool_address_to_market_id, markets, market_to_affected_orders) =
         market::initialize_market_structures(
@@ -104,7 +108,8 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
         )
         .await
         .expect("There was an issue while initializing market structures");
-    println!("Market structures initialized");
+
+    info!("Markets initialized");
 
     Ok((
         active_orders,
@@ -130,10 +135,9 @@ async fn run_loop<P: 'static + JsonRpcClient>(
     //Get a mapping of event signature to event for quick lookup
     let event_sig_to_belt_event = events::get_event_signature_to_belt_event();
 
+    info!("Executor fully initialized, listening for new blocks");
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
-        println!("Block: {:?}", block.number);
-
         let (order_events, pool_events) = events::sort_events(
             &provider
                 .get_logs(

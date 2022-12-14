@@ -16,7 +16,7 @@ pub enum BeltEvent {
     OrderPlaced,
     OrderCanceled,
     OrderUpdated,
-    OrderFufilled,
+    OrderFilled,
     OrderPartialFilled,
     OrderRefreshed,
     OrderExecutionCreditUpdated,
@@ -42,7 +42,7 @@ impl BeltEvent {
                 .unwrap()
                 .to_owned(),
 
-            BeltEvent::OrderFufilled => abi::ISANDBOXLIMITORDERBOOK_ABI
+            BeltEvent::OrderFilled => abi::ISANDBOXLIMITORDERBOOK_ABI
                 .event("OrderFufilled")
                 .unwrap()
                 .to_owned(),
@@ -80,7 +80,7 @@ impl BeltEvent {
             BeltEvent::OrderUpdated => {
                 abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderUpdated"][0].signature()
             }
-            BeltEvent::OrderFufilled => {
+            BeltEvent::OrderFilled => {
                 abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderFufilled"][0].signature()
             }
             BeltEvent::OrderPartialFilled => {
@@ -117,8 +117,8 @@ pub fn get_event_signature_to_belt_event() -> HashMap<H256, BeltEvent> {
     );
 
     sig_to_belt_event.insert(
-        BeltEvent::OrderFufilled.event_signature(),
-        BeltEvent::OrderFufilled,
+        BeltEvent::OrderFilled.event_signature(),
+        BeltEvent::OrderFilled,
     );
     sig_to_belt_event.insert(
         BeltEvent::OrderPartialFilled.event_signature(),

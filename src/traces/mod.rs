@@ -1,6 +1,14 @@
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
+/// Tracing modes
+pub enum TracingMode {
+    /// Enable all info traces.
+    All,
+    /// Disable tracing
+    Silent,
+}
+
 pub fn init_tracing() {
     // a builder for `FmtSubscriber`.
     let subscriber = FmtSubscriber::builder()
