@@ -33,13 +33,14 @@ pub enum Order {
     SandboxLimitOrder(SandboxLimitOrder),
 }
 
+#[derive(Clone, Copy)]
 pub enum OrderVariant {
     LimitOrder,
     SandboxLimitOrder,
 }
 
 impl Order {
-    pub fn from_bytes<P: JsonRpcClient>(
+    fn from_bytes<P: JsonRpcClient>(
         data: &[u8],
         order_variant: OrderVariant,
     ) -> Result<Order, ExecutorError<P>> {
@@ -65,7 +66,7 @@ impl Order {
                     ParamType::FixedBytes(32), //order Id
                 ];
 
-                println!("pre decoded data: {:?}", data);
+                println!("pre decoded data: {:?}", data.len());
                 let limit_order = decode(&return_types, data).expect("Could not decode order data");
 
                 Ok(Order::LimitOrder(LimitOrder {
@@ -157,7 +158,7 @@ impl Order {
                     ParamType::FixedBytes(32), //order Id
                 ];
 
-                println!("pre decoded data: {:?}", data);
+                println!("pre decoded data2: {:?}", data);
 
                 let sandbox_limit_order =
                     decode(&return_types, data).expect("Could not decode order data");
@@ -287,6 +288,7 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
                     let order = if let Ok(order) = get_remote_order(
                         order_id,
                         sandbox_limit_order_book_address,
+                        OrderVariant::SandboxLimitOrder,
                         provider.clone(),
                     )
                     .await
@@ -302,10 +304,13 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
                 for order_id in order_placed_log.order_ids {
                     let order_id = H256::from(order_id);
 
-                    println!("order id: {:?}", order_id);
-
-                    let order = if let Ok(order) =
-                        get_remote_order(order_id, limit_order_book_address, provider.clone()).await
+                    let order = if let Ok(order) = get_remote_order(
+                        order_id,
+                        limit_order_book_address,
+                        OrderVariant::LimitOrder,
+                        provider.clone(),
+                    )
+                    .await
                     {
                         println!("exists {:?}", order_id);
                         order
@@ -326,12 +331,20 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
 pub async fn handle_order_updates<P: JsonRpcClient>(
     order_events: Vec<(BeltEvent, Log)>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
+    sandbox_limit_order_book_address: H160,
+    limit_order_book_address: H160,
     provider: Arc<Provider<P>>,
 ) -> Result<(), ExecutorError<P>> {
     //Handle order updates
     for order_event in order_events {
         let belt_event = order_event.0;
         let event_log = order_event.1;
+
+        let order_variant = if event_log.address == sandbox_limit_order_book_address {
+            OrderVariant::SandboxLimitOrder
+        } else {
+            OrderVariant::LimitOrder
+        };
 
         match belt_event {
             BeltEvent::OrderPlaced => {
@@ -346,6 +359,7 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                         order_id.into(),
                         event_log.address,
                         active_orders.clone(),
+                        order_variant,
                         provider.clone(),
                     )
                     .await?;
@@ -375,6 +389,7 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                         order_id.into(),
                         event_log.address,
                         active_orders.clone(),
+                        order_variant,
                         provider.clone(),
                     )
                     .await?;
@@ -447,21 +462,29 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
 pub async fn get_remote_order<P: JsonRpcClient>(
     order_id: H256,
     order_book_address: H160,
+    order_variant: OrderVariant,
     provider: Arc<Provider<P>>,
 ) -> Result<Order, ExecutorError<P>> {
     let slob = abi::ISandboxLimitOrderBook::new(order_book_address, provider);
     let order_bytes = slob.get_order_by_id(order_id.into()).call().await?;
 
-    Order::from_bytes(&order_bytes)
+    Order::from_bytes(&order_bytes, order_variant)
 }
 
 pub async fn place_order<P: JsonRpcClient>(
     order_id: H256,
     order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
+    order_variant: OrderVariant,
     provider: Arc<Provider<P>>,
 ) -> Result<(), ExecutorError<P>> {
-    let order = get_remote_order(order_id, order_book_address, provider.clone()).await?;
+    let order = get_remote_order(
+        order_id,
+        order_book_address,
+        order_variant,
+        provider.clone(),
+    )
+    .await?;
 
     active_orders
         .lock()
@@ -478,7 +501,13 @@ pub async fn update_order<P: JsonRpcClient>(
     order_variant: OrderVariant,
     provider: Arc<Provider<P>>,
 ) -> Result<(), ExecutorError<P>> {
-    let order = get_remote_order(order_id, order_book_address, provider.clone()).await?;
+    let order = get_remote_order(
+        order_id,
+        order_book_address,
+        order_variant,
+        provider.clone(),
+    )
+    .await?;
 
     active_orders
         .lock()

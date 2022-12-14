@@ -11,7 +11,6 @@ pub mod config;
 pub mod error;
 pub mod events;
 pub mod markets;
-pub mod order_book;
 pub mod orders;
 pub mod pending_transactions;
 
@@ -88,6 +87,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
     .await
     .expect("There was an issue while initializing active orders");
 
+    println!("orders initialized");
     //initialize markets
     let (pool_address_to_market_id, markets, market_to_affected_orders) =
         market::initialize_market_structures(
@@ -139,7 +139,14 @@ async fn run_loop<P: 'static + JsonRpcClient>(
         );
 
         //Handle order updates
-        order::handle_order_updates(order_events, active_orders.clone(), provider.clone()).await?;
+        order::handle_order_updates(
+            order_events,
+            active_orders.clone(),
+            configuration.sandbox_limit_order_book,
+            configuration.limit_order_book,
+            provider.clone(),
+        )
+        .await?;
 
         //Update markets
         let markets_updated = market::handle_market_updates(
