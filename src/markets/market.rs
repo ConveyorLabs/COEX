@@ -175,7 +175,6 @@ async fn update_market_structures<P: 'static + JsonRpcClient>(
     Ok(())
 }
 
-//TODO: need to finish this function
 async fn get_market<P: 'static + JsonRpcClient>(
     token_a: H160,
     token_b: H160,
@@ -185,10 +184,14 @@ async fn get_market<P: 'static + JsonRpcClient>(
     let mut market = HashMap::new();
 
     for dex in dexes {
-        if let Some(pool) = dex
-            .get_pool_with_best_liquidity(token_a, token_b, provider.clone())
+        if let Some(pools) = dex
+            .get_all_pools_for_pair(token_a, token_b, provider.clone())
             .await?
-        {}
+        {
+            for pool in pools {
+                market.insert(pool.address(), pool);
+            }
+        }
     }
 
     if market.len() > 0 {

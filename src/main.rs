@@ -90,7 +90,8 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
     .await
     .expect("There was an issue while initializing active orders");
 
-    println!("orders initialized");
+    println!("Orders initialized");
+
     //initialize markets
     let (pool_address_to_market_id, markets, market_to_affected_orders) =
         market::initialize_market_structures(
@@ -101,6 +102,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
         )
         .await
         .expect("There was an issue while initializing market structures");
+    println!("Market structures initialized");
 
     Ok((
         active_orders,
@@ -128,6 +130,8 @@ async fn run_loop<P: 'static + JsonRpcClient>(
 
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
+        println!("Block: {:?}", block.number);
+
         let (order_events, pool_events) = events::sort_events(
             &provider
                 .get_logs(
