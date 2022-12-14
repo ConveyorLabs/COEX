@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use cfmms::pool::Pool;
 use ethers::types::{H160, H256, U256};
+use num_bigfloat::BigFloat;
 
 use crate::markets::market::get_best_market_price;
 
@@ -22,6 +23,71 @@ pub struct SandboxLimitOrder {
 }
 
 impl SandboxLimitOrder {
+    pub fn new(
+        last_refresh_timestamp: u32,
+        expiration_timestamp: u32,
+        fill_percent: u128,
+        fee_remaining: u128,
+        amount_in_remaining: u128,
+        amount_out_remaining: u128,
+        price: f64,
+        execution_credit_remaining: u128,
+        owner: H160,
+        token_in: H160,
+        token_out: H160,
+        order_id: H256,
+    ) -> SandboxLimitOrder {
+        SandboxLimitOrder {
+            last_refresh_timestamp,
+            expiration_timestamp,
+            fill_percent,
+            fee_remaining,
+            amount_in_remaining,
+            amount_out_remaining,
+            price,
+            execution_credit_remaining,
+            owner,
+            token_in,
+            token_out,
+            order_id,
+        }
+    }
+
+    pub fn new_from_return_data(
+        return_data: (
+            u32,
+            u32,
+            u128,
+            u128,
+            u128,
+            u128,
+            u128,
+            H160,
+            H160,
+            H160,
+            [u8; 32],
+        ),
+    ) -> SandboxLimitOrder {
+        //TODO: need to account for decimals and get the common decimals of the two before calculating the price
+        let price = BigFloat::from_u128(return_data.4)
+            .div(&BigFloat::from_u128(return_data.5))
+            .to_f64();
+
+        SandboxLimitOrder::new(
+            return_data.0,
+            return_data.1,
+            return_data.2,
+            return_data.3,
+            return_data.4,
+            return_data.5,
+            price,
+            return_data.6,
+            return_data.7,
+            return_data.8,
+            return_data.9,
+            return_data.10.into(),
+        )
+    }
     pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
         self.price >= self.get_best_market_price(markets, weth)
     }

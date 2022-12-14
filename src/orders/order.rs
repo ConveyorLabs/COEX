@@ -1,31 +1,26 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     sync::{Arc, Mutex},
 };
 
 use cfmms::pool::Pool;
 use ethers::{
-    abi::{decode, ParamType, RawLog, Tokenizable},
+    abi::RawLog,
     prelude::EthLogDecode,
     providers::{JsonRpcClient, Middleware, Provider},
-    signers::LocalWallet,
     types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U256},
 };
-use num_bigfloat::BigFloat;
 
 use crate::{
     abi::{
         self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFufilledFilter,
         OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
     },
-    config::Chain,
     error::ExecutorError,
     events::BeltEvent,
-    markets::market::{self, Market},
-    orders::order,
 };
 
-use super::{execution, limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, simulate};
+use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, simulate};
 
 #[derive(Debug)]
 pub enum Order {
@@ -39,191 +34,9 @@ pub enum OrderVariant {
     SandboxLimitOrder,
 }
 
+//TODO: impl from bytes for each order variant instead of a match statement in order, or in addition
+
 impl Order {
-    fn from_bytes<P: JsonRpcClient>(
-        data: &[u8],
-        order_variant: OrderVariant,
-    ) -> Result<Order, ExecutorError<P>> {
-        //TODO: refactor this so that there is a from bytes for sandbox limit order struct and limit order struct
-        match order_variant {
-            OrderVariant::LimitOrder => {
-                let return_types = vec![
-                    ParamType::Bool,           //buy
-                    ParamType::Bool,           //taxed
-                    ParamType::Bool,           //stoploss
-                    ParamType::Uint(32),       //last refresh timestamp
-                    ParamType::Uint(32),       //expiration timestamp
-                    ParamType::Uint(32),       //feeIn
-                    ParamType::Uint(32),       //feeOut
-                    ParamType::Uint(16),       //taxIn
-                    ParamType::Uint(128),      //price
-                    ParamType::Uint(128),      //amount out min
-                    ParamType::Uint(128),      //quantity
-                    ParamType::Uint(128),      //execution credit
-                    ParamType::Address,        //owner
-                    ParamType::Address,        //token in
-                    ParamType::Address,        //token out
-                    ParamType::FixedBytes(32), //order Id
-                ];
-
-                println!("pre decoded data: {:?},", data.len());
-
-                let limit_order = decode(&return_types, data).expect("Could not decode order data");
-
-                Ok(Order::LimitOrder(LimitOrder {
-                    buy: limit_order[0]
-                        .to_owned()
-                        .into_bool()
-                        .expect("Could not convert token into bool"),
-                    taxed: limit_order[1]
-                        .to_owned()
-                        .into_bool()
-                        .expect("Could not convert token into bool"),
-                    stop_loss: limit_order[2]
-                        .to_owned()
-                        .into_bool()
-                        .expect("Could not convert token into bool"),
-                    last_refresh_timestamp: limit_order[3]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u32(),
-                    expiration_timestamp: limit_order[4]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u32(),
-                    fee_in: limit_order[5]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u32(),
-                    fee_out: limit_order[6]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u32(),
-                    tax_in: limit_order[7]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u32() as u16,
-
-                    price: BigFloat::from_u128(
-                        limit_order[8]
-                            .to_owned()
-                            .into_uint()
-                            .expect("Could not convert token into uint")
-                            .as_u128(),
-                    )
-                    .div(&BigFloat::from_f64(2_f64.powf(63 as f64)))
-                    .to_f64(),
-
-                    amount_out_min: limit_order[10]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u128(),
-                    quantity: limit_order[9]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u128(),
-                    execution_credit: limit_order[11]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u128(),
-                    owner: H160::from_token(limit_order[12].to_owned())
-                        .expect("Could not convert bytes into H160"),
-                    token_in: H160::from_token(limit_order[13].to_owned())
-                        .expect("Could not convert bytes into H160"),
-                    token_out: H160::from_token(limit_order[14].to_owned())
-                        .expect("Could not convert bytes into H160"),
-                    order_id: H256::from_token(limit_order[15].to_owned())
-                        .expect("Could not convert bytes into H256"),
-                }))
-            }
-            OrderVariant::SandboxLimitOrder => {
-                let return_types = vec![
-                    ParamType::Uint(32),       //last refresh timestamp
-                    ParamType::Uint(32),       //expiration timestamp
-                    ParamType::Uint(128),      //fill percent
-                    ParamType::Uint(128),      //fee remaining
-                    ParamType::Uint(128),      //amount in remaining
-                    ParamType::Uint(128),      //amount out remaining
-                    ParamType::Uint(128),      //execution credit remaining
-                    ParamType::Address,        //owner
-                    ParamType::Address,        //token in
-                    ParamType::Address,        //token out
-                    ParamType::FixedBytes(32), //order Id
-                ];
-
-                println!("pre decoded data2: {:?}", data);
-
-                let sandbox_limit_order =
-                    decode(&return_types, data).expect("Could not decode order data");
-
-                let amount_in_remaining = sandbox_limit_order[4]
-                    .to_owned()
-                    .into_uint()
-                    .expect("Could not convert token into uint")
-                    .as_u128();
-
-                let amount_out_remaining = sandbox_limit_order[5]
-                    .to_owned()
-                    .into_uint()
-                    .expect("Could not convert token into uint")
-                    .as_u128();
-
-                //TODO: need to account for decimals and get the common decimals of the two before calculating the price
-                let price = BigFloat::from_u128(amount_out_remaining)
-                    .div(&BigFloat::from_u128(amount_in_remaining))
-                    .to_f64();
-
-                Ok(Order::SandboxLimitOrder(SandboxLimitOrder {
-                    last_refresh_timestamp: sandbox_limit_order[0]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u32(),
-                    expiration_timestamp: sandbox_limit_order[1]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u32(),
-                    fill_percent: sandbox_limit_order[2]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u128(),
-                    fee_remaining: sandbox_limit_order[3]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u128(),
-                    amount_in_remaining: amount_in_remaining,
-                    amount_out_remaining: amount_out_remaining,
-
-                    price: price,
-                    execution_credit_remaining: sandbox_limit_order[6]
-                        .to_owned()
-                        .into_uint()
-                        .expect("Could not convert token into uint")
-                        .as_u128(),
-                    owner: H160::from_token(sandbox_limit_order[7].to_owned())
-                        .expect("Could not convert bytes into H160"),
-                    token_in: H160::from_token(sandbox_limit_order[8].to_owned())
-                        .expect("Could not convert bytes into H160"),
-                    token_out: H160::from_token(sandbox_limit_order[9].to_owned())
-                        .expect("Could not convert bytes into H160"),
-                    order_id: H256::from_token(sandbox_limit_order[10].to_owned())
-                        .expect("Could not convert bytes into H256"),
-                }))
-            }
-        }
-    }
-
     pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
         match self {
             Order::SandboxLimitOrder(sandbox_limit_order) => {
@@ -313,10 +126,8 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
                     )
                     .await
                     {
-                        println!("exists {:?}", order_id);
                         order
                     } else {
-                        println!("does not exist {:?}", order_id);
                         continue;
                     };
 
@@ -466,14 +277,33 @@ pub async fn get_remote_order<P: JsonRpcClient>(
     order_variant: OrderVariant,
     provider: Arc<Provider<P>>,
 ) -> Result<Order, ExecutorError<P>> {
-    let slob = abi::ISandboxLimitOrderBook::new(order_book_address, provider);
+    match order_variant {
+        OrderVariant::SandboxLimitOrder => {
+            let slob = abi::ISandboxLimitOrderBook::new(order_book_address, provider);
 
-    let order_bytes = slob.get_order_by_id(order_id.into()).call().await?;
-    println!(
-        "addr: {:?}, orderId:{:?}, variant: {:?}",
-        order_book_address, order_id, order_variant
-    );
-    Order::from_bytes(&order_bytes, order_variant)
+            let return_data = slob
+                .get_order_by_id(order_id.to_fixed_bytes())
+                .call()
+                .await?;
+
+            Ok(Order::SandboxLimitOrder(
+                SandboxLimitOrder::new_from_return_data(return_data),
+            ))
+        }
+
+        OrderVariant::LimitOrder => {
+            let lob = abi::ILimitOrderBook::new(order_book_address, provider);
+
+            let return_data = lob
+                .get_order_by_id(order_id.to_fixed_bytes())
+                .call()
+                .await?;
+
+            Ok(Order::LimitOrder(LimitOrder::new_from_return_data(
+                return_data,
+            )))
+        }
+    }
 }
 
 pub async fn place_order<P: JsonRpcClient>(

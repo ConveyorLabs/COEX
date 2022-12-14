@@ -48,6 +48,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await,
     );
 
+    //TODO: execute orders that are ready but the pool hasnt changed
+
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
         configuration,

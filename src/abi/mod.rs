@@ -11,7 +11,7 @@ abigen!(
         event OrderRefreshed(bytes32 indexed orderId, uint32 indexed lastRefreshTimestamp, uint32 indexed expirationTimestamp)
         event OrderExecutionCreditUpdated(bytes32 orderId, uint128 newExecutionCredit)
         event OrderPartialFilled(bytes32 indexed orderId, uint128 indexed amountInRemaining, uint128 indexed amountOutRemaining, uint128 executionCreditRemaining, uint128 feeRemaining)
-        function getOrderById(bytes32 orderId) external view (bytes memory)
+        function getOrderById(bytes32 orderId) external view returns (uint32, uint32, uint128, uint128, uint128, uint128, uint128, address, address, address, bytes32) 
     ]"#;
 
     ISandboxLimitOrderRouter,
@@ -19,12 +19,9 @@ abigen!(
         function executeSandboxMulticall(bytes[] calldata sandboxMultiCall)
     ]"#;
 
-
-
     ILimitOrderBook,
     r#"[
-        function getLimitOrderById(bytes32 orderId) external view (bytes memory)
-        
+        function getOrderById(bytes32 orderId) external view returns (bool, bool, bool, uint32, uint32, uint24, uint24, uint16, uint128, uint128, uint128, uint128, address, address, address, bytes32) 
     ]"#;
 
     ILimitOrderRouter,

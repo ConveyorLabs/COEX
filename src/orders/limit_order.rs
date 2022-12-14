@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use cfmms::pool::Pool;
 use ethers::types::{H160, H256, U256};
+use num_bigfloat::BigFloat;
 
 use crate::markets::market::get_best_market_price;
 
@@ -26,6 +27,88 @@ pub struct LimitOrder {
 }
 
 impl LimitOrder {
+    pub fn new(
+        buy: bool,
+        taxed: bool,
+        stop_loss: bool,
+        last_refresh_timestamp: u32,
+        expiration_timestamp: u32,
+        fee_in: u32,
+        fee_out: u32,
+        tax_in: u16,
+        price: f64,
+        amount_out_min: u128,
+        quantity: u128,
+        execution_credit: u128,
+        owner: H160,
+        token_in: H160,
+        token_out: H160,
+        order_id: H256,
+    ) -> LimitOrder {
+        LimitOrder {
+            buy,
+            taxed,
+            stop_loss,
+            last_refresh_timestamp,
+            expiration_timestamp,
+            fee_in,
+            fee_out,
+            tax_in,
+            price,
+            amount_out_min,
+            quantity,
+            execution_credit,
+            owner,
+            token_in,
+            token_out,
+            order_id,
+        }
+    }
+
+    pub fn new_from_return_data(
+        return_data: (
+            bool,
+            bool,
+            bool,
+            u32,
+            u32,
+            u32,
+            u32,
+            u16,
+            u128,
+            u128,
+            u128,
+            u128,
+            H160,
+            H160,
+            H160,
+            [u8; 32],
+        ),
+    ) -> LimitOrder {
+        let price = BigFloat::from_u128(return_data.8)
+            .div(&BigFloat::from_f64(2_f64.powf(63 as f64)))
+            .to_f64();
+
+        LimitOrder::new(
+            return_data.0,
+            return_data.1,
+            return_data.2,
+            return_data.3,
+            return_data.4,
+            return_data.5,
+            return_data.6,
+            return_data.7,
+            price,
+            return_data.9,
+            return_data.10,
+            return_data.11,
+            return_data.12,
+            return_data.13,
+            return_data.14,
+            return_data.15.into(),
+        )
+    }
+
     pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
         self.price >= self.get_best_market_price(markets, weth)
     }
