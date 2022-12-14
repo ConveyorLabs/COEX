@@ -171,7 +171,11 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 .unwrap();
 
                 for order_id in order_placed_log.order_ids {
-                    info!("{:?} Order Placed: {:?}", order_variant, order_id);
+                    info!(
+                        "{:?} Order Placed: {:?}",
+                        order_variant,
+                        H256::from(order_id)
+                    );
 
                     place_order(
                         order_id.into(),
@@ -191,7 +195,11 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 .unwrap();
 
                 for order_id in order_canceled_log.order_ids {
-                    info!("{:?} Order Canceled: {:?}", order_variant, order_id);
+                    info!(
+                        "{:?} Order Canceled: {:?}",
+                        order_variant,
+                        H256::from(order_id)
+                    );
 
                     cancel_order(order_id.into(), active_orders.clone());
                 }
@@ -205,7 +213,11 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 .unwrap();
 
                 for order_id in order_updated_log.order_ids {
-                    info!("{:?} Order Updated: {:?}", order_variant, order_id);
+                    info!(
+                        "{:?} Order Updated: {:?}",
+                        order_variant,
+                        H256::from(order_id)
+                    );
 
                     update_order(
                         order_id.into(),
@@ -224,7 +236,11 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                 })
                 .unwrap();
                 for order_id in order_fufilled_log.order_ids {
-                    info!("{:?} Order Filled: {:?}", order_variant, order_id);
+                    info!(
+                        "{:?} Order Filled: {:?}",
+                        order_variant,
+                        H256::from(order_id)
+                    );
 
                     fufill_order(order_id.into(), active_orders.clone())
                 }

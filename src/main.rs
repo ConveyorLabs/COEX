@@ -135,7 +135,8 @@ async fn run_loop<P: 'static + JsonRpcClient>(
     //Get a mapping of event signature to event for quick lookup
     let event_sig_to_belt_event = events::get_event_signature_to_belt_event();
 
-    info!("Executor fully initialized, listening for new blocks");
+    //TODO: maybe change this to something else?
+    info!("Listening for order execution");
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
         let (order_events, pool_events) = events::sort_events(

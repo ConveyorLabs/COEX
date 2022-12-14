@@ -234,7 +234,6 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
 
     //:: Initialize a new structure to hold a clone of the current state of the markets.
     //:: This will allow you to simulate order execution and mutate the simluated markets without having to change/unwind the market state.
-
     let mut simulated_markets: HashMap<U256, Market> = HashMap::new();
 
     //:: group all of the orders that are ready to execute and separate them by sandbox limit orders and limit orders
