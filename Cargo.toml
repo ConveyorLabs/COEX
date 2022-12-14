@@ -19,3 +19,6 @@ uniswap_v3_math = "0.1.0"
 sha3 = "0.10.6"
 rand = "0.8.5"
 async-trait = "0.1.59"
+tracing = "0.1.37"
+tracing-subscriber = {version = "0.3.16", features = ["env-filter", "fmt"]}
+

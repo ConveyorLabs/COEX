@@ -1,10 +1,12 @@
+use ::tracing::{debug, info, warn, Level};
+use error::ExecutorError;
+use ethers::providers::{Http, JsonRpcClient, Provider, ProviderError, Ws};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-
-use error::ExecutorError;
-use ethers::providers::{Http, JsonRpcClient, Provider, ProviderError, Ws};
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::FmtSubscriber;
 
 pub mod abi;
 pub mod config;
@@ -13,6 +15,7 @@ pub mod events;
 pub mod markets;
 pub mod orders;
 pub mod pending_transactions;
+pub mod tracing;
 
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
@@ -25,6 +28,29 @@ use pending_transactions::handle_pending_transactions;
 //TODO: move this to bin
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    // let tracing = if opt.silent {
+    //     TracingMode::Silent
+    // } else {
+    //     TracingMode::All
+    // };
+
+    // tracing::build_subscriber(tracing::TracingMode::All)
+    //     .try_init()
+    //     .expect("Could not init tracing subscriber");
+    // a builder for `FmtSubscriber`.
+    let subscriber = FmtSubscriber::builder()
+        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::TRACE)
+        // completes the builder.
+        .finish();
+
+    tracing::init_tracing();
+
+    let number_of_yaks = 3;
+    // this creates a new event, outside of any spans.
+    info!(number_of_yaks, "preparing to shave yaks");
+
     //Initialize a new configuration
     let configuration = config::Config::new();
     //Initialize the providers
@@ -90,7 +116,8 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
     .await
     .expect("There was an issue while initializing active orders");
 
-    println!("Orders initialized");
+    println!("Here");
+    info!("Active orders successfully initialized");
 
     //initialize markets
     let (pool_address_to_market_id, markets, market_to_affected_orders) =
