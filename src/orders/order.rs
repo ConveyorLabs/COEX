@@ -39,7 +39,7 @@ pub enum OrderVariant {
 }
 
 impl Order {
-    fn from_bytes<P: JsonRpcClient>(
+    pub fn from_bytes<P: JsonRpcClient>(
         data: &[u8],
         order_variant: OrderVariant,
     ) -> Result<Order, ExecutorError<P>> {
@@ -447,20 +447,18 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
 pub async fn get_remote_order<P: JsonRpcClient>(
     order_id: H256,
     order_book_address: H160,
-    order_variant: OrderVariant,
     provider: Arc<Provider<P>>,
 ) -> Result<Order, ExecutorError<P>> {
     let slob = abi::ISandboxLimitOrderBook::new(order_book_address, provider);
     let order_bytes = slob.get_order_by_id(order_id.into()).call().await?;
 
-    Order::from_bytes(&order_bytes, order_variant)
+    Order::from_bytes(&order_bytes)
 }
 
 pub async fn place_order<P: JsonRpcClient>(
     order_id: H256,
     order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
-    order_variant: OrderVariant,
     provider: Arc<Provider<P>>,
 ) -> Result<(), ExecutorError<P>> {
     let order = get_remote_order(order_id, order_book_address, provider.clone()).await?;

@@ -172,6 +172,7 @@ checksum = "2dabbe35f96fb9507f7330793dc490461b2962659ac5d427181e451a623751d1"
 name = "belt"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "cfmms",
  "ethers",
  "num-bigfloat",
