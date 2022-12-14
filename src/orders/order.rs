@@ -33,7 +33,7 @@ pub enum Order {
     SandboxLimitOrder(SandboxLimitOrder),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum OrderVariant {
     LimitOrder,
     SandboxLimitOrder,
@@ -66,7 +66,8 @@ impl Order {
                     ParamType::FixedBytes(32), //order Id
                 ];
 
-                println!("pre decoded data: {:?}", data.len());
+                println!("pre decoded data: {:?},", data.len());
+
                 let limit_order = decode(&return_types, data).expect("Could not decode order data");
 
                 Ok(Order::LimitOrder(LimitOrder {
@@ -466,8 +467,12 @@ pub async fn get_remote_order<P: JsonRpcClient>(
     provider: Arc<Provider<P>>,
 ) -> Result<Order, ExecutorError<P>> {
     let slob = abi::ISandboxLimitOrderBook::new(order_book_address, provider);
-    let order_bytes = slob.get_order_by_id(order_id.into()).call().await?;
 
+    let order_bytes = slob.get_order_by_id(order_id.into()).call().await?;
+    println!(
+        "addr: {:?}, orderId:{:?}, variant: {:?}",
+        order_book_address, order_id, order_variant
+    );
     Order::from_bytes(&order_bytes, order_variant)
 }
 
