@@ -173,17 +173,25 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
 
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
-        let signed_tx = construct_signed_lo_execution_transaction(
+        let tx = construct_lo_execution_transaction(
             configuration.limit_order_book,
             order_group.order_ids.clone(),
-            configuration.wallet.clone(),
             provider.clone(),
             &configuration.chain,
         )
         .await?;
 
-        let pending_tx = provider.send_transaction(signed_tx, None).await?;
+        //TODO: simulate the tx,
 
+        //TODO: sign the tx
+        let signed_tx = configuration.wallet.sign_transaction_sync(&tx);
+
+        //Send the tx
+        let pending_tx = provider
+            .send_raw_transaction(signed_tx.to_vec().into())
+            .await?;
+
+        println!("pending tx: {:?}", pending_tx.tx_hash());
         let order_ids = order_group
             .order_ids
             .iter()
@@ -200,11 +208,10 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
 }
 
 //Construct a sandbox limit order execution transaction
-pub async fn construct_signed_slo_execution_transaction<P: 'static + JsonRpcClient>(
+pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient>(
     execution_address: H160,
     data: Bytes,
     provider: Arc<Provider<P>>,
-    wallet: LocalWallet,
     chain: &Chain,
 ) -> Result<TypedTransaction, ExecutorError<P>> {
     //TODO: For the love of god, refactor the transaction composition
@@ -226,8 +233,6 @@ pub async fn construct_signed_slo_execution_transaction<P: 'static + JsonRpcClie
             let gas_limit = provider.estimate_gas(&tx).await?;
             tx.set_gas(gas_limit);
 
-            wallet.sign_transaction_sync(&tx);
-
             Ok(tx)
         }
 
@@ -242,18 +247,15 @@ pub async fn construct_signed_slo_execution_transaction<P: 'static + JsonRpcClie
             let gas_limit = provider.estimate_gas(&tx).await?;
             tx.set_gas(gas_limit);
 
-            wallet.sign_transaction_sync(&tx);
-
             Ok(tx)
         }
     }
 }
 
 //Construct a limit order execution transaction
-pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClient>(
+pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient>(
     execution_address: H160,
     order_ids: Vec<[u8; 32]>,
-    wallet: Arc<LocalWallet>,
     provider: Arc<Provider<P>>,
     chain: &Chain,
 ) -> Result<TypedTransaction, ExecutorError<P>> {
@@ -283,8 +285,6 @@ pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClien
             //TODO: need to transform gas limit to adjust for price * buffer?
             tx.set_gas(gas_limit);
 
-            wallet.sign_transaction_sync(&tx);
-
             Ok(tx)
         }
 
@@ -300,8 +300,6 @@ pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClien
             let mut tx: TypedTransaction = tx.into();
             let gas_limit = provider.estimate_gas(&tx).await?;
             tx.set_gas(gas_limit);
-
-            wallet.sign_transaction_sync(&tx);
 
             Ok(tx)
         }
@@ -394,16 +392,23 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
 
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
-        let signed_tx = construct_signed_lo_execution_transaction(
+        let tx = construct_lo_execution_transaction(
             configuration.limit_order_book,
             order_group.order_ids.clone(),
-            configuration.wallet.clone(),
             provider.clone(),
             &configuration.chain,
         )
         .await?;
 
-        let pending_tx = provider.send_transaction(signed_tx, None).await?;
+        //TODO: simulate tx
+
+        //TODO: sign tx
+        let signed_tx = configuration.wallet.sign_transaction_sync(&tx);
+
+        //Send the tx
+        let pending_tx = provider
+            .send_raw_transaction(signed_tx.to_vec().into())
+            .await?;
 
         let order_ids = order_group
             .order_ids
