@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 
-use cfmms::{
-    dex::{Dex, DexVariant},
-    pool,
-};
+use cfmms::dex::{Dex, DexVariant};
 use ethers::{
-    abi::{ethabi::Bytes, Event},
+    abi::Event,
     types::{Filter, Log, H256},
 };
 

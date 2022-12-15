@@ -109,20 +109,28 @@ impl LimitOrder {
         )
     }
 
-    pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
-        self.price >= self.get_best_market_price(markets, weth)
+    pub fn can_execute(
+        &self,
+        buy: bool,
+        markets: &HashMap<U256, HashMap<H160, Pool>>,
+        weth: H160,
+    ) -> bool {
+        if buy {
+            self.price >= self.get_best_market_price(buy, markets, weth)
+        } else {
+            self.price <= self.get_best_market_price(buy, markets, weth)
+        }
     }
 
     pub fn get_best_market_price(
         &self,
+        buy: bool,
         markets: &HashMap<U256, HashMap<H160, Pool>>,
         weth: H160,
     ) -> f64 {
-        //TODO: need to check buy or sell on the order
-
         //Check a -> weth -> b price
-        let a_to_weth_price = get_best_market_price(self.token_in, weth, markets);
-        let weth_to_b_price = get_best_market_price(weth, self.token_out, markets);
+        let a_to_weth_price = get_best_market_price(buy, self.token_in, weth, markets);
+        let weth_to_b_price = get_best_market_price(buy, weth, self.token_out, markets);
 
         a_to_weth_price * weth_to_b_price
     }

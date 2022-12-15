@@ -45,7 +45,9 @@ impl Order {
                 sandbox_limit_order.can_execute(markets, weth)
             }
 
-            Order::LimitOrder(limit_order) => limit_order.can_execute(markets, weth),
+            Order::LimitOrder(limit_order) => {
+                limit_order.can_execute(limit_order.buy, markets, weth)
+            }
         }
     }
 }

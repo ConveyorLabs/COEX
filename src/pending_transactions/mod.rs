@@ -73,14 +73,7 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
                 }
             }
 
-            if !pending_tx_interval.is_zero()
-                && !pending_order_ids
-                    .lock()
-                    .expect("Could not acquire lock on pending_order_ids")
-                    .is_empty()
-            {
-                tokio::time::sleep(pending_tx_interval).await;
-            }
+            tokio::time::sleep(Duration::new(0, 1000)).await;
         }
     });
 

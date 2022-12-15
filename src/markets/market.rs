@@ -268,18 +268,26 @@ pub fn handle_market_updates(
 }
 
 pub fn get_best_market_price(
+    buy: bool,
     token_in: H160,
     token_out: H160,
     markets: &HashMap<U256, HashMap<H160, Pool>>,
 ) -> f64 {
-    let mut best_price = 0.0;
+    let mut best_price = if buy { f64::MAX } else { 0.0 };
 
     let market_id = get_market_id(token_in, token_out);
     if let Some(market) = markets.get(&market_id) {
         for (_, pool) in market {
             let price = pool.calculate_price(token_in);
-            if price > best_price {
-                best_price = price;
+
+            if buy {
+                if price < best_price {
+                    best_price = price;
+                }
+            } else {
+                if price > best_price {
+                    best_price = price;
+                }
             }
         }
     }

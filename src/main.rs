@@ -20,14 +20,14 @@ use ethers::providers::StreamExt;
 use ethers::types::{H160, H256, U256};
 use markets::market::{self, Market};
 use order::OrderVariant;
-use orders::execution;
+use orders::execution::{self, fill_orders_at_execution_price};
 use orders::order::{self, Order};
 use pending_transactions::handle_pending_transactions;
 
 //TODO: move this to bin
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let _default_guard = traces::init_tracing();
+    traces::init_tracing();
 
     //Initialize a new configuration
     let configuration = config::Config::new();
@@ -53,7 +53,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await,
     );
 
-    //TODO: execute orders that are ready before any pool updates
+    info!("Checking for orders at execution price...");
+    fill_orders_at_execution_price(
+        active_orders.clone(),
+        markets.clone(),
+        &configuration,
+        pending_transactions_sender.clone(),
+        provider.clone(),
+    )
+    .await?;
 
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
