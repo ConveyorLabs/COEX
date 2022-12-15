@@ -174,17 +174,24 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
         let tx = construct_lo_execution_transaction(
-            configuration.limit_order_book,
+            &configuration,
             order_group.order_ids.clone(),
             provider.clone(),
-            &configuration.chain,
         )
         .await?;
 
-        //TODO: simulate the tx,
+        //TODO: simulate tx
+        let limit_order_router =
+            abi::ILimitOrderRouter::new(configuration.limit_order_book, provider.clone());
+
+        //TODO: dont clone order group
+        limit_order_router
+            .execute_orders(order_group.order_ids.clone())
+            .call()
+            .await?;
 
         //TODO: sign the tx
-        let signed_tx = configuration.wallet.sign_transaction_sync(&tx);
+        let signed_tx = configuration.wallet_key.sign_transaction_sync(&tx);
 
         //Send the tx
         let pending_tx = provider
@@ -252,26 +259,35 @@ pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient>(
     }
 }
 
+//TODO: change this to construct execution transaction, pass in calldata and execution address,
+//TODO: this way we can simulate the tx with the same contract instance that made the calldata
 //Construct a limit order execution transaction
 pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient>(
-    execution_address: H160,
+    configuration: &config::Config,
     order_ids: Vec<[u8; 32]>,
     provider: Arc<Provider<P>>,
-    chain: &Chain,
 ) -> Result<TypedTransaction, ExecutorError<P>> {
     //TODO: For the love of god, refactor the transaction composition
 
-    let calldata = abi::ILimitOrderRouter::new(execution_address, provider.clone())
+    let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, provider.clone())
         .execute_orders(order_ids)
         .calldata()
         .unwrap();
 
-    match chain {
+    let nonce = provider
+        .get_transaction_count(configuration.wallet_address, None)
+        .await?;
+
+    match configuration.chain {
         //:: EIP 1559 transaction
         Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
+            //TODO:FIXME: need to make chainid dynamic, add impl for Chain type to get id
             let tx = Eip1559TransactionRequest::new()
-                .to(execution_address)
-                .data(calldata);
+                .to(configuration.limit_order_book)
+                .data(calldata)
+                .from(configuration.wallet_address)
+                .nonce(nonce)
+                .chain_id(1);
 
             //Update transaction gas fees
             let (max_fee_per_gas, max_priority_fee_per_gas) =
@@ -280,18 +296,20 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient>(
             let tx = tx.max_fee_per_gas(max_fee_per_gas);
             let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
 
+            println!("tx: {:?}", tx);
             let mut tx: TypedTransaction = tx.into();
             let gas_limit = provider.estimate_gas(&tx).await?;
             //TODO: need to transform gas limit to adjust for price * buffer?
             tx.set_gas(gas_limit);
 
+            panic!("getting here");
             Ok(tx)
         }
 
         //:: Legacy transaction
         Chain::BSC | Chain::Cronos => {
             let tx = TransactionRequest::new()
-                .to(execution_address)
+                .to(configuration.limit_order_book)
                 .data(calldata);
 
             let gas_price = provider.get_gas_price().await?;
@@ -393,17 +411,16 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
         let tx = construct_lo_execution_transaction(
-            configuration.limit_order_book,
+            &configuration,
             order_group.order_ids.clone(),
             provider.clone(),
-            &configuration.chain,
         )
         .await?;
 
-        //TODO: simulate tx
+        //TODO: simulate the tx
 
         //TODO: sign tx
-        let signed_tx = configuration.wallet.sign_transaction_sync(&tx);
+        let signed_tx = configuration.wallet_key.sign_transaction_sync(&tx);
 
         //Send the tx
         let pending_tx = provider
