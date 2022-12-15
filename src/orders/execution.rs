@@ -117,7 +117,6 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     provider: Arc<Provider<P>>,
 ) -> Result<(), ExecutorError<P>> {
-    //TODO: check for orders at the execution price and fill them before listening to all of the blocks for lp changes
     //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
     let markets = markets.lock().expect("Could not acquire mutex lock");
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
@@ -162,8 +161,6 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
     // )
     // .await?;
 
-    println!("got all orders ready for execution, batching...");
-
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
     let limit_order_execution_bundle = simulate::simulate_and_batch_limit_orders(
@@ -171,13 +168,11 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
         simulated_markets,
         configuration.weth_address,
     );
-    println!("batched");
 
     //execute sandbox limit orders
 
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
-        println!("signing tx");
         let signed_tx = construct_signed_lo_execution_transaction(
             configuration.limit_order_book,
             order_group.order_ids.clone(),
@@ -187,9 +182,7 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
         )
         .await?;
 
-        println!("sending tx");
         let pending_tx = provider.send_transaction(signed_tx, None).await?;
-        println!("sent tx");
 
         let order_ids = order_group
             .order_ids
@@ -271,8 +264,6 @@ pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClien
         .calldata()
         .unwrap();
 
-    println!("getting here");
-
     match chain {
         //:: EIP 1559 transaction
         Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
@@ -280,27 +271,19 @@ pub async fn construct_signed_lo_execution_transaction<P: 'static + JsonRpcClien
                 .to(execution_address)
                 .data(calldata);
 
-            println!("getting here1");
-
             //Update transaction gas fees
-            let (max_priority_fee_per_gas, max_fee_per_gas) =
+            let (max_fee_per_gas, max_priority_fee_per_gas) =
                 provider.estimate_eip1559_fees(None).await?;
-            println!("getting here2");
 
-            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
             let tx = tx.max_fee_per_gas(max_fee_per_gas);
-
-            println!("getting here3");
+            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
 
             let mut tx: TypedTransaction = tx.into();
             let gas_limit = provider.estimate_gas(&tx).await?;
+            //TODO: need to transform gas limit to adjust for price * buffer?
             tx.set_gas(gas_limit);
 
-            println!("getting here4");
-
             wallet.sign_transaction_sync(&tx);
-
-            println!("getting here5");
 
             Ok(tx)
         }
