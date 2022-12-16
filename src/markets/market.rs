@@ -7,7 +7,7 @@ use std::{
 use cfmms::{dex::Dex, pool::Pool};
 use ethers::{
     abi::{decode, token, ParamType},
-    prelude::k256::elliptic_curve::bigint::Encoding,
+    prelude::{k256::elliptic_curve::bigint::Encoding, NonceManagerMiddleware},
     providers::{JsonRpcClient, Middleware, Provider},
     types::{Log, H160, H256, U256},
     utils::keccak256,
@@ -37,7 +37,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient, M: Middlew
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     dexes: &[Dex],
     weth: H160,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<NonceManagerMiddleware<Provider<P>>>,
 ) -> Result<
     (
         HashMap<H160, U256>,
@@ -148,7 +148,7 @@ async fn update_market_structures<P: 'static + JsonRpcClient, M: Middleware>(
     markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     market_to_affected_orders: &mut HashMap<U256, HashSet<H256>>,
     dexes: &[Dex],
-    provider: Arc<Provider<P>>,
+    middleware: Arc<NonceManagerMiddleware<Provider<P>>>,
 ) -> Result<(), ExecutorError<P, M>> {
     //Initialize a to b market
     let market_id = get_market_id(token_a, token_b);

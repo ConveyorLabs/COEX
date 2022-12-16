@@ -1,6 +1,9 @@
-use cfmms::error::CFFMError;
+use cfmms::error::CFMMError;
 use ethers::{
-    prelude::{gas_oracle::MiddlewareError, AbiError, ContractError},
+    middleware,
+    prelude::{
+        gas_oracle::MiddlewareError, nonce_manager::NonceManagerError, AbiError, ContractError,
+    },
     providers::{JsonRpcClient, Middleware, Provider, ProviderError},
     types::H256,
 };
@@ -8,23 +11,24 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 #[derive(Error, Debug)]
-pub enum ExecutorError<P, M>
+pub enum ExecutorError<M>
 where
-    P: JsonRpcClient,
     M: Middleware,
 {
     #[error("Provider error")]
     ProviderError(#[from] ProviderError),
-    #[error("Middlewear error")]
-    MiddlewareError(#[from] MiddlewareError<M>),
+    #[error("Middleware error")]
+    MiddlewareError(<M as Middleware>::Error),
+    #[error("Nonce manager error")]
+    NonceManagerError(#[from] NonceManagerError<M>),
     #[error("Contract error")]
-    ContractError(#[from] ContractError<Provider<P>>),
+    ContractError(#[from] ContractError<M>),
     #[error("ABI error")]
     ABIError(#[from] AbiError),
     #[error("Join error")]
     JoinError(#[from] JoinError),
     #[error("CFFM error")]
-    CFFMError(#[from] CFFMError<P>),
+    CFFMError(#[from] CFMMError<M>),
     #[error("Invalid order group index")]
     InvalidOrderGroupIndex(),
     #[error("tokio::sync::mpsc error")]

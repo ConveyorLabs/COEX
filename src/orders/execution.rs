@@ -117,7 +117,7 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient, M: Middl
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     configuration: &config::Config,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-    middlewear: M,
+    middleware: M,
 ) -> Result<(), ExecutorError<P, M>> {
     //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
     let markets = markets.lock().expect("Could not acquire mutex lock");
@@ -178,18 +178,18 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient, M: Middl
         let tx = construct_lo_execution_transaction(
             &configuration,
             vec![order_group.order_ids.clone()[0]],
-            middlewear,
+            middleware,
         )
         .await?;
 
         println!("presimulation");
 
-        middlewear.call(&tx, None).await?;
+        middleware.call(&tx, None).await?;
 
         println!("postsimulation");
 
         //send the tx
-        let pending_tx = middlewear.send_transaction(tx, None).await?;
+        let pending_tx = middleware.send_transaction(tx, None).await?;
 
         println!("pending tx: {:?}", pending_tx.tx_hash());
 
@@ -259,7 +259,7 @@ pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient, M: 
 pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: Middleware>(
     configuration: &config::Config,
     order_ids: Vec<[u8; 32]>,
-    middlewear: M,
+    middleware: M,
 ) -> Result<TypedTransaction, ExecutorError<P, M>> {
     //TODO: For the love of god, refactor the transaction composition
 
@@ -270,7 +270,7 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: M
 
     let calldata = abi::ILimitOrderRouter::new(
         configuration.limit_order_book,
-        Arc::new(middlewear.provider()),
+        Arc::new(middleware.provider()),
     )
     .execute_limit_orders(order_ids)
     .calldata()
@@ -279,24 +279,24 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: M
     match configuration.chain {
         //:: EIP 1559 transaction
         Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
-            let mut tx = Eip1559TransactionRequest::new()
+            let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
                 .data(calldata)
                 .to(configuration.limit_order_book)
-                .into::<TypedTransaction>();
+                .into();
 
-            middlewear.fill_transaction(&mut tx, None);
+            middleware.fill_transaction(&mut tx, None);
 
             Ok(tx)
         }
 
         //:: Legacy transaction
         Chain::BSC | Chain::Cronos => {
-            let tx = TransactionRequest::new()
+            let mut tx = TransactionRequest::new()
                 .to(configuration.limit_order_book)
                 .data(calldata)
-                .into::<TypedTransaction>();
+                .into();
 
-            middlewear.fill_transaction(&mut tx, None);
+            middleware.fill_transaction(&mut tx, None);
 
             Ok(tx)
         }

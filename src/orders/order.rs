@@ -52,12 +52,12 @@ impl Order {
     }
 }
 
-pub async fn initialize_active_orders<P: JsonRpcClient>(
+pub async fn initialize_active_orders<P: JsonRpcClient, M: Middleware>(
     sandbox_limit_order_book_address: H160,
     limit_order_book_address: H160,
     protocol_creation_block: BlockNumber,
-    provider: Arc<NonceManagerMiddleware<Provider<P>>>,
-) -> Result<Arc<Mutex<HashMap<H256, Order>>>, ExecutorError<P>> {
+    middleware: Arc<NonceManagerMiddleware<Provider<P>>>,
+) -> Result<Arc<Mutex<HashMap<H256, Order>>>, ExecutorError<P, M>> {
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
@@ -69,12 +69,12 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
         .expect("Could not unwrap the protocol creation block when initializing active orders.")
         .as_u64();
 
-    let current_block = provider.get_block_number().await?.as_u64();
+    let current_block = middleware.get_block_number().await?.as_u64();
 
     for from_block in (from_block..=current_block).step_by(step) {
         let to_block = from_block + step as u64;
 
-        let logs = provider
+        let logs = middleware
             .get_logs(
                 &Filter::new()
                     .topic0(ValueOrArray::Value(

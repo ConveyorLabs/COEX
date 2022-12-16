@@ -33,12 +33,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //Initialize a new configuration
     let configuration = config::Config::new();
     //Initialize the providers
-    let provider: Arc<Provider<Http>> = Arc::new(Provider::try_from(&configuration.http_endpoint)?);
-    let middlewear = Arc::new(NonceManagerMiddleware::new(
+    let provider: Provider<Http> = Provider::try_from(&configuration.http_endpoint)?;
+    let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
+
+    let middleware = Arc::new(NonceManagerMiddleware::new(
         provider.clone(),
         configuration.wallet_address,
     ));
-    let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
 
     //Initialize the markets and order structures
     let (
@@ -47,7 +48,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         pool_address_to_market_id,
         markets,
         market_to_affected_orders,
-    ) = initialize_executor(&configuration, Arc::new(provider)).await?;
+    ) = initialize_executor(&configuration, middleware).await?;
 
     let pending_transactions_sender = Arc::new(
         handle_pending_transactions(
@@ -64,7 +65,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         markets.clone(),
         &configuration,
         pending_transactions_sender.clone(),
-        middlewear,
+        middleware,
     )
     .await?;
 
@@ -84,9 +85,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn initialize_executor<P: 'static + JsonRpcClient>(
+async fn initialize_executor<M: 'static + Middleware>(
     configuration: &config::Config,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<NonceManagerMiddleware<Provider<P>>>,
 ) -> Result<
     (
         Arc<Mutex<HashMap<H256, Order>>>,         //active orders
@@ -95,7 +96,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
         Arc<Mutex<HashMap<U256, Market>>>,        //markets
         Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
     ),
-    ExecutorError<P>,
+    ExecutorError<M>,
 > {
     info!("Initializing active orders...");
     //Initialize active orders
@@ -103,7 +104,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
         configuration.sandbox_limit_order_book,
         configuration.limit_order_book,
         configuration.protocol_creation_block,
-        provider.clone(),
+        middleware.clone(),
     )
     .await
     .expect("There was an issue while initializing active orders");
@@ -117,7 +118,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
             active_orders.clone(),
             &configuration.dexes,
             configuration.weth_address,
-            provider.clone(),
+            middleware.clone(),
         )
         .await
         .expect("There was an issue while initializing market structures");
@@ -133,7 +134,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
     ))
 }
 
-async fn run_loop<P: 'static + JsonRpcClient, M: Middleware>(
+async fn run_loop<M: 'static + Middleware>(
     configuration: config::Config,
     middleware: M,
     stream_provider: Provider<Ws>,
@@ -142,7 +143,7 @@ async fn run_loop<P: 'static + JsonRpcClient, M: Middleware>(
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-) -> Result<(), ExecutorError<P, M>> {
+) -> Result<(), ExecutorError<M>> {
     let mut block_stream = stream_provider.subscribe_blocks().await?;
     let block_filter = events::initialize_block_filter(&configuration.dexes);
     //Get a mapping of event signature to event for quick lookup
