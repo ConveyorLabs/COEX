@@ -7,7 +7,7 @@ use std::{
 use cfmms::pool::Pool;
 use ethers::{
     abi::RawLog,
-    prelude::EthLogDecode,
+    prelude::{EthLogDecode, NonceManagerMiddleware},
     providers::{JsonRpcClient, Middleware, Provider},
     types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U256},
 };
@@ -56,7 +56,7 @@ pub async fn initialize_active_orders<P: JsonRpcClient>(
     sandbox_limit_order_book_address: H160,
     limit_order_book_address: H160,
     protocol_creation_block: BlockNumber,
-    provider: Arc<Provider<P>>,
+    provider: Arc<NonceManagerMiddleware<Provider<P>>>,
 ) -> Result<Arc<Mutex<HashMap<H256, Order>>>, ExecutorError<P>> {
     let mut active_orders = HashMap::new();
 

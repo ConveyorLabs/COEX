@@ -293,7 +293,8 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: M
         Chain::BSC | Chain::Cronos => {
             let tx = TransactionRequest::new()
                 .to(configuration.limit_order_book)
-                .data(calldata);
+                .data(calldata)
+                .into::<TypedTransaction>();
 
             middlewear.fill_transaction(&mut tx, None);
 
@@ -302,7 +303,7 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: M
     }
 }
 
-pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
+pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient, M: Middleware>(
     affected_markets: HashSet<U256>,
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
@@ -310,7 +311,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient>(
     configuration: &config::Config,
     provider: Arc<Provider<P>>,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-) -> Result<(), ExecutorError<P>> {
+) -> Result<(), ExecutorError<P, M>> {
     //:: Acquire the lock on all of the data structures that have a mutex
     let market_to_affected_orders = market_to_affected_orders
         .lock()

@@ -33,8 +33,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //Initialize a new configuration
     let configuration = config::Config::new();
     //Initialize the providers
-    let provider: Provider<Http> = Provider::try_from(&configuration.http_endpoint)?;
-    let middlewear = NonceManagerMiddleware::new(provider.clone(), configuration.wallet_address);
+    let provider: Arc<Provider<Http>> = Arc::new(Provider::try_from(&configuration.http_endpoint)?);
+    let middlewear = Arc::new(NonceManagerMiddleware::new(
+        provider.clone(),
+        configuration.wallet_address,
+    ));
     let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
 
     //Initialize the markets and order structures
