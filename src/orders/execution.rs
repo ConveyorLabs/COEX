@@ -182,30 +182,17 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient, M: Middl
         )
         .await?;
 
-        //TODO: simulate tx
-        let limit_order_router = abi::ILimitOrderRouter::new(
-            configuration.limit_order_book,
-            Arc::new(middlewear.provider()),
-        );
-
         println!("presimulation");
 
-        // //TODO: dont clone order group
-        // limit_order_router
-        //     .execute_limit_orders(order_group.order_ids.clone())
-        //     .call()
-        //     .await?;
+        middlewear.call(&tx, None).await?;
 
         println!("postsimulation");
 
-        //TODO: sign the tx
-        let tx_signature = configuration.wallet_key.sign_transaction_sync(&tx);
-        let signed_tx_bytes = tx.rlp_signed(&tx_signature);
-
-        //Send the tx
-        let pending_tx = provider.send_raw_transaction(signed_tx_bytes).await?;
+        //send the tx
+        let pending_tx = middlewear.send_transaction(tx, None).await?;
 
         println!("pending tx: {:?}", pending_tx.tx_hash());
+
         let order_ids = order_group
             .order_ids
             .iter()
@@ -222,12 +209,12 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient, M: Middl
 }
 
 //Construct a sandbox limit order execution transaction
-pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient>(
+pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient, M: Middleware>(
     execution_address: H160,
     data: Bytes,
     provider: Arc<Provider<P>>,
     chain: &Chain,
-) -> Result<TypedTransaction, ExecutorError<P>> {
+) -> Result<TypedTransaction, ExecutorError<P, M>> {
     //TODO: For the love of god, refactor the transaction composition
 
     match chain {
@@ -273,7 +260,7 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: M
     configuration: &config::Config,
     order_ids: Vec<[u8; 32]>,
     middlewear: M,
-) -> Result<TypedTransaction, ExecutorError<P>> {
+) -> Result<TypedTransaction, ExecutorError<P, M>> {
     //TODO: For the love of god, refactor the transaction composition
 
     for order_id in order_ids.clone() {
@@ -292,10 +279,12 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: M
     match configuration.chain {
         //:: EIP 1559 transaction
         Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
-            //TODO:FIXME: need to make chainid dynamic, add impl for Chain type to get id
-            let mut tx = Eip1559TransactionRequest::new().data(calldata);
+            let mut tx = Eip1559TransactionRequest::new()
+                .data(calldata)
+                .to(configuration.limit_order_book)
+                .into::<TypedTransaction>();
 
-            middlewear.fill_transaction(&mut tx.into(), None);
+            middlewear.fill_transaction(&mut tx, None);
 
             Ok(tx)
         }
@@ -306,12 +295,7 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: M
                 .to(configuration.limit_order_book)
                 .data(calldata);
 
-            let gas_price = provider.get_gas_price().await?;
-            let tx = tx.gas_price(gas_price);
-
-            let mut tx: TypedTransaction = tx.into();
-            let gas_limit = provider.estimate_gas(&tx).await?;
-            tx.set_gas(gas_limit);
+            middlewear.fill_transaction(&mut tx, None);
 
             Ok(tx)
         }
