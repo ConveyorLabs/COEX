@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     future::pending,
+    str::FromStr,
     sync::{Arc, Mutex},
 };
 
@@ -175,7 +176,7 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
     for order_group in limit_order_execution_bundle.order_groups {
         let tx = construct_lo_execution_transaction(
             &configuration,
-            order_group.order_ids.clone(),
+            vec![order_group.order_ids.clone()[0]],
             provider.clone(),
         )
         .await?;
@@ -184,19 +185,22 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
         let limit_order_router =
             abi::ILimitOrderRouter::new(configuration.limit_order_book, provider.clone());
 
-        //TODO: dont clone order group
-        limit_order_router
-            .execute_orders(order_group.order_ids.clone())
-            .call()
-            .await?;
+        println!("presimulation");
+
+        // //TODO: dont clone order group
+        // limit_order_router
+        //     .execute_limit_orders(order_group.order_ids.clone())
+        //     .call()
+        //     .await?;
+
+        println!("postsimulation");
 
         //TODO: sign the tx
-        let signed_tx = configuration.wallet_key.sign_transaction_sync(&tx);
+        let tx_signature = configuration.wallet_key.sign_transaction_sync(&tx);
+        let signed_tx_bytes = tx.rlp_signed(&tx_signature);
 
         //Send the tx
-        let pending_tx = provider
-            .send_raw_transaction(signed_tx.to_vec().into())
-            .await?;
+        let pending_tx = provider.send_raw_transaction(signed_tx_bytes).await?;
 
         println!("pending tx: {:?}", pending_tx.tx_hash());
         let order_ids = order_group
@@ -269,8 +273,13 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient>(
 ) -> Result<TypedTransaction, ExecutorError<P>> {
     //TODO: For the love of god, refactor the transaction composition
 
+    for order_id in order_ids.clone() {
+        //TODO: remove this
+        println!("{:?}", H256::from(order_id));
+    }
+
     let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, provider.clone())
-        .execute_orders(order_ids)
+        .execute_limit_orders(order_ids)
         .calldata()
         .unwrap();
 
@@ -287,22 +296,23 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient>(
                 .data(calldata)
                 .from(configuration.wallet_address)
                 .nonce(nonce)
-                .chain_id(1);
+                .chain_id(137);
 
             //Update transaction gas fees
             let (max_fee_per_gas, max_priority_fee_per_gas) =
                 provider.estimate_eip1559_fees(None).await?;
 
-            let tx = tx.max_fee_per_gas(max_fee_per_gas);
-            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
+            let tx = tx.max_fee_per_gas(max_fee_per_gas * 120 / 100);
+            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas * 120 / 100);
 
-            println!("tx: {:?}", tx);
+            println!("tx: {:?}", tx.data);
+
             let mut tx: TypedTransaction = tx.into();
             let gas_limit = provider.estimate_gas(&tx).await?;
+
             //TODO: need to transform gas limit to adjust for price * buffer?
             tx.set_gas(gas_limit);
 
-            panic!("getting here");
             Ok(tx)
         }
 

@@ -1,5 +1,6 @@
 use ::tracing::info;
 use error::ExecutorError;
+use ethers::prelude::{NonceManagerMiddleware, SignerMiddleware};
 use ethers::providers::{Http, JsonRpcClient, Provider, Ws};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
