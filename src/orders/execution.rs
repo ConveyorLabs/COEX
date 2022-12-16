@@ -7,6 +7,7 @@ use std::{
 
 use ethers::{
     abi::{ethabi::Bytes, Token},
+    middleware,
     providers::{JsonRpcClient, Middleware, Provider},
     signers::LocalWallet,
     types::{
@@ -111,13 +112,13 @@ impl ExecutionCalldata for LimitOrderExecutionOrderIds {
     }
 }
 
-pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
+pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient, M: Middleware>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     configuration: &config::Config,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-    provider: Arc<Provider<P>>,
-) -> Result<(), ExecutorError<P>> {
+    middlewear: M,
+) -> Result<(), ExecutorError<P, M>> {
     //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
     let markets = markets.lock().expect("Could not acquire mutex lock");
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
@@ -177,13 +178,15 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient>(
         let tx = construct_lo_execution_transaction(
             &configuration,
             vec![order_group.order_ids.clone()[0]],
-            provider.clone(),
+            middlewear,
         )
         .await?;
 
         //TODO: simulate tx
-        let limit_order_router =
-            abi::ILimitOrderRouter::new(configuration.limit_order_book, provider.clone());
+        let limit_order_router = abi::ILimitOrderRouter::new(
+            configuration.limit_order_book,
+            Arc::new(middlewear.provider()),
+        );
 
         println!("presimulation");
 
@@ -266,10 +269,10 @@ pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient>(
 //TODO: change this to construct execution transaction, pass in calldata and execution address,
 //TODO: this way we can simulate the tx with the same contract instance that made the calldata
 //Construct a limit order execution transaction
-pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient>(
+pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: Middleware>(
     configuration: &config::Config,
     order_ids: Vec<[u8; 32]>,
-    provider: Arc<Provider<P>>,
+    middlewear: M,
 ) -> Result<TypedTransaction, ExecutorError<P>> {
     //TODO: For the love of god, refactor the transaction composition
 
@@ -278,40 +281,21 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient>(
         println!("{:?}", H256::from(order_id));
     }
 
-    let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, provider.clone())
-        .execute_limit_orders(order_ids)
-        .calldata()
-        .unwrap();
-
-    let nonce = provider
-        .get_transaction_count(configuration.wallet_address, None)
-        .await?;
+    let calldata = abi::ILimitOrderRouter::new(
+        configuration.limit_order_book,
+        Arc::new(middlewear.provider()),
+    )
+    .execute_limit_orders(order_ids)
+    .calldata()
+    .unwrap();
 
     match configuration.chain {
         //:: EIP 1559 transaction
         Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
             //TODO:FIXME: need to make chainid dynamic, add impl for Chain type to get id
-            let tx = Eip1559TransactionRequest::new()
-                .to(configuration.limit_order_book)
-                .data(calldata)
-                .from(configuration.wallet_address)
-                .nonce(nonce)
-                .chain_id(137);
+            let mut tx = Eip1559TransactionRequest::new().data(calldata);
 
-            //Update transaction gas fees
-            let (max_fee_per_gas, max_priority_fee_per_gas) =
-                provider.estimate_eip1559_fees(None).await?;
-
-            let tx = tx.max_fee_per_gas(max_fee_per_gas * 120 / 100);
-            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas * 120 / 100);
-
-            println!("tx: {:?}", tx.data);
-
-            let mut tx: TypedTransaction = tx.into();
-            let gas_limit = provider.estimate_gas(&tx).await?;
-
-            //TODO: need to transform gas limit to adjust for price * buffer?
-            tx.set_gas(gas_limit);
+            middlewear.fill_transaction(&mut tx.into(), None);
 
             Ok(tx)
         }

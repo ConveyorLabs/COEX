@@ -8,7 +8,7 @@ use cfmms::{dex::Dex, pool::Pool};
 use ethers::{
     abi::{decode, token, ParamType},
     prelude::k256::elliptic_curve::bigint::Encoding,
-    providers::{JsonRpcClient, Provider},
+    providers::{JsonRpcClient, Middleware, Provider},
     types::{Log, H160, H256, U256},
     utils::keccak256,
 };
@@ -33,7 +33,7 @@ pub fn get_market_id(token_a: H160, token_b: H160) -> U256 {
 }
 
 //Returns pool addr to market id, markets, market to affected orders,
-pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
+pub async fn initialize_market_structures<P: 'static + JsonRpcClient, M: Middleware>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     dexes: &[Dex],
     weth: H160,
@@ -44,7 +44,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
         Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
         Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     ),
-    ExecutorError<P>,
+    ExecutorError<P, M>,
 > {
     let mut pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
     let mut market_initialized: HashSet<U256> = HashSet::new();
@@ -139,7 +139,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
     ))
 }
 
-async fn update_market_structures<P: 'static + JsonRpcClient>(
+async fn update_market_structures<P: 'static + JsonRpcClient, M: Middleware>(
     order_id: H256,
     token_a: H160,
     token_b: H160,
@@ -149,7 +149,7 @@ async fn update_market_structures<P: 'static + JsonRpcClient>(
     market_to_affected_orders: &mut HashMap<U256, HashSet<H256>>,
     dexes: &[Dex],
     provider: Arc<Provider<P>>,
-) -> Result<(), ExecutorError<P>> {
+) -> Result<(), ExecutorError<P, M>> {
     //Initialize a to b market
     let market_id = get_market_id(token_a, token_b);
     if market_initialized.get(&market_id).is_some() {
@@ -175,12 +175,12 @@ async fn update_market_structures<P: 'static + JsonRpcClient>(
     Ok(())
 }
 
-async fn get_market<P: 'static + JsonRpcClient>(
+async fn get_market<P: 'static + JsonRpcClient, M: Middleware>(
     token_a: H160,
     token_b: H160,
     provider: Arc<Provider<P>>,
     dexes: &[Dex],
-) -> Result<Option<HashMap<H160, Pool>>, ExecutorError<P>> {
+) -> Result<Option<HashMap<H160, Pool>>, ExecutorError<P, M>> {
     let mut market = HashMap::new();
 
     for dex in dexes {

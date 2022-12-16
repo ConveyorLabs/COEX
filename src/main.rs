@@ -33,7 +33,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //Initialize a new configuration
     let configuration = config::Config::new();
     //Initialize the providers
-    let provider: Arc<Provider<Http>> = Arc::new(Provider::try_from(&configuration.http_endpoint)?);
+    let provider: Provider<Http> = Provider::try_from(&configuration.http_endpoint)?;
+    let middlewear = NonceManagerMiddleware::new(provider.clone(), configuration.wallet_address);
     let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
 
     //Initialize the markets and order structures
@@ -43,13 +44,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         pool_address_to_market_id,
         markets,
         market_to_affected_orders,
-    ) = initialize_executor(&configuration, provider.clone()).await?;
+    ) = initialize_executor(&configuration, Arc::new(provider)).await?;
 
     let pending_transactions_sender = Arc::new(
         handle_pending_transactions(
             pending_order_ids,
             Duration::new(0, 500000000), //500 ms
-            provider.clone(),
+            Arc::new(provider),
         )
         .await,
     );
@@ -60,7 +61,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         markets.clone(),
         &configuration,
         pending_transactions_sender.clone(),
-        provider.clone(),
+        middlewear,
     )
     .await?;
 
@@ -129,16 +130,16 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
     ))
 }
 
-async fn run_loop<P: 'static + JsonRpcClient>(
+async fn run_loop<P: 'static + JsonRpcClient, M: Middleware>(
     configuration: config::Config,
-    provider: Arc<Provider<P>>,
+    middleware: M,
     stream_provider: Provider<Ws>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     pool_address_to_market_id: HashMap<H160, U256>,
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-) -> Result<(), ExecutorError<P>> {
+) -> Result<(), ExecutorError<P, M>> {
     let mut block_stream = stream_provider.subscribe_blocks().await?;
     let block_filter = events::initialize_block_filter(&configuration.dexes);
     //Get a mapping of event signature to event for quick lookup
@@ -149,7 +150,7 @@ async fn run_loop<P: 'static + JsonRpcClient>(
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
         let (order_events, pool_events) = events::sort_events(
-            &provider
+            &middleware
                 .get_logs(
                     &block_filter.clone().from_block(
                         block
