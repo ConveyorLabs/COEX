@@ -1,15 +1,12 @@
 use std::{
     borrow::BorrowMut,
     collections::{HashMap, HashSet},
-    default,
-    hash::{Hash, Hasher},
     sync::Arc,
 };
 
 use cfmms::pool::{Pool, UniswapV2Pool};
 use ethers::{
-    abi::{self, ethabi::Bytes, FixedBytes, Token},
-    providers::{JsonRpcClient, Middleware, Provider},
+    providers::{Middleware},
     types::{H160, H256, U256},
 };
 
@@ -26,18 +23,18 @@ use super::{
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
 pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
     sandbox_limit_orders: HashMap<H256, &SandboxLimitOrder>,
-    simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
-    v3_quoter_address: H160,
-    middleware: Arc<M>,
+    _simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
+    _v3_quoter_address: H160,
+    _middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     //Go through the slice of sandbox limit orders and group the orders by market
-    let mut orders_grouped_by_market = group_sandbox_limit_orders_by_market(sandbox_limit_orders);
+    let orders_grouped_by_market = group_sandbox_limit_orders_by_market(sandbox_limit_orders);
     let sorted_orders_grouped_by_market =
         sort_sandbox_limit_orders_by_amount_in(orders_grouped_by_market);
 
     //For each order that can execute, add it to the execution calldata, including partial fills
-    for (market_id, orders) in sorted_orders_grouped_by_market {
-        for order in orders {}
+    for (_market_id, orders) in sorted_orders_grouped_by_market {
+        for _order in orders {}
     }
 
     //When the market is tapped out for the orders, move onto the next market
@@ -97,7 +94,7 @@ pub fn simulate_and_batch_limit_orders(
 
         for order in orders {
             //:: If the order is not already added to calldata, continue simulating and checking for execution
-            if let None = order_ids_in_calldata.get(&order.order_id) {
+            if order_ids_in_calldata.get(&order.order_id).is_none() {
                 order_ids_in_calldata.insert(order.order_id);
 
                 //:: First get the a to weth market and then get the weth to b market from the simulated markets
@@ -135,17 +132,17 @@ pub fn simulate_and_batch_limit_orders(
 //Returns the amount out and a reference to the pools that it took through the route
 fn find_best_route_across_markets<'a>(
     amount_in: u128,
-    token_in: H160,
+    _token_in: H160,
     markets: Vec<&Market>,
 ) -> (u128, Vec<&'a Pool>) {
-    let mut amount_out = amount_in;
-    let mut route = vec![];
+    let amount_out = amount_in;
+    let route = vec![];
 
     for market in markets {
-        let mut best_amount_out = 0;
-        let mut best_pool = &Pool::UniswapV2(UniswapV2Pool::default());
+        let _best_amount_out = 0;
+        let _best_pool = &Pool::UniswapV2(UniswapV2Pool::default());
 
-        for (_, pool) in market {
+        for (_, _pool) in market {
             // let swap_amount_out = pool.simulate_swap();
             // if swap_amount_out > best_amount_out {
             // best_amount_out = swap_amount_out;
@@ -160,8 +157,8 @@ fn find_best_route_across_markets<'a>(
 }
 
 //TODO:
-fn update_pools_along_route(token_in: H160, amount_in: u128, route: &mut [&Pool]) {
-    for pool in route {
+fn update_pools_along_route(_token_in: H160, _amount_in: u128, route: &mut [&Pool]) {
+    for _pool in route {
         // pool.simulate_swap_mut(token_in, amount_in);
     }
 }

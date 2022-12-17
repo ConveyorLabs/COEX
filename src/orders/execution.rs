@@ -1,15 +1,11 @@
 use std::{
     collections::{HashMap, HashSet},
-    future::pending,
-    str::FromStr,
     sync::{Arc, Mutex},
 };
 
 use ethers::{
     abi::{ethabi::Bytes, Token},
-    middleware,
-    providers::{JsonRpcClient, Middleware, Provider},
-    signers::LocalWallet,
+    providers::{Middleware},
     types::{
         transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, TransactionRequest,
         H160, H256, U256,
@@ -20,13 +16,12 @@ use crate::{
     abi,
     config::{self, Chain},
     error::ExecutorError,
-    markets::market::{get_market_id, Market},
+    markets::market::{Market},
 };
 
 use super::{
-    execution,
     limit_order::LimitOrder,
-    order::{self, Order},
+    order::{Order},
     sandbox_limit_order::SandboxLimitOrder,
     simulate,
 };
@@ -138,14 +133,14 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
             match order {
                 Order::SandboxLimitOrder(sandbox_limit_order) => {
-                    if let None = slo_at_execution_price.get(&sandbox_limit_order.order_id) {
+                    if slo_at_execution_price.get(&sandbox_limit_order.order_id).is_none() {
                         slo_at_execution_price
                             .insert(sandbox_limit_order.order_id, sandbox_limit_order);
                     }
                 }
 
                 Order::LimitOrder(limit_order) => {
-                    if let None = lo_at_execution_price.get(&limit_order.order_id) {
+                    if lo_at_execution_price.get(&limit_order.order_id).is_none() {
                         lo_at_execution_price.insert(limit_order.order_id, limit_order);
                     }
                 }
@@ -176,7 +171,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
         let tx = construct_lo_execution_transaction(
-            &configuration,
+            configuration,
             vec![order_group.order_ids.clone()[0]],
             middleware.clone(),
         )
@@ -351,7 +346,7 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
     for market_id in affected_markets {
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
             for order_id in affected_orders {
-                if let Some(order) = active_orders.get(&order_id) {
+                if let Some(order) = active_orders.get(order_id) {
                     if order.can_execute(&markets, configuration.weth_address) {
                         //Add the market to the simulation markets structure
                         simulated_markets.insert(
@@ -364,8 +359,7 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
 
                         match order {
                             Order::SandboxLimitOrder(sandbox_limit_order) => {
-                                if let None =
-                                    slo_at_execution_price.get(&sandbox_limit_order.order_id)
+                                if slo_at_execution_price.get(&sandbox_limit_order.order_id).is_none()
                                 {
                                     slo_at_execution_price
                                         .insert(sandbox_limit_order.order_id, sandbox_limit_order);
@@ -373,7 +367,7 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
                             }
 
                             Order::LimitOrder(limit_order) => {
-                                if let None = lo_at_execution_price.get(&limit_order.order_id) {
+                                if lo_at_execution_price.get(&limit_order.order_id).is_none() {
                                     lo_at_execution_price.insert(limit_order.order_id, limit_order);
                                 }
                             }
@@ -408,7 +402,7 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
         let tx = construct_lo_execution_transaction(
-            &configuration,
+            configuration,
             order_group.order_ids.clone(),
             middleware.clone(),
         )

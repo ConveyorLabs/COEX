@@ -5,7 +5,7 @@ use std::{
 };
 
 use ethers::{
-    providers::{JsonRpcClient, Middleware, Provider},
+    providers::{Middleware},
     types::H256,
 };
 
@@ -13,7 +13,7 @@ use ethers::{
 //TODO: pass in pending order ids
 pub async fn handle_pending_transactions<M: 'static + Middleware>(
     pending_order_ids: Arc<Mutex<HashSet<H256>>>,
-    pending_tx_interval: Duration,
+    _pending_tx_interval: Duration,
     middleware: Arc<M>,
 ) -> tokio::sync::mpsc::Sender<(H256, Vec<H256>)> {
     let (tx, mut rx): (
@@ -26,7 +26,7 @@ pub async fn handle_pending_transactions<M: 'static + Middleware>(
 
     //Make a clone of the pending transactions Arc for both threads that will be spun up below
     let pending_transactions_0 = pending_transactions.clone();
-    let pending_transactions_1 = pending_transactions.clone();
+    let pending_transactions_1 = pending_transactions;
 
     //Spin up a thread that receives new pending transactions
     tokio::spawn(async move {
@@ -38,7 +38,7 @@ pub async fn handle_pending_transactions<M: 'static + Middleware>(
         }
     });
 
-    let middleware = middleware.clone();
+    let middleware = middleware;
     //Spin up a thread that checks each pending transaction to see if it has been completed
     tokio::spawn(async move {
         loop {
@@ -67,7 +67,7 @@ pub async fn handle_pending_transactions<M: 'static + Middleware>(
                             }
                         }
                     }
-                    Err(err) => {
+                    Err(_err) => {
                         //TODO: handle the middleware error
                     }
                 }

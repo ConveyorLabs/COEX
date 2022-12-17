@@ -7,11 +7,11 @@ use std::{
 use cfmms::pool::Pool;
 use ethers::{
     abi::RawLog,
-    prelude::{EthLogDecode, NonceManagerMiddleware},
-    providers::{JsonRpcClient, Middleware, Provider},
+    prelude::{EthLogDecode},
+    providers::{Middleware},
     types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U256},
 };
-use tracing::{event, info};
+use tracing::{info};
 
 use crate::{
     abi::{
@@ -22,7 +22,7 @@ use crate::{
     events::BeltEvent,
 };
 
-use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, simulate};
+use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
 
 #[derive(Debug)]
 pub enum Order {
@@ -420,10 +420,10 @@ pub fn fufill_order(order_id: H256, active_orders: Arc<Mutex<HashMap<H256, Order
 
 pub fn partial_fill_order(
     order_id: H256,
-    amount_in_remaining: u128,
-    amount_out_remaining: u128,
-    execution_credit_remaining: u128,
-    fee_remaining: u128,
+    _amount_in_remaining: u128,
+    _amount_out_remaining: u128,
+    _execution_credit_remaining: u128,
+    _fee_remaining: u128,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
 ) {
     let mut active_orders = active_orders
@@ -432,9 +432,9 @@ pub fn partial_fill_order(
 
     if let Some(order) = active_orders.get_mut(&order_id) {
         match order {
-            Order::SandboxLimitOrder(sandbox_limit_order) => {}
+            Order::SandboxLimitOrder(_sandbox_limit_order) => {}
 
-            Order::LimitOrder(limit_order) => {}
+            Order::LimitOrder(_limit_order) => {}
         }
     }
 }

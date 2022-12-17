@@ -1,10 +1,9 @@
 use cfmms::error::CFMMError;
 use ethers::{
-    middleware,
     prelude::{
-        gas_oracle::MiddlewareError, nonce_manager::NonceManagerError, AbiError, ContractError,
+        nonce_manager::NonceManagerError, AbiError, ContractError,
     },
-    providers::{JsonRpcClient, Middleware, Provider, ProviderError},
+    providers::{Middleware, ProviderError},
     types::H256,
 };
 use thiserror::Error;

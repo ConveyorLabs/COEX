@@ -1,21 +1,19 @@
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap, HashSet},
-    hash::{Hash, Hasher},
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
 };
 
 use cfmms::{dex::Dex, pool::Pool};
 use ethers::{
-    abi::{decode, token, ParamType},
-    prelude::{k256::elliptic_curve::bigint::Encoding, NonceManagerMiddleware},
-    providers::{JsonRpcClient, Middleware, Provider},
+    abi::{decode, ParamType},
+    providers::{Middleware},
     types::{Log, H160, H256, U256},
     utils::keccak256,
 };
 
 use crate::{
     error::ExecutorError,
-    orders::order::{self, Order},
+    orders::order::{Order},
 };
 
 pub type Market = HashMap<H160, Pool>;
@@ -67,7 +65,7 @@ pub async fn initialize_market_structures<M: 'static + Middleware>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
+                    dexes,
                     middleware.clone(),
                 )
                 .await?;
@@ -81,7 +79,7 @@ pub async fn initialize_market_structures<M: 'static + Middleware>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
+                    dexes,
                     middleware.clone(),
                 )
                 .await?;
@@ -95,7 +93,7 @@ pub async fn initialize_market_structures<M: 'static + Middleware>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
+                    dexes,
                     middleware.clone(),
                 )
                 .await?;
@@ -110,7 +108,7 @@ pub async fn initialize_market_structures<M: 'static + Middleware>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
+                    dexes,
                     middleware.clone(),
                 )
                 .await?;
@@ -124,7 +122,7 @@ pub async fn initialize_market_structures<M: 'static + Middleware>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
+                    dexes,
                     middleware.clone(),
                 )
                 .await?;
@@ -194,7 +192,7 @@ async fn get_market<M: 'static + Middleware>(
         }
     }
 
-    if market.len() > 0 {
+    if !market.is_empty() {
         Ok(Some(market))
     } else {
         Ok(None)
@@ -222,10 +220,8 @@ pub fn handle_market_updates(
                     match pool {
                         Pool::UniswapV2(mut uniswap_v2_pool) => {
                             let log_data = decode(
-                                &vec![
-                                    ParamType::Uint(128), //reserve0
-                                    ParamType::Uint(128), //reserve1
-                                ],
+                                &[ParamType::Uint(128), //reserve0
+                                    ParamType::Uint(128)],
                                 &event_log.data,
                             )
                             .expect("Could not get log data");
@@ -239,15 +235,11 @@ pub fn handle_market_updates(
                         Pool::UniswapV3(mut uniswap_v3_pool) => {
                             // decode log data, get liquidity and sqrt price
                             let log_data = decode(
-                                &vec![
-                                    // ParamType::Address,   //sender is indexed so its not in log data
-                                    // ParamType::Address,   //recipient is indexed so its not in log data
-                                    ParamType::Int(256),  //amount0
+                                &[ParamType::Int(256),  //amount0
                                     ParamType::Int(256),  //amount1
                                     ParamType::Uint(160), //sqrtPriceX96
                                     ParamType::Uint(128), //liquidity
-                                    ParamType::Int(24),   //tick
-                                ],
+                                    ParamType::Int(24)],
                                 &event_log.data,
                             )
                             .expect("Could not get log data");
@@ -284,10 +276,8 @@ pub fn get_best_market_price(
                 if price < best_price {
                     best_price = price;
                 }
-            } else {
-                if price > best_price {
-                    best_price = price;
-                }
+            } else if price > best_price {
+                best_price = price;
             }
         }
     }

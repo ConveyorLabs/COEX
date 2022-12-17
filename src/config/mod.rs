@@ -1,13 +1,12 @@
 use std::{fs::read_to_string, str::FromStr, sync::Arc, vec};
 
 use ethers::{
-    prelude::rand::random,
     signers::LocalWallet,
     types::{BlockNumber, H160},
 };
 
 use cfmms::dex::{Dex, DexVariant};
-use rand::Rng;
+
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

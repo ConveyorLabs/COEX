@@ -1,7 +1,7 @@
 use ::tracing::info;
 use error::ExecutorError;
-use ethers::prelude::{NonceManagerMiddleware, SignerMiddleware};
-use ethers::providers::{Http, JsonRpcClient, Provider, Ws};
+use ethers::prelude::{NonceManagerMiddleware};
+use ethers::providers::{Http, Provider, Ws};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -20,7 +20,7 @@ use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
 use ethers::types::{H160, H256, U256};
 use markets::market::{self, Market};
-use order::OrderVariant;
+
 use orders::execution::{self, fill_orders_at_execution_price};
 use orders::order::{self, Order};
 use pending_transactions::handle_pending_transactions;
@@ -187,7 +187,7 @@ async fn run_loop<M: 'static + Middleware>(
         //TODO: add logic to check order cancellation and refresh orders
 
         //Evaluate orders for execution
-        if markets_updated.len() > 0 {
+        if !markets_updated.is_empty() {
             execution::evaluate_and_execute_orders(
                 markets_updated,
                 market_to_affected_orders.clone(),
