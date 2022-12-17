@@ -1,6 +1,6 @@
 use ::tracing::info;
 use error::ExecutorError;
-use ethers::prelude::{NonceManagerMiddleware};
+use ethers::prelude::NonceManagerMiddleware;
 use ethers::providers::{Http, Provider, Ws};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -13,8 +13,8 @@ pub mod error;
 pub mod events;
 pub mod markets;
 pub mod orders;
-pub mod pending_transactions;
 pub mod traces;
+pub mod transaction_utils;
 
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
@@ -23,7 +23,7 @@ use markets::market::{self, Market};
 
 use orders::execution::{self, fill_orders_at_execution_price};
 use orders::order::{self, Order};
-use pending_transactions::handle_pending_transactions;
+use transaction_utils::handle_pending_transactions;
 
 //TODO: move this to bin
 #[tokio::main]

@@ -18,6 +18,7 @@ use crate::{
     config::{self, Chain},
     error::ExecutorError,
     markets::market::Market,
+    transaction_utils,
 };
 
 use super::{
@@ -171,7 +172,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     // execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
-        let tx = construct_lo_execution_transaction(
+        let tx = transaction_utils::construct_lo_execution_transaction(
             configuration,
             vec![order_group.order_ids.clone()[0]],
             //order_group.order_ids.clone(),
@@ -211,107 +212,6 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     }
 
     Ok(())
-}
-
-//Construct a sandbox limit order execution transaction
-pub async fn construct_slo_execution_transaction<M: 'static + Middleware>(
-    execution_address: H160,
-    data: Bytes,
-    middleware: Arc<M>,
-    chain: &Chain,
-) -> Result<TypedTransaction, ExecutorError<M>> {
-    //TODO: For the love of god, refactor the transaction composition
-
-    match chain {
-        //:: EIP 1559 transaction
-        Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
-            let tx = Eip1559TransactionRequest::new()
-                .to(execution_address)
-                .data(data)
-                .into();
-
-            Ok(tx)
-        }
-
-        //:: Legacy transaction
-        Chain::BSC | Chain::Cronos => {
-            let tx = TransactionRequest::new().to(execution_address).data(data);
-
-            let gas_price = middleware
-                .get_gas_price()
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
-
-            let tx = tx.gas_price(gas_price);
-
-            let mut tx: TypedTransaction = tx.into();
-            let gas_limit = middleware
-                .estimate_gas(&tx)
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
-
-            tx.set_gas(gas_limit);
-
-            Ok(tx)
-        }
-    }
-}
-
-//TODO: change this to construct execution transaction, pass in calldata and execution address,
-//TODO: this way we can simulate the tx with the same contract instance that made the calldata
-//Construct a limit order execution transaction
-pub async fn construct_lo_execution_transaction<M: Middleware>(
-    configuration: &config::Config,
-    order_ids: Vec<[u8; 32]>,
-    middleware: Arc<M>,
-) -> Result<TypedTransaction, ExecutorError<M>> {
-    //TODO: For the love of god, refactor the transaction composition
-
-    // for order_id in order_ids.clone() {
-    //     //TODO: remove this
-    //     println!("{:?}", H256::from(order_id));
-    // }
-
-    let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
-        .execute_limit_orders(order_ids)
-        .calldata()
-        .unwrap();
-
-    match configuration.chain {
-        //:: EIP 1559 transaction
-        Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
-            let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
-                .data(calldata)
-                .to(configuration.limit_order_book)
-                .from(configuration.wallet_address)
-                .chain_id(configuration.chain.chain_id())
-                .into();
-
-            middleware
-                .fill_transaction(&mut tx, None)
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
-
-            println!("tx: {:#?}", tx);
-
-            Ok(tx)
-        }
-
-        //:: Legacy transaction
-        Chain::BSC | Chain::Cronos => {
-            let mut tx = TransactionRequest::new()
-                .to(configuration.limit_order_book)
-                .data(calldata)
-                .into();
-
-            middleware
-                .fill_transaction(&mut tx, None)
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
-
-            Ok(tx)
-        }
-    }
 }
 
 pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
@@ -401,7 +301,7 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
 
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
-        let tx = construct_lo_execution_transaction(
+        let tx = transaction_utils::construct_lo_execution_transaction(
             configuration,
             order_group.order_ids.clone(),
             middleware.clone(),
