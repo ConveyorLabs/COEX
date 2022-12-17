@@ -79,6 +79,17 @@ impl Chain {
             }
         }
     }
+
+    pub fn chain_id(&self) -> usize {
+        match self {
+            Chain::Ethereum => 1,
+            Chain::Polygon => 137,
+            Chain::Optimism => 420,
+            Chain::Arbitrum => 42161,
+            Chain::BSC => 56,
+            Chain::Cronos => 25,
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -5,7 +5,8 @@ use std::{
 
 use ethers::{
     abi::{ethabi::Bytes, Token},
-    providers::{Middleware},
+    prelude::NonceManagerMiddleware,
+    providers::Middleware,
     types::{
         transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, TransactionRequest,
         H160, H256, U256,
@@ -16,14 +17,11 @@ use crate::{
     abi,
     config::{self, Chain},
     error::ExecutorError,
-    markets::market::{Market},
+    markets::market::Market,
 };
 
 use super::{
-    limit_order::LimitOrder,
-    order::{Order},
-    sandbox_limit_order::SandboxLimitOrder,
-    simulate,
+    limit_order::LimitOrder, order::Order, sandbox_limit_order::SandboxLimitOrder, simulate,
 };
 
 pub trait ExecutionCalldata {
@@ -133,7 +131,10 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
             match order {
                 Order::SandboxLimitOrder(sandbox_limit_order) => {
-                    if slo_at_execution_price.get(&sandbox_limit_order.order_id).is_none() {
+                    if slo_at_execution_price
+                        .get(&sandbox_limit_order.order_id)
+                        .is_none()
+                    {
                         slo_at_execution_price
                             .insert(sandbox_limit_order.order_id, sandbox_limit_order);
                     }
@@ -168,27 +169,31 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     //execute sandbox limit orders
 
-    //execute  limit orders
+    // execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
         let tx = construct_lo_execution_transaction(
             configuration,
             vec![order_group.order_ids.clone()[0]],
+            //order_group.order_ids.clone(),
             middleware.clone(),
         )
         .await?;
-
-        println!("presimulation");
 
         middleware
             .call(&tx, None)
             .await
             .map_err(ExecutorError::MiddlewareError)?;
 
-        println!("postsimulation");
+        let signed_tx = tx.rlp_signed(&configuration.wallet_key.sign_transaction_sync(&tx));
 
         //send the tx
+        // let pending_tx = middleware
+        //     .send_transaction(tx, None)
+        //     .await
+        //     .map_err(ExecutorError::MiddlewareError)?;
+
         let pending_tx = middleware
-            .send_transaction(tx, None)
+            .send_raw_transaction(signed_tx)
             .await
             .map_err(ExecutorError::MiddlewareError)?;
 
@@ -205,7 +210,6 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
             .await?;
     }
 
-    println!("done");
     Ok(())
 }
 
@@ -223,24 +227,8 @@ pub async fn construct_slo_execution_transaction<M: 'static + Middleware>(
         Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
             let tx = Eip1559TransactionRequest::new()
                 .to(execution_address)
-                .data(data);
-
-            //Update transaction gas fees
-            let (max_priority_fee_per_gas, max_fee_per_gas) = middleware
-                .estimate_eip1559_fees(None)
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
-
-            let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
-            let tx = tx.max_fee_per_gas(max_fee_per_gas);
-
-            let mut tx: TypedTransaction = tx.into();
-            let gas_limit = middleware
-                .estimate_gas(&tx)
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
-
-            tx.set_gas(gas_limit);
+                .data(data)
+                .into();
 
             Ok(tx)
         }
@@ -279,10 +267,10 @@ pub async fn construct_lo_execution_transaction<M: Middleware>(
 ) -> Result<TypedTransaction, ExecutorError<M>> {
     //TODO: For the love of god, refactor the transaction composition
 
-    for order_id in order_ids.clone() {
-        //TODO: remove this
-        println!("{:?}", H256::from(order_id));
-    }
+    // for order_id in order_ids.clone() {
+    //     //TODO: remove this
+    //     println!("{:?}", H256::from(order_id));
+    // }
 
     let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
         .execute_limit_orders(order_ids)
@@ -295,9 +283,16 @@ pub async fn construct_lo_execution_transaction<M: Middleware>(
             let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
                 .data(calldata)
                 .to(configuration.limit_order_book)
+                .from(configuration.wallet_address)
+                .chain_id(configuration.chain.chain_id())
                 .into();
 
-            middleware.fill_transaction(&mut tx, None);
+            middleware
+                .fill_transaction(&mut tx, None)
+                .await
+                .map_err(ExecutorError::MiddlewareError)?;
+
+            println!("tx: {:#?}", tx);
 
             Ok(tx)
         }
@@ -309,7 +304,10 @@ pub async fn construct_lo_execution_transaction<M: Middleware>(
                 .data(calldata)
                 .into();
 
-            middleware.fill_transaction(&mut tx, None);
+            middleware
+                .fill_transaction(&mut tx, None)
+                .await
+                .map_err(ExecutorError::MiddlewareError)?;
 
             Ok(tx)
         }
@@ -359,7 +357,9 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
 
                         match order {
                             Order::SandboxLimitOrder(sandbox_limit_order) => {
-                                if slo_at_execution_price.get(&sandbox_limit_order.order_id).is_none()
+                                if slo_at_execution_price
+                                    .get(&sandbox_limit_order.order_id)
+                                    .is_none()
                                 {
                                     slo_at_execution_price
                                         .insert(sandbox_limit_order.order_id, sandbox_limit_order);
