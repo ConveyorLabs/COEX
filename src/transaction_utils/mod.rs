@@ -5,11 +5,11 @@ use std::{
 };
 
 use ethers::{
-    abi::ethabi::Bytes,
     providers::Middleware,
+    signers::LocalWallet,
     types::{
-        transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, TransactionRequest,
-        H160, H256,
+        transaction::eip2718::TypedTransaction, Bytes, Eip1559TransactionRequest,
+        TransactionRequest, H160, H256,
     },
 };
 
@@ -100,10 +100,10 @@ pub async fn construct_lo_execution_transaction<M: Middleware>(
 ) -> Result<TypedTransaction, ExecutorError<M>> {
     //TODO: For the love of god, refactor the transaction composition
 
-    // for order_id in order_ids.clone() {
-    //     //TODO: remove this
-    //     println!("{:?}", H256::from(order_id));
-    // }
+    for order_id in order_ids.clone() {
+        //TODO: remove this
+        println!("{:?}", H256::from(order_id));
+    }
 
     let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
         .execute_limit_orders(order_ids)
@@ -125,6 +125,8 @@ pub async fn construct_lo_execution_transaction<M: Middleware>(
                 .estimate_eip1559_fees(None)
                 .await
                 .map_err(ExecutorError::MiddlewareError)?;
+
+            //TODO: remove the gas *10 and simulate over and over until it is successful for gas
 
             let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
                 .data(calldata)
@@ -206,4 +208,8 @@ pub async fn construct_slo_execution_transaction<M: 'static + Middleware>(
             Ok(tx)
         }
     }
+}
+
+pub fn raw_signed_transaction(tx: TypedTransaction, wallet_key: &LocalWallet) -> Bytes {
+    tx.rlp_signed(&wallet_key.sign_transaction_sync(&tx))
 }

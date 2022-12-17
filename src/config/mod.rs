@@ -31,7 +31,7 @@ pub struct Config {
     pub dexes: Vec<Dex>,
     pub protocol_creation_block: BlockNumber,
     pub wallet_address: H160,
-    pub wallet_key: Arc<LocalWallet>,
+    pub wallet_key: LocalWallet,
     pub chain: Chain,
 }
 
@@ -48,7 +48,7 @@ impl Default for Config {
             dexes: vec![],
             protocol_creation_block: BlockNumber::Latest,
             wallet_address: H160::zero(),
-            wallet_key: Arc::new(LocalWallet::new(&mut rand::thread_rng())),
+            wallet_key: LocalWallet::new(&mut rand::thread_rng()),
             chain: Chain::Ethereum,
         }
     }
@@ -113,12 +113,10 @@ impl Config {
         config.wallet_address =
             H160::from_str(&belt_toml.wallet_address).expect("Could not parse wallet address");
 
-        config.wallet_key = Arc::new(
-            belt_toml
-                .private_key
-                .parse()
-                .expect("Could not parse private key"),
-        );
+        config.wallet_key = belt_toml
+            .private_key
+            .parse()
+            .expect("Could not parse private key");
 
         let chain = Chain::from_str(&belt_toml.chain_name);
         config.chain = chain;
