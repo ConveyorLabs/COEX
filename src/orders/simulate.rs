@@ -80,6 +80,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
     //Go through the slice of sandbox limit orders and group the orders by market
     let orders_grouped_by_market = group_limit_orders_by_market(limit_orders);
     let sorted_orders_grouped_by_market = sort_limit_orders_by_amount_in(orders_grouped_by_market);
+    //TODO: sort these by usd value in the future
 
     //TODO: update this comment later, but we add order ids to this hashset so that we dont recalc orders for execution viability if they are already in an order group
     // since orders can be affected by multiple markets changing, its possible that the same order is in here twice, hence why we need to check if the order is already
@@ -126,7 +127,12 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
 
                     //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
                     if amount_out.as_u128() >= order.amount_out_min {
-                        update_pools_along_route(order.token_in, order.quantity, route, middleware);
+                        update_pools_along_route(
+                            order.token_in,
+                            U256::from(order.quantity),
+                            route,
+                            middleware,
+                        );
 
                         //:: For each order group, there is a new array that is initialized and order ids that are ready for execution are added to this array.
                         //:: Then that array is appended to the execution calldata
@@ -146,27 +152,29 @@ async fn find_best_route_across_markets<'a, M: Middleware>(
     token_in: H160,
     markets: Vec<&'a Market>,
     middleware: Arc<M>,
-) -> Result<(U256, Vec<&'a mut Pool>), ExecutorError<M>> {
+) -> Result<(U256, Vec<&'a Pool>), ExecutorError<M>> {
     let mut amount_out = amount_in;
     let mut route = vec![];
 
     for market in markets {
         let mut best_amount_out = U256::zero();
-        let mut best_pool = &mut Pool::UniswapV2(UniswapV2Pool::default());
+        let mut best_pool = H160::zero();
 
-        for (_, pool) in market.iter_mut() {
+        market.iter().map(|(pool_address, pool)| {});
+
+        for (_, pool) in market {
             let swap_amount_out = pool
                 .simulate_swap(token_in, amount_out, middleware.clone())
                 .await?;
 
-            if swap_amount_out > best_amount_out {
+            if swap_amount_out > best_amount_out || best_amount_out == 0 {
                 best_amount_out = swap_amount_out;
-                best_pool = pool;
+                best_pool = pool.address();
             }
         }
 
         amount_out = best_amount_out;
-        route.push(best_pool.borrow_mut());
+        route.push(market.get(&best_pool).unwrap());
     }
 
     Ok((amount_out, route))

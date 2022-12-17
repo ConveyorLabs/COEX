@@ -170,7 +170,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     //execute sandbox limit orders
 
-    // execute  limit orders
+    // execute limit orders
     for order_group in limit_order_execution_bundle.order_groups {
         let tx = transaction_utils::construct_lo_execution_transaction(
             configuration,

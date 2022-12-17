@@ -116,13 +116,13 @@ impl LimitOrder {
         weth: H160,
     ) -> bool {
         if buy {
-            let bmp = self.get_best_market_price(buy, markets, weth);
-            println!(
-                "Checking buy order, price: {:?}, {:?}, can execute: {:?}",
-                self.price,
-                bmp,
-                self.price >= bmp
-            );
+            // let bmp = self.get_best_market_price(buy, markets, weth);
+            // println!(
+            //     "Checking buy order, price: {:?}, {:?}, can execute: {:?}",
+            //     self.price,
+            //     bmp,
+            //     self.price >= bmp
+            // );
 
             self.get_best_market_price(buy, markets, weth) <= self.price
         } else {
