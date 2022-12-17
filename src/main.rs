@@ -26,6 +26,7 @@ use orders::order::{self, Order};
 use transaction_utils::handle_pending_transactions;
 
 //TODO: move this to bin
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     traces::init_tracing();

@@ -6,15 +6,12 @@ use std::{
 use cfmms::{dex::Dex, pool::Pool};
 use ethers::{
     abi::{decode, ParamType},
-    providers::{Middleware},
+    providers::Middleware,
     types::{Log, H160, H256, U256},
     utils::keccak256,
 };
 
-use crate::{
-    error::ExecutorError,
-    orders::order::{Order},
-};
+use crate::{error::ExecutorError, orders::order::Order};
 
 pub type Market = HashMap<H160, Pool>;
 
@@ -220,8 +217,10 @@ pub fn handle_market_updates(
                     match pool {
                         Pool::UniswapV2(mut uniswap_v2_pool) => {
                             let log_data = decode(
-                                &[ParamType::Uint(128), //reserve0
-                                    ParamType::Uint(128)],
+                                &[
+                                    ParamType::Uint(128), //reserve0
+                                    ParamType::Uint(128),
+                                ],
                                 &event_log.data,
                             )
                             .expect("Could not get log data");
@@ -235,11 +234,13 @@ pub fn handle_market_updates(
                         Pool::UniswapV3(mut uniswap_v3_pool) => {
                             // decode log data, get liquidity and sqrt price
                             let log_data = decode(
-                                &[ParamType::Int(256),  //amount0
+                                &[
+                                    ParamType::Int(256),  //amount0
                                     ParamType::Int(256),  //amount1
                                     ParamType::Uint(160), //sqrtPriceX96
                                     ParamType::Uint(128), //liquidity
-                                    ParamType::Int(24)],
+                                    ParamType::Int(24),
+                                ],
                                 &event_log.data,
                             )
                             .expect("Could not get log data");
@@ -261,16 +262,16 @@ pub fn handle_market_updates(
 
 pub fn get_best_market_price(
     buy: bool,
-    token_in: H160,
-    token_out: H160,
+    base_token: H160,
+    quote_token: H160,
     markets: &HashMap<U256, HashMap<H160, Pool>>,
 ) -> f64 {
     let mut best_price = if buy { f64::MAX } else { 0.0 };
 
-    let market_id = get_market_id(token_in, token_out);
+    let market_id = get_market_id(base_token, quote_token);
     if let Some(market) = markets.get(&market_id) {
         for (_, pool) in market {
-            let price = pool.calculate_price(token_in);
+            let price = pool.calculate_price(base_token);
 
             if buy {
                 if price < best_price {

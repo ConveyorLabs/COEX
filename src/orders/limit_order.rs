@@ -116,9 +116,17 @@ impl LimitOrder {
         weth: H160,
     ) -> bool {
         if buy {
-            self.price >= self.get_best_market_price(buy, markets, weth)
+            let bmp = self.get_best_market_price(buy, markets, weth);
+            println!(
+                "Checking buy order, price: {:?}, {:?}, can execute: {:?}",
+                self.price,
+                bmp,
+                self.price >= bmp
+            );
+
+            self.get_best_market_price(buy, markets, weth) <= self.price
         } else {
-            self.price <= self.get_best_market_price(buy, markets, weth)
+            self.get_best_market_price(buy, markets, weth) >= self.price
         }
     }
 
@@ -129,8 +137,12 @@ impl LimitOrder {
         weth: H160,
     ) -> f64 {
         //Check a -> weth -> b price
-        let a_to_weth_price = get_best_market_price(buy, self.token_in, weth, markets);
-        let weth_to_b_price = get_best_market_price(buy, weth, self.token_out, markets);
+
+        //We are first swapping token_a to weth, so we need the price of weth per 1 token_a
+        let a_to_weth_price = get_best_market_price(buy, weth, self.token_in, markets);
+
+        //Then we are swapping weth to token_b, meaning we need the price of 1 token_b per weth
+        let weth_to_b_price = get_best_market_price(buy, self.token_out, weth, markets);
 
         a_to_weth_price * weth_to_b_price
     }
