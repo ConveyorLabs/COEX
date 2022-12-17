@@ -52,12 +52,12 @@ impl Order {
     }
 }
 
-pub async fn initialize_active_orders<P: JsonRpcClient, M: Middleware>(
+pub async fn initialize_active_orders<M: Middleware>(
     sandbox_limit_order_book_address: H160,
     limit_order_book_address: H160,
     protocol_creation_block: BlockNumber,
-    middleware: Arc<NonceManagerMiddleware<Provider<P>>>,
-) -> Result<Arc<Mutex<HashMap<H256, Order>>>, ExecutorError<P, M>> {
+    middleware: Arc<M>,
+) -> Result<Arc<Mutex<HashMap<H256, Order>>>, ExecutorError<M>> {
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
@@ -69,7 +69,11 @@ pub async fn initialize_active_orders<P: JsonRpcClient, M: Middleware>(
         .expect("Could not unwrap the protocol creation block when initializing active orders.")
         .as_u64();
 
-    let current_block = middleware.get_block_number().await?.as_u64();
+    let current_block = middleware
+        .get_block_number()
+        .await
+        .map_err(ExecutorError::MiddlewareError)?
+        .as_u64();
 
     for from_block in (from_block..=current_block).step_by(step) {
         let to_block = from_block + step as u64;
@@ -90,7 +94,8 @@ pub async fn initialize_active_orders<P: JsonRpcClient, M: Middleware>(
                     .from_block(BlockNumber::Number(ethers::types::U64([from_block])))
                     .to_block(BlockNumber::Number(ethers::types::U64([to_block]))),
             )
-            .await?;
+            .await
+            .map_err(ExecutorError::MiddlewareError)?;
 
         for log in logs {
             let order_placed_log: OrderPlacedFilter = EthLogDecode::decode_log(&RawLog {
@@ -107,7 +112,7 @@ pub async fn initialize_active_orders<P: JsonRpcClient, M: Middleware>(
                         order_id,
                         sandbox_limit_order_book_address,
                         OrderVariant::SandboxLimitOrder,
-                        provider.clone(),
+                        middleware.clone(),
                     )
                     .await
                     {
@@ -126,7 +131,7 @@ pub async fn initialize_active_orders<P: JsonRpcClient, M: Middleware>(
                         order_id,
                         limit_order_book_address,
                         OrderVariant::LimitOrder,
-                        provider.clone(),
+                        middleware.clone(),
                     )
                     .await
                     {
@@ -144,13 +149,13 @@ pub async fn initialize_active_orders<P: JsonRpcClient, M: Middleware>(
     Ok(Arc::new(Mutex::new(active_orders)))
 }
 
-pub async fn handle_order_updates<P: JsonRpcClient>(
+pub async fn handle_order_updates<M: Middleware>(
     order_events: Vec<(BeltEvent, Log)>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     sandbox_limit_order_book_address: H160,
     limit_order_book_address: H160,
-    provider: Arc<Provider<P>>,
-) -> Result<(), ExecutorError<P>> {
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
     //Handle order updates
     for order_event in order_events {
         let belt_event = order_event.0;
@@ -184,7 +189,7 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                         event_log.address,
                         active_orders.clone(),
                         order_variant,
-                        provider.clone(),
+                        middleware.clone(),
                     )
                     .await?;
                 }
@@ -226,7 +231,7 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
                         event_log.address,
                         active_orders.clone(),
                         order_variant,
-                        provider.clone(),
+                        middleware.clone(),
                     )
                     .await?;
                 }
@@ -319,15 +324,15 @@ pub async fn handle_order_updates<P: JsonRpcClient>(
     Ok(())
 }
 
-pub async fn get_remote_order<P: JsonRpcClient>(
+pub async fn get_remote_order<M: Middleware>(
     order_id: H256,
     order_book_address: H160,
     order_variant: OrderVariant,
-    provider: Arc<Provider<P>>,
-) -> Result<Order, ExecutorError<P>> {
+    middleware: Arc<M>,
+) -> Result<Order, ExecutorError<M>> {
     match order_variant {
         OrderVariant::SandboxLimitOrder => {
-            let slob = abi::ISandboxLimitOrderBook::new(order_book_address, provider);
+            let slob = abi::ISandboxLimitOrderBook::new(order_book_address, middleware);
 
             let return_data = slob
                 .get_order_by_id(order_id.to_fixed_bytes())
@@ -340,7 +345,7 @@ pub async fn get_remote_order<P: JsonRpcClient>(
         }
 
         OrderVariant::LimitOrder => {
-            let lob = abi::ILimitOrderBook::new(order_book_address, provider);
+            let lob = abi::ILimitOrderBook::new(order_book_address, middleware);
 
             let return_data = lob
                 .get_order_by_id(order_id.to_fixed_bytes())
@@ -354,18 +359,18 @@ pub async fn get_remote_order<P: JsonRpcClient>(
     }
 }
 
-pub async fn place_order<P: JsonRpcClient>(
+pub async fn place_order<M: Middleware>(
     order_id: H256,
     order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     order_variant: OrderVariant,
-    provider: Arc<Provider<P>>,
-) -> Result<(), ExecutorError<P>> {
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
     let order = get_remote_order(
         order_id,
         order_book_address,
         order_variant,
-        provider.clone(),
+        middleware.clone(),
     )
     .await?;
 
@@ -377,18 +382,18 @@ pub async fn place_order<P: JsonRpcClient>(
     Ok(())
 }
 
-pub async fn update_order<P: JsonRpcClient>(
+pub async fn update_order<M: Middleware>(
     order_id: H256,
     order_book_address: H160,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     order_variant: OrderVariant,
-    provider: Arc<Provider<P>>,
-) -> Result<(), ExecutorError<P>> {
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
     let order = get_remote_order(
         order_id,
         order_book_address,
         order_variant,
-        provider.clone(),
+        middleware.clone(),
     )
     .await?;
 

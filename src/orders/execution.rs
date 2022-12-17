@@ -112,13 +112,13 @@ impl ExecutionCalldata for LimitOrderExecutionOrderIds {
     }
 }
 
-pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient, M: Middleware>(
+pub async fn fill_orders_at_execution_price<M: Middleware>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     configuration: &config::Config,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-    middleware: M,
-) -> Result<(), ExecutorError<P, M>> {
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
     //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
     let markets = markets.lock().expect("Could not acquire mutex lock");
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
@@ -159,7 +159,7 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient, M: Middl
     //     slo_at_execution_price,
     //     simulated_markets,
     //     v3_quoter_address,
-    //     provider,
+    //     middleware,
     // )
     // .await?;
 
@@ -178,18 +178,24 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient, M: Middl
         let tx = construct_lo_execution_transaction(
             &configuration,
             vec![order_group.order_ids.clone()[0]],
-            middleware,
+            middleware.clone(),
         )
         .await?;
 
         println!("presimulation");
 
-        middleware.call(&tx, None).await?;
+        middleware
+            .call(&tx, None)
+            .await
+            .map_err(ExecutorError::MiddlewareError)?;
 
         println!("postsimulation");
 
         //send the tx
-        let pending_tx = middleware.send_transaction(tx, None).await?;
+        let pending_tx = middleware
+            .send_transaction(tx, None)
+            .await
+            .map_err(ExecutorError::MiddlewareError)?;
 
         println!("pending tx: {:?}", pending_tx.tx_hash());
 
@@ -209,12 +215,12 @@ pub async fn fill_orders_at_execution_price<P: 'static + JsonRpcClient, M: Middl
 }
 
 //Construct a sandbox limit order execution transaction
-pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient, M: Middleware>(
+pub async fn construct_slo_execution_transaction<M: 'static + Middleware>(
     execution_address: H160,
     data: Bytes,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<M>,
     chain: &Chain,
-) -> Result<TypedTransaction, ExecutorError<P, M>> {
+) -> Result<TypedTransaction, ExecutorError<M>> {
     //TODO: For the love of god, refactor the transaction composition
 
     match chain {
@@ -225,13 +231,20 @@ pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient, M: 
                 .data(data);
 
             //Update transaction gas fees
-            let (max_priority_fee_per_gas, max_fee_per_gas) =
-                provider.estimate_eip1559_fees(None).await?;
+            let (max_priority_fee_per_gas, max_fee_per_gas) = middleware
+                .estimate_eip1559_fees(None)
+                .await
+                .map_err(ExecutorError::MiddlewareError)?;
+
             let tx = tx.max_priority_fee_per_gas(max_priority_fee_per_gas);
             let tx = tx.max_fee_per_gas(max_fee_per_gas);
 
             let mut tx: TypedTransaction = tx.into();
-            let gas_limit = provider.estimate_gas(&tx).await?;
+            let gas_limit = middleware
+                .estimate_gas(&tx)
+                .await
+                .map_err(ExecutorError::MiddlewareError)?;
+
             tx.set_gas(gas_limit);
 
             Ok(tx)
@@ -241,11 +254,19 @@ pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient, M: 
         Chain::BSC | Chain::Cronos => {
             let tx = TransactionRequest::new().to(execution_address).data(data);
 
-            let gas_price = provider.get_gas_price().await?;
+            let gas_price = middleware
+                .get_gas_price()
+                .await
+                .map_err(ExecutorError::MiddlewareError)?;
+
             let tx = tx.gas_price(gas_price);
 
             let mut tx: TypedTransaction = tx.into();
-            let gas_limit = provider.estimate_gas(&tx).await?;
+            let gas_limit = middleware
+                .estimate_gas(&tx)
+                .await
+                .map_err(ExecutorError::MiddlewareError)?;
+
             tx.set_gas(gas_limit);
 
             Ok(tx)
@@ -256,11 +277,11 @@ pub async fn construct_slo_execution_transaction<P: 'static + JsonRpcClient, M: 
 //TODO: change this to construct execution transaction, pass in calldata and execution address,
 //TODO: this way we can simulate the tx with the same contract instance that made the calldata
 //Construct a limit order execution transaction
-pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: Middleware>(
+pub async fn construct_lo_execution_transaction<M: Middleware>(
     configuration: &config::Config,
     order_ids: Vec<[u8; 32]>,
-    middleware: M,
-) -> Result<TypedTransaction, ExecutorError<P, M>> {
+    middleware: Arc<M>,
+) -> Result<TypedTransaction, ExecutorError<M>> {
     //TODO: For the love of god, refactor the transaction composition
 
     for order_id in order_ids.clone() {
@@ -268,13 +289,10 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: M
         println!("{:?}", H256::from(order_id));
     }
 
-    let calldata = abi::ILimitOrderRouter::new(
-        configuration.limit_order_book,
-        Arc::new(middleware.provider()),
-    )
-    .execute_limit_orders(order_ids)
-    .calldata()
-    .unwrap();
+    let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
+        .execute_limit_orders(order_ids)
+        .calldata()
+        .unwrap();
 
     match configuration.chain {
         //:: EIP 1559 transaction
@@ -303,15 +321,15 @@ pub async fn construct_lo_execution_transaction<P: 'static + JsonRpcClient, M: M
     }
 }
 
-pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient, M: Middleware>(
+pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
     affected_markets: HashSet<U256>,
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     configuration: &config::Config,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<M>,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-) -> Result<(), ExecutorError<P, M>> {
+) -> Result<(), ExecutorError<M>> {
     //:: Acquire the lock on all of the data structures that have a mutex
     let market_to_affected_orders = market_to_affected_orders
         .lock()
@@ -372,7 +390,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient, M: Middlewa
     //     slo_at_execution_price,
     //     simulated_markets,
     //     v3_quoter_address,
-    //     provider,
+    //     middleware,
     // )
     // .await?;
 
@@ -392,7 +410,7 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient, M: Middlewa
         let tx = construct_lo_execution_transaction(
             &configuration,
             order_group.order_ids.clone(),
-            provider.clone(),
+            middleware.clone(),
         )
         .await?;
 
@@ -402,9 +420,10 @@ pub async fn evaluate_and_execute_orders<P: 'static + JsonRpcClient, M: Middlewa
         let signed_tx = configuration.wallet_key.sign_transaction_sync(&tx);
 
         //Send the tx
-        let pending_tx = provider
+        let pending_tx = middleware
             .send_raw_transaction(signed_tx.to_vec().into())
-            .await?;
+            .await
+            .map_err(ExecutorError::MiddlewareError)?;
 
         let order_ids = order_group
             .order_ids

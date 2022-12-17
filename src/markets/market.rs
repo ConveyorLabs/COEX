@@ -33,18 +33,18 @@ pub fn get_market_id(token_a: H160, token_b: H160) -> U256 {
 }
 
 //Returns pool addr to market id, markets, market to affected orders,
-pub async fn initialize_market_structures<P: 'static + JsonRpcClient, M: Middleware>(
+pub async fn initialize_market_structures<M: 'static + Middleware>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     dexes: &[Dex],
     weth: H160,
-    middleware: Arc<NonceManagerMiddleware<Provider<P>>>,
+    middleware: Arc<M>,
 ) -> Result<
     (
         HashMap<H160, U256>,
         Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
         Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     ),
-    ExecutorError<P, M>,
+    ExecutorError<M>,
 > {
     let mut pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
     let mut market_initialized: HashSet<U256> = HashSet::new();
@@ -68,7 +68,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient, M: Middlew
                     &mut markets,
                     &mut market_to_affected_orders,
                     &dexes,
-                    provider.clone(),
+                    middleware.clone(),
                 )
                 .await?;
 
@@ -82,7 +82,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient, M: Middlew
                     &mut markets,
                     &mut market_to_affected_orders,
                     &dexes,
-                    provider.clone(),
+                    middleware.clone(),
                 )
                 .await?;
 
@@ -96,7 +96,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient, M: Middlew
                     &mut markets,
                     &mut market_to_affected_orders,
                     &dexes,
-                    provider.clone(),
+                    middleware.clone(),
                 )
                 .await?;
             }
@@ -111,7 +111,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient, M: Middlew
                     &mut markets,
                     &mut market_to_affected_orders,
                     &dexes,
-                    provider.clone(),
+                    middleware.clone(),
                 )
                 .await?;
 
@@ -125,7 +125,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient, M: Middlew
                     &mut markets,
                     &mut market_to_affected_orders,
                     &dexes,
-                    provider.clone(),
+                    middleware.clone(),
                 )
                 .await?;
             }
@@ -139,7 +139,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient, M: Middlew
     ))
 }
 
-async fn update_market_structures<P: 'static + JsonRpcClient, M: Middleware>(
+async fn update_market_structures<M: 'static + Middleware>(
     order_id: H256,
     token_a: H160,
     token_b: H160,
@@ -148,8 +148,8 @@ async fn update_market_structures<P: 'static + JsonRpcClient, M: Middleware>(
     markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     market_to_affected_orders: &mut HashMap<U256, HashSet<H256>>,
     dexes: &[Dex],
-    middleware: Arc<NonceManagerMiddleware<Provider<P>>>,
-) -> Result<(), ExecutorError<P, M>> {
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
     //Initialize a to b market
     let market_id = get_market_id(token_a, token_b);
     if market_initialized.get(&market_id).is_some() {
@@ -159,7 +159,7 @@ async fn update_market_structures<P: 'static + JsonRpcClient, M: Middleware>(
     } else {
         market_initialized.insert(market_id);
 
-        if let Some(market) = get_market(token_a, token_b, provider.clone(), dexes).await? {
+        if let Some(market) = get_market(token_a, token_b, middleware.clone(), dexes).await? {
             for (pool_address, _) in &market {
                 pool_address_to_market_id.insert(pool_address.to_owned(), market_id);
             }
@@ -175,17 +175,17 @@ async fn update_market_structures<P: 'static + JsonRpcClient, M: Middleware>(
     Ok(())
 }
 
-async fn get_market<P: 'static + JsonRpcClient, M: Middleware>(
+async fn get_market<M: 'static + Middleware>(
     token_a: H160,
     token_b: H160,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<M>,
     dexes: &[Dex],
-) -> Result<Option<HashMap<H160, Pool>>, ExecutorError<P, M>> {
+) -> Result<Option<HashMap<H160, Pool>>, ExecutorError<M>> {
     let mut market = HashMap::new();
 
     for dex in dexes {
         if let Some(pools) = dex
-            .get_all_pools_for_pair(token_a, token_b, provider.clone())
+            .get_all_pools_for_pair(token_a, token_b, middleware.clone())
             .await?
         {
             for pool in pools {

@@ -11,10 +11,10 @@ use ethers::{
 
 //TODO: pass in sleep time for checking transactions
 //TODO: pass in pending order ids
-pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
+pub async fn handle_pending_transactions<M: 'static + Middleware>(
     pending_order_ids: Arc<Mutex<HashSet<H256>>>,
     pending_tx_interval: Duration,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<M>,
 ) -> tokio::sync::mpsc::Sender<(H256, Vec<H256>)> {
     let (tx, mut rx): (
         tokio::sync::mpsc::Sender<(H256, Vec<H256>)>,
@@ -38,7 +38,7 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
         }
     });
 
-    let provider = provider.clone();
+    let middleware = middleware.clone();
     //Spin up a thread that checks each pending transaction to see if it has been completed
     tokio::spawn(async move {
         loop {
@@ -48,7 +48,7 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
                 .clone();
 
             for pending_transaction in pending_transactions {
-                match provider
+                match middleware
                     .get_transaction_receipt(pending_transaction.0.to_owned())
                     .await
                 {
@@ -68,7 +68,7 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
                         }
                     }
                     Err(err) => {
-                        //TODO: handle the provider error
+                        //TODO: handle the middleware error
                     }
                 }
             }

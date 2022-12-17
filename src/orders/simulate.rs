@@ -9,7 +9,7 @@ use std::{
 use cfmms::pool::{Pool, UniswapV2Pool};
 use ethers::{
     abi::{self, ethabi::Bytes, FixedBytes, Token},
-    providers::{JsonRpcClient, Provider},
+    providers::{JsonRpcClient, Middleware, Provider},
     types::{H160, H256, U256},
 };
 
@@ -24,12 +24,12 @@ use super::{
 };
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
-pub async fn simulate_and_batch_sandbox_limit_orders<P: 'static + JsonRpcClient>(
+pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
     sandbox_limit_orders: HashMap<H256, &SandboxLimitOrder>,
     simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
     v3_quoter_address: H160,
-    provider: Arc<Provider<P>>,
-) -> Result<(), ExecutorError<P>> {
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
     //Go through the slice of sandbox limit orders and group the orders by market
     let mut orders_grouped_by_market = group_sandbox_limit_orders_by_market(sandbox_limit_orders);
     let sorted_orders_grouped_by_market =

@@ -48,13 +48,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         pool_address_to_market_id,
         markets,
         market_to_affected_orders,
-    ) = initialize_executor(&configuration, middleware).await?;
+    ) = initialize_executor(&configuration, middleware.clone()).await?;
 
     let pending_transactions_sender = Arc::new(
         handle_pending_transactions(
             pending_order_ids,
             Duration::new(0, 500000000), //500 ms
-            Arc::new(provider),
+            middleware.clone(),
         )
         .await,
     );
@@ -65,14 +65,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         markets.clone(),
         &configuration,
         pending_transactions_sender.clone(),
-        middleware,
+        middleware.clone(),
     )
     .await?;
 
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
         configuration,
-        provider,
+        middleware,
         stream_provider,
         active_orders,
         pool_address_to_market_id,
@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 async fn initialize_executor<M: 'static + Middleware>(
     configuration: &config::Config,
-    middleware: Arc<NonceManagerMiddleware<Provider<P>>>,
+    middleware: Arc<M>,
 ) -> Result<
     (
         Arc<Mutex<HashMap<H256, Order>>>,         //active orders
@@ -136,7 +136,7 @@ async fn initialize_executor<M: 'static + Middleware>(
 
 async fn run_loop<M: 'static + Middleware>(
     configuration: config::Config,
-    middleware: M,
+    middleware: Arc<M>,
     stream_provider: Provider<Ws>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     pool_address_to_market_id: HashMap<H160, U256>,
@@ -162,7 +162,8 @@ async fn run_loop<M: 'static + Middleware>(
                             .expect("Could not unwrap block number from block header"),
                     ),
                 )
-                .await?,
+                .await
+                .map_err(ExecutorError::MiddlewareError)?,
             &event_sig_to_belt_event,
         );
 
@@ -172,7 +173,7 @@ async fn run_loop<M: 'static + Middleware>(
             active_orders.clone(),
             configuration.sandbox_limit_order_book,
             configuration.limit_order_book,
-            provider.clone(),
+            middleware.clone(),
         )
         .await?;
 
@@ -193,7 +194,7 @@ async fn run_loop<M: 'static + Middleware>(
                 active_orders.clone(),
                 markets.clone(),
                 &configuration,
-                provider.clone(),
+                middleware.clone(),
                 pending_transactions_sender.clone(),
             )
             .await?;
