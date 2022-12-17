@@ -26,7 +26,7 @@ abigen!(
 
     ILimitOrderRouter,
     r#"[
-        function executeOrders(bytes32[] calldata orderIds) external;
+        function executeLimitOrders(bytes32[] calldata orderIds) external;
     ]"#;
 
 

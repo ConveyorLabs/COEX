@@ -86,7 +86,7 @@ impl LimitOrder {
         ),
     ) -> LimitOrder {
         let price = BigFloat::from_u128(return_data.8)
-            .div(&BigFloat::from_f64(2_f64.powf(63 as f64)))
+            .div(&BigFloat::from_f64(2_f64.powf(63_f64)))
             .to_f64();
 
         LimitOrder::new(

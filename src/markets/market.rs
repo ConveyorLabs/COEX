@@ -1,21 +1,19 @@
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap, HashSet},
-    hash::{Hash, Hasher},
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
 };
 
 use cfmms::{dex::Dex, pool::Pool};
 use ethers::{
-    abi::{decode, token, ParamType},
-    prelude::k256::elliptic_curve::bigint::Encoding,
-    providers::{JsonRpcClient, Provider},
+    abi::{decode, ParamType},
+    providers::{Middleware},
     types::{Log, H160, H256, U256},
     utils::keccak256,
 };
 
 use crate::{
     error::ExecutorError,
-    orders::order::{self, Order},
+    orders::order::{Order},
 };
 
 pub type Market = HashMap<H160, Pool>;
@@ -33,18 +31,18 @@ pub fn get_market_id(token_a: H160, token_b: H160) -> U256 {
 }
 
 //Returns pool addr to market id, markets, market to affected orders,
-pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
+pub async fn initialize_market_structures<M: 'static + Middleware>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     dexes: &[Dex],
     weth: H160,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<M>,
 ) -> Result<
     (
         HashMap<H160, U256>,
         Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
         Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     ),
-    ExecutorError<P>,
+    ExecutorError<M>,
 > {
     let mut pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
     let mut market_initialized: HashSet<U256> = HashSet::new();
@@ -67,8 +65,8 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
-                    provider.clone(),
+                    dexes,
+                    middleware.clone(),
                 )
                 .await?;
 
@@ -81,8 +79,8 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
-                    provider.clone(),
+                    dexes,
+                    middleware.clone(),
                 )
                 .await?;
 
@@ -95,8 +93,8 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
-                    provider.clone(),
+                    dexes,
+                    middleware.clone(),
                 )
                 .await?;
             }
@@ -110,8 +108,8 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
-                    provider.clone(),
+                    dexes,
+                    middleware.clone(),
                 )
                 .await?;
 
@@ -124,8 +122,8 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
                     &mut market_initialized,
                     &mut markets,
                     &mut market_to_affected_orders,
-                    &dexes,
-                    provider.clone(),
+                    dexes,
+                    middleware.clone(),
                 )
                 .await?;
             }
@@ -139,7 +137,7 @@ pub async fn initialize_market_structures<P: 'static + JsonRpcClient>(
     ))
 }
 
-async fn update_market_structures<P: 'static + JsonRpcClient>(
+async fn update_market_structures<M: 'static + Middleware>(
     order_id: H256,
     token_a: H160,
     token_b: H160,
@@ -148,8 +146,8 @@ async fn update_market_structures<P: 'static + JsonRpcClient>(
     markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     market_to_affected_orders: &mut HashMap<U256, HashSet<H256>>,
     dexes: &[Dex],
-    provider: Arc<Provider<P>>,
-) -> Result<(), ExecutorError<P>> {
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
     //Initialize a to b market
     let market_id = get_market_id(token_a, token_b);
     if market_initialized.get(&market_id).is_some() {
@@ -159,7 +157,7 @@ async fn update_market_structures<P: 'static + JsonRpcClient>(
     } else {
         market_initialized.insert(market_id);
 
-        if let Some(market) = get_market(token_a, token_b, provider.clone(), dexes).await? {
+        if let Some(market) = get_market(token_a, token_b, middleware.clone(), dexes).await? {
             for (pool_address, _) in &market {
                 pool_address_to_market_id.insert(pool_address.to_owned(), market_id);
             }
@@ -175,17 +173,17 @@ async fn update_market_structures<P: 'static + JsonRpcClient>(
     Ok(())
 }
 
-async fn get_market<P: 'static + JsonRpcClient>(
+async fn get_market<M: 'static + Middleware>(
     token_a: H160,
     token_b: H160,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<M>,
     dexes: &[Dex],
-) -> Result<Option<HashMap<H160, Pool>>, ExecutorError<P>> {
+) -> Result<Option<HashMap<H160, Pool>>, ExecutorError<M>> {
     let mut market = HashMap::new();
 
     for dex in dexes {
         if let Some(pools) = dex
-            .get_all_pools_for_pair(token_a, token_b, provider.clone())
+            .get_all_pools_for_pair(token_a, token_b, middleware.clone())
             .await?
         {
             for pool in pools {
@@ -194,7 +192,7 @@ async fn get_market<P: 'static + JsonRpcClient>(
         }
     }
 
-    if market.len() > 0 {
+    if !market.is_empty() {
         Ok(Some(market))
     } else {
         Ok(None)
@@ -222,10 +220,8 @@ pub fn handle_market_updates(
                     match pool {
                         Pool::UniswapV2(mut uniswap_v2_pool) => {
                             let log_data = decode(
-                                &vec![
-                                    ParamType::Uint(128), //reserve0
-                                    ParamType::Uint(128), //reserve1
-                                ],
+                                &[ParamType::Uint(128), //reserve0
+                                    ParamType::Uint(128)],
                                 &event_log.data,
                             )
                             .expect("Could not get log data");
@@ -239,15 +235,11 @@ pub fn handle_market_updates(
                         Pool::UniswapV3(mut uniswap_v3_pool) => {
                             // decode log data, get liquidity and sqrt price
                             let log_data = decode(
-                                &vec![
-                                    // ParamType::Address,   //sender is indexed so its not in log data
-                                    // ParamType::Address,   //recipient is indexed so its not in log data
-                                    ParamType::Int(256),  //amount0
+                                &[ParamType::Int(256),  //amount0
                                     ParamType::Int(256),  //amount1
                                     ParamType::Uint(160), //sqrtPriceX96
                                     ParamType::Uint(128), //liquidity
-                                    ParamType::Int(24),   //tick
-                                ],
+                                    ParamType::Int(24)],
                                 &event_log.data,
                             )
                             .expect("Could not get log data");
@@ -284,10 +276,8 @@ pub fn get_best_market_price(
                 if price < best_price {
                     best_price = price;
                 }
-            } else {
-                if price > best_price {
-                    best_price = price;
-                }
+            } else if price > best_price {
+                best_price = price;
             }
         }
     }

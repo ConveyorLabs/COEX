@@ -5,16 +5,16 @@ use std::{
 };
 
 use ethers::{
-    providers::{JsonRpcClient, Middleware, Provider},
+    providers::{Middleware},
     types::H256,
 };
 
 //TODO: pass in sleep time for checking transactions
 //TODO: pass in pending order ids
-pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
+pub async fn handle_pending_transactions<M: 'static + Middleware>(
     pending_order_ids: Arc<Mutex<HashSet<H256>>>,
-    pending_tx_interval: Duration,
-    provider: Arc<Provider<P>>,
+    _pending_tx_interval: Duration,
+    middleware: Arc<M>,
 ) -> tokio::sync::mpsc::Sender<(H256, Vec<H256>)> {
     let (tx, mut rx): (
         tokio::sync::mpsc::Sender<(H256, Vec<H256>)>,
@@ -26,7 +26,7 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
 
     //Make a clone of the pending transactions Arc for both threads that will be spun up below
     let pending_transactions_0 = pending_transactions.clone();
-    let pending_transactions_1 = pending_transactions.clone();
+    let pending_transactions_1 = pending_transactions;
 
     //Spin up a thread that receives new pending transactions
     tokio::spawn(async move {
@@ -38,7 +38,7 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
         }
     });
 
-    let provider = provider.clone();
+    let middleware = middleware;
     //Spin up a thread that checks each pending transaction to see if it has been completed
     tokio::spawn(async move {
         loop {
@@ -48,7 +48,7 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
                 .clone();
 
             for pending_transaction in pending_transactions {
-                match provider
+                match middleware
                     .get_transaction_receipt(pending_transaction.0.to_owned())
                     .await
                 {
@@ -67,8 +67,8 @@ pub async fn handle_pending_transactions<P: 'static + JsonRpcClient>(
                             }
                         }
                     }
-                    Err(err) => {
-                        //TODO: handle the provider error
+                    Err(_err) => {
+                        //TODO: handle the middleware error
                     }
                 }
             }

@@ -1,6 +1,7 @@
 use ::tracing::info;
 use error::ExecutorError;
-use ethers::providers::{Http, JsonRpcClient, Provider, Ws};
+use ethers::prelude::{NonceManagerMiddleware};
+use ethers::providers::{Http, Provider, Ws};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -19,7 +20,7 @@ use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
 use ethers::types::{H160, H256, U256};
 use markets::market::{self, Market};
-use order::OrderVariant;
+
 use orders::execution::{self, fill_orders_at_execution_price};
 use orders::order::{self, Order};
 use pending_transactions::handle_pending_transactions;
@@ -32,8 +33,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //Initialize a new configuration
     let configuration = config::Config::new();
     //Initialize the providers
-    let provider: Arc<Provider<Http>> = Arc::new(Provider::try_from(&configuration.http_endpoint)?);
+    let provider: Provider<Http> = Provider::try_from(&configuration.http_endpoint)?;
     let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
+
+    let middleware = Arc::new(NonceManagerMiddleware::new(
+        provider.clone(),
+        configuration.wallet_address,
+    ));
 
     //Initialize the markets and order structures
     let (
@@ -42,13 +48,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         pool_address_to_market_id,
         markets,
         market_to_affected_orders,
-    ) = initialize_executor(&configuration, provider.clone()).await?;
+    ) = initialize_executor(&configuration, middleware.clone()).await?;
 
     let pending_transactions_sender = Arc::new(
         handle_pending_transactions(
             pending_order_ids,
             Duration::new(0, 500000000), //500 ms
-            provider.clone(),
+            middleware.clone(),
         )
         .await,
     );
@@ -59,14 +65,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         markets.clone(),
         &configuration,
         pending_transactions_sender.clone(),
-        provider.clone(),
+        middleware.clone(),
     )
     .await?;
 
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
         configuration,
-        provider,
+        middleware,
         stream_provider,
         active_orders,
         pool_address_to_market_id,
@@ -79,9 +85,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn initialize_executor<P: 'static + JsonRpcClient>(
+async fn initialize_executor<M: 'static + Middleware>(
     configuration: &config::Config,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<M>,
 ) -> Result<
     (
         Arc<Mutex<HashMap<H256, Order>>>,         //active orders
@@ -90,7 +96,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
         Arc<Mutex<HashMap<U256, Market>>>,        //markets
         Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
     ),
-    ExecutorError<P>,
+    ExecutorError<M>,
 > {
     info!("Initializing active orders...");
     //Initialize active orders
@@ -98,7 +104,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
         configuration.sandbox_limit_order_book,
         configuration.limit_order_book,
         configuration.protocol_creation_block,
-        provider.clone(),
+        middleware.clone(),
     )
     .await
     .expect("There was an issue while initializing active orders");
@@ -112,7 +118,7 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
             active_orders.clone(),
             &configuration.dexes,
             configuration.weth_address,
-            provider.clone(),
+            middleware.clone(),
         )
         .await
         .expect("There was an issue while initializing market structures");
@@ -128,16 +134,16 @@ async fn initialize_executor<P: 'static + JsonRpcClient>(
     ))
 }
 
-async fn run_loop<P: 'static + JsonRpcClient>(
+async fn run_loop<M: 'static + Middleware>(
     configuration: config::Config,
-    provider: Arc<Provider<P>>,
+    middleware: Arc<M>,
     stream_provider: Provider<Ws>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     pool_address_to_market_id: HashMap<H160, U256>,
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-) -> Result<(), ExecutorError<P>> {
+) -> Result<(), ExecutorError<M>> {
     let mut block_stream = stream_provider.subscribe_blocks().await?;
     let block_filter = events::initialize_block_filter(&configuration.dexes);
     //Get a mapping of event signature to event for quick lookup
@@ -148,7 +154,7 @@ async fn run_loop<P: 'static + JsonRpcClient>(
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
         let (order_events, pool_events) = events::sort_events(
-            &provider
+            &middleware
                 .get_logs(
                     &block_filter.clone().from_block(
                         block
@@ -156,7 +162,8 @@ async fn run_loop<P: 'static + JsonRpcClient>(
                             .expect("Could not unwrap block number from block header"),
                     ),
                 )
-                .await?,
+                .await
+                .map_err(ExecutorError::MiddlewareError)?,
             &event_sig_to_belt_event,
         );
 
@@ -166,7 +173,7 @@ async fn run_loop<P: 'static + JsonRpcClient>(
             active_orders.clone(),
             configuration.sandbox_limit_order_book,
             configuration.limit_order_book,
-            provider.clone(),
+            middleware.clone(),
         )
         .await?;
 
@@ -180,14 +187,14 @@ async fn run_loop<P: 'static + JsonRpcClient>(
         //TODO: add logic to check order cancellation and refresh orders
 
         //Evaluate orders for execution
-        if markets_updated.len() > 0 {
+        if !markets_updated.is_empty() {
             execution::evaluate_and_execute_orders(
                 markets_updated,
                 market_to_affected_orders.clone(),
                 active_orders.clone(),
                 markets.clone(),
                 &configuration,
-                provider.clone(),
+                middleware.clone(),
                 pending_transactions_sender.clone(),
             )
             .await?;
