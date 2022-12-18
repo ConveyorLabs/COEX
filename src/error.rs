@@ -1,8 +1,6 @@
 use cfmms::error::CFMMError;
 use ethers::{
-    prelude::{
-        nonce_manager::NonceManagerError, AbiError, ContractError,
-    },
+    prelude::{nonce_manager::NonceManagerError, AbiError, ContractError},
     providers::{Middleware, ProviderError},
     types::H256,
 };
@@ -32,4 +30,6 @@ where
     InvalidOrderGroupIndex(),
     #[error("tokio::sync::mpsc error")]
     PendingTransactionSendError(#[from] tokio::sync::mpsc::error::SendError<(H256, Vec<H256>)>),
+    #[error("Insufficient wallet funds for execution")]
+    InsufficientWalletFunds(),
 }

@@ -174,19 +174,13 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     // execute limit orders
     for order_group in limit_order_execution_bundle.order_groups {
-        let tx = transaction_utils::construct_lo_execution_transaction(
+        let tx = transaction_utils::construct_and_simulate_lo_execution_transaction(
             configuration,
-            // vec![order_group.order_ids.clone()[1]],
-            order_group.order_ids.clone(),
+            vec![order_group.order_ids.clone()[3]],
+            // order_group.order_ids.clone(),
             middleware.clone(),
         )
         .await?;
-
-        //Simulate the tx
-        middleware
-            .call(&tx, None)
-            .await
-            .map_err(ExecutorError::MiddlewareError)?;
 
         let signed_tx = transaction_utils::raw_signed_transaction(tx, &configuration.wallet_key);
 
@@ -300,7 +294,7 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
 
     //execute  limit orders
     for order_group in limit_order_execution_bundle.order_groups {
-        let tx = transaction_utils::construct_lo_execution_transaction(
+        let tx = transaction_utils::construct_and_simulate_lo_execution_transaction(
             configuration,
             order_group.order_ids.clone(),
             middleware.clone(),

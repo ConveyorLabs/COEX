@@ -93,7 +93,7 @@ pub async fn handle_pending_transactions<M: 'static + Middleware>(
 //TODO: change this to construct execution transaction, pass in calldata and execution address,
 //TODO: this way we can simulate the tx with the same contract instance that made the calldata
 //Construct a limit order execution transaction
-pub async fn construct_lo_execution_transaction<M: Middleware>(
+pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
     configuration: &config::Config,
     order_ids: Vec<[u8; 32]>,
     middleware: Arc<M>,
@@ -102,7 +102,7 @@ pub async fn construct_lo_execution_transaction<M: Middleware>(
 
     for order_id in order_ids.clone() {
         //TODO: remove this
-        println!("{:?}", H256::from(order_id));
+        println!("order id for construction: {:?}", H256::from(order_id));
     }
 
     let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
@@ -121,30 +121,23 @@ pub async fn construct_lo_execution_transaction<M: Middleware>(
                 .base_fee_per_gas
                 .unwrap();
 
-            let (max_fee_per_gas, max_priority_fee_per_gas) = middleware
-                .estimate_eip1559_fees(None)
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
+            // let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
+            //     .data(calldata)
+            //     .to(configuration.limit_order_book)
+            //     .from(configuration.wallet_address)
+            //     .chain_id(configuration.chain.chain_id())
+            //     .into();
 
-            //TODO: remove the gas *10 and simulate over and over until it is successful for gas
+            let tx = fill_and_simulate_transaction(
+                calldata,
+                configuration.limit_order_book,
+                configuration.wallet_address,
+                configuration.chain.chain_id(),
+                middleware.clone(),
+            )
+            .await?;
 
-            let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
-                .data(calldata)
-                .to(configuration.limit_order_book)
-                .from(configuration.wallet_address)
-                .chain_id(configuration.chain.chain_id())
-                .max_fee_per_gas(max_fee_per_gas * 10)
-                .max_priority_fee_per_gas(max_priority_fee_per_gas * 10)
-                .into();
-
-            middleware
-                .fill_transaction(&mut tx, None)
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
-
-            tx.set_gas(tx.gas().unwrap() * 2);
-
-            println!("tx: {:#?}", tx);
+            // println!("tx: {:#?}", tx);
 
             Ok(tx)
         }
@@ -164,6 +157,69 @@ pub async fn construct_lo_execution_transaction<M: Middleware>(
             Ok(tx)
         }
     }
+}
+
+async fn fill_and_simulate_transaction<M: Middleware>(
+    calldata: Bytes,
+    to: H160,
+    from: H160,
+    chain_id: usize,
+    middleware: Arc<M>,
+) -> Result<TypedTransaction, ExecutorError<M>> {
+    let (mut max_fee_per_gas, mut max_priority_fee_per_gas) = middleware
+        .estimate_eip1559_fees(None)
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
+
+    let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
+        .data(calldata.clone())
+        .to(to)
+        .from(from)
+        .chain_id(chain_id)
+        .max_priority_fee_per_gas(max_priority_fee_per_gas)
+        .max_fee_per_gas(max_fee_per_gas)
+        .into();
+
+    //TODO: handle legacy transactions
+    middleware
+        .fill_transaction(&mut tx, None)
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
+
+    tx.set_gas(tx.gas().unwrap() * 2);
+
+    loop {
+        //Simulate the tx
+        match middleware.call(&tx, None).await {
+            Ok(_) => {
+                break;
+            }
+            Err(err) => {
+                let error_string = err.to_string();
+                if error_string.contains("transaction underpriced") {
+                    println!("bumping gas");
+                    max_fee_per_gas = max_fee_per_gas * 150 / 100;
+                    max_priority_fee_per_gas = max_priority_fee_per_gas * 150 / 100;
+
+                    tx = Eip1559TransactionRequest::new()
+                        .data(calldata.clone())
+                        .to(to)
+                        .from(from)
+                        .chain_id(chain_id)
+                        .max_priority_fee_per_gas(max_priority_fee_per_gas)
+                        .max_fee_per_gas(max_fee_per_gas)
+                        .into();
+                } else if error_string.contains("insufficient funds") {
+                    return Err(ExecutorError::InsufficientWalletFunds());
+                } else {
+                    tracing::error!("{:?}", error_string);
+                    return Err(err).map_err(ExecutorError::MiddlewareError);
+                }
+            }
+        }
+    }
+
+    Ok(tx)
 }
 
 //Construct a sandbox limit order execution transaction
@@ -213,3 +269,5 @@ pub async fn construct_slo_execution_transaction<M: 'static + Middleware>(
 pub fn raw_signed_transaction(tx: TypedTransaction, wallet_key: &LocalWallet) -> Bytes {
     tx.rlp_signed(&wallet_key.sign_transaction_sync(&tx))
 }
+
+pub fn send_transaction_or_bump_gas() {}
