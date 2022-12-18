@@ -105,58 +105,70 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
         println!("order id for construction: {:?}", H256::from(order_id));
     }
 
-    let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
-        .execute_limit_orders(order_ids)
-        .calldata()
-        .unwrap();
+    let gas_price = middleware
+        .get_gas_price()
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
 
-    match configuration.chain {
-        //:: EIP 1559 transaction
-        Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
-            let base_fee = middleware
-                .provider()
-                .get_block(middleware.provider().get_block_number().await?)
-                .await?
-                .unwrap()
-                .base_fee_per_gas
-                .unwrap();
+    let contract_call =
+        abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
+            .execute_limit_orders(order_ids)
+            .gas_price(gas_price)
+            .from(configuration.wallet_address);
 
-            // let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
-            //     .data(calldata)
-            //     .to(configuration.limit_order_book)
-            //     .from(configuration.wallet_address)
-            //     .chain_id(configuration.chain.chain_id())
-            //     .into();
+    println!("presim");
+    contract_call.call().await?;
+    println!("postsim");
 
-            let tx = fill_and_simulate_transaction(
-                calldata,
-                configuration.limit_order_book,
-                configuration.wallet_address,
-                configuration.chain.chain_id(),
-                middleware.clone(),
-            )
-            .await?;
+    Ok(contract_call.tx)
 
-            // println!("tx: {:#?}", tx);
+    // match configuration.chain {
+    //     //:: EIP 1559 transaction
+    //     Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
+    //         let base_fee = middleware
+    //             .provider()
+    //             .get_block(middleware.provider().get_block_number().await?)
+    //             .await?
+    //             .unwrap()
+    //             .base_fee_per_gas
+    //             .unwrap();
 
-            Ok(tx)
-        }
+    //         // let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
+    //         //     .data(calldata)
+    //         //     .to(configuration.limit_order_book)
+    //         //     .from(configuration.wallet_address)
+    //         //     .chain_id(configuration.chain.chain_id())
+    //         //     .into();
 
-        //:: Legacy transaction
-        Chain::BSC | Chain::Cronos => {
-            let mut tx = TransactionRequest::new()
-                .to(configuration.limit_order_book)
-                .data(calldata)
-                .into();
+    //         let tx = fill_and_simulate_transaction(
+    //             calldata,
+    //             configuration.limit_order_book,
+    //             configuration.wallet_address,
+    //             configuration.chain.chain_id(),
+    //             middleware.clone(),
+    //         )
+    //         .await?;
 
-            middleware
-                .fill_transaction(&mut tx, None)
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
+    //         // println!("tx: {:#?}", tx);
 
-            Ok(tx)
-        }
-    }
+    //         Ok(tx)
+    //     }
+
+    //     //:: Legacy transaction
+    //     Chain::BSC | Chain::Cronos => {
+    //         let mut tx = TransactionRequest::new()
+    //             .to(configuration.limit_order_book)
+    //             .data(calldata)
+    //             .into();
+
+    //         middleware
+    //             .fill_transaction(&mut tx, None)
+    //             .await
+    //             .map_err(ExecutorError::MiddlewareError)?;
+
+    //         Ok(tx)
+    //     }
+    // }
 }
 
 async fn fill_and_simulate_transaction<M: Middleware>(
