@@ -135,7 +135,8 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
                             &mut simulated_markets,
                             route,
                             middleware,
-                        );
+                        )
+                        .await?;
 
                         //:: For each order group, there is a new array that is initialized and order ids that are ready for execution are added to this array.
                         //:: Then that array is appended to the execution calldata
@@ -192,13 +193,13 @@ async fn update_pools_along_route<M: Middleware>(
     let mut amount_in = amount_in;
 
     for pool_in_route in route {
-        let (token_in, token_out) = match pool_in_route {
+        let (pool_token_in, pool_token_out) = match pool_in_route {
             Pool::UniswapV2(uniswap_v2_pool) => (uniswap_v2_pool.token_a, uniswap_v2_pool.token_b),
 
             Pool::UniswapV3(uniswap_v3_pool) => (uniswap_v3_pool.token_a, uniswap_v3_pool.token_b),
         };
 
-        let market_id = get_market_id(token_in, token_out);
+        let market_id = get_market_id(pool_token_in, pool_token_out);
         let pool_in_market = markets
             .get_mut(&market_id)
             .unwrap()
