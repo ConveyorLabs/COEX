@@ -72,7 +72,7 @@ fn sort_sandbox_limit_orders_by_amount_in(
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
 pub async fn simulate_and_batch_limit_orders<M: Middleware>(
     limit_orders: HashMap<H256, &LimitOrder>,
-    simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
+    mut simulated_markets: HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
     middleware: Arc<M>,
 ) -> Result<LimitOrderExecutionBundle, ExecutorError<M>> {
@@ -95,6 +95,8 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
         execution_calldata.add_empty_order_group();
 
         for order in orders {
+            let middleware = middleware.clone();
+
             //:: If the order is not already added to calldata, continue simulating and checking for execution
             if order_ids_in_calldata.get(&order.order_id).is_none() {
                 order_ids_in_calldata.insert(order.order_id);
@@ -108,13 +110,20 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
 
                     //:: First get the a to weth market and then get the weth to b market from the simulated markets
                     //Simulate order along route for token_a -> weth -> token_b
-                    let mut a_to_weth_market = simulated_markets
-                        .get(&get_market_id(order.token_in, weth))
+                    // let a_to_weth_market = simulated_markets
+                    //     .get_mut(&get_market_id(order.token_in, weth))
+                    //     .expect("Could not get token_a to weth markets");
+
+                    let [a_to_weth_market, weth_to_b_market] = simulated_markets
+                        .get_many_mut([
+                            &get_market_id(order.token_in, weth),
+                            &get_market_id(order.token_out, weth),
+                        ])
                         .expect("Could not get token_a to weth markets");
 
-                    let mut weth_to_b_market = simulated_markets
-                        .get(&get_market_id(order.token_in, weth))
-                        .expect("Could not get token_a to weth markets");
+                    // let weth_to_b_market = simulated_markets
+                    //     .get_mut(&get_market_id(order.token_in, weth))
+                    //     .expect("Could not get token_a to weth markets");
 
                     //:: Then find the route that yields the best amount out across the markets
                     let (amount_out, route) = find_best_route_across_markets(
