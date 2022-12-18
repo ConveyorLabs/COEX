@@ -1,8 +1,9 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, MutexGuard},
 };
 
+use cfmms::pool::Pool;
 use ethers::{
     abi::{ethabi::Bytes, Token},
     prelude::NonceManagerMiddleware,
@@ -171,13 +172,28 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     .await?;
 
     //execute sandbox limit orders
+    execute_limit_order_groups(
+        limit_order_execution_bundle,
+        configuration,
+        pending_transactions_sender,
+        middleware.clone(),
+    )
+    .await?;
 
+    Ok(())
+}
+
+pub async fn execute_limit_order_groups<M: Middleware>(
+    limit_order_execution_bundle: LimitOrderExecutionBundle,
+    configuration: &config::Config,
+    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
     // execute limit orders
     for order_group in limit_order_execution_bundle.order_groups {
         let tx = transaction_utils::construct_and_simulate_lo_execution_transaction(
             configuration,
-            vec![order_group.order_ids.clone()[2]],
-            // order_group.order_ids.clone(),
+            order_group.order_ids.clone(),
             middleware.clone(),
         )
         .await?;
@@ -205,6 +221,8 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     Ok(())
 }
+
+pub fn filter_orders_at_execution_price() {}
 
 pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
     affected_markets: HashSet<U256>,
