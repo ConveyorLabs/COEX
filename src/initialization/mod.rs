@@ -25,7 +25,8 @@ use crate::{
     transaction_utils,
 };
 
-pub async fn initialize_coex<M: Middleware>() -> Result<(), ExecutorError<M>> {
+pub async fn initialize_coex<M: Middleware>(
+) -> Result<(config::Config, State, Provider<Ws>, Arc<M>), ExecutorError<M>> {
     //Initialize a new configuration
     let configuration = config::Config::new();
     //Initialize the providers

@@ -2,6 +2,7 @@ use ::tracing::info;
 use error::ExecutorError;
 use ethers::prelude::NonceManagerMiddleware;
 use ethers::providers::{Http, Provider, Ws};
+use initialization::initialize_coex;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -31,6 +32,8 @@ use transaction_utils::handle_pending_transactions;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     traces::init_tracing();
+
+    let (configuration, state, stream_provider, middleware) = initialize_coex().await?;
 
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
