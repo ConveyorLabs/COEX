@@ -112,6 +112,35 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
         .unwrap();
 
     if configuration.chain.is_eip1559() {
+        //:: EIP 1559 transaction
+        let base_fee = middleware
+            .provider()
+            .get_block(middleware.provider().get_block_number().await?)
+            .await?
+            .unwrap()
+            .base_fee_per_gas
+            .unwrap();
+
+        // let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
+        //     .data(calldata)
+        //     .to(configuration.limit_order_book)
+        //     .from(configuration.wallet_address)
+        //     .chain_id(configuration.chain.chain_id())
+        //     .into();
+
+        let mut tx = fill_and_simulate_transaction(
+            calldata,
+            configuration.limit_order_book,
+            configuration.wallet_address,
+            configuration.chain.chain_id(),
+            middleware.clone(),
+        )
+        .await?;
+
+        // println!("tx: {:#?}", tx);
+
+        Ok(tx)
+    } else {
         let tx = fill_and_simulate_transaction(
             calldata,
             configuration.limit_order_book,
@@ -121,17 +150,7 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
         )
         .await?;
 
-        Ok(tx)
-    } else {
-        //TODO: legacy tx
-        let tx = fill_and_simulate_transaction(
-            calldata,
-            configuration.limit_order_book,
-            configuration.wallet_address,
-            configuration.chain.chain_id(),
-            middleware.clone(),
-        )
-        .await?;
+        // println!("tx: {:#?}", tx);
 
         Ok(tx)
     }
@@ -213,13 +232,24 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .await
         .map_err(ExecutorError::MiddlewareError)?;
 
-    tx.set_gas_price(tx.gas_price().unwrap() * 2);
+    // let estimated_gas = middleware
+    //     .estimate_gas(&tx)
+    //     .await
+    //     .expect("could not estimate gas");
 
+    // println!("estimated_gas = {}", estimated_gas);
+    tx.set_gas(tx.gas().unwrap() * 150 / 100);
+
+    println!("tx: {:#?}", tx);
+
+    println!("presim");
     //Simulate the tx
     middleware
         .call(&tx, None)
         .await
         .map_err(ExecutorError::MiddlewareError)?;
+
+    println!("postsim");
 
     Ok(tx)
 }
