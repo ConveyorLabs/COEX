@@ -166,7 +166,9 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
         lo_at_execution_price,
         simulated_markets,
         configuration.weth_address,
-    );
+        middleware.clone(),
+    )
+    .await?;
 
     //execute sandbox limit orders
 
@@ -290,7 +292,9 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
         lo_at_execution_price,
         simulated_markets,
         configuration.weth_address,
-    );
+        middleware.clone(),
+    )
+    .await?;
 
     //execute sandbox limit orders
 
