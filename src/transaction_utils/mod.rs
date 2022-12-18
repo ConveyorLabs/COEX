@@ -232,12 +232,6 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .await
         .map_err(ExecutorError::MiddlewareError)?;
 
-    // let estimated_gas = middleware
-    //     .estimate_gas(&tx)
-    //     .await
-    //     .expect("could not estimate gas");
-
-    // println!("estimated_gas = {}", estimated_gas);
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
 
     println!("tx: {:#?}", tx);
