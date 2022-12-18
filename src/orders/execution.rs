@@ -42,7 +42,7 @@ pub struct Call {
     pub call_data: Vec<u8>, // bytes callData
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LimitOrderExecutionBundle {
     pub order_groups: Vec<LimitOrderExecutionOrderIds>, // bytes32[] calldata orderIds
 }
@@ -80,7 +80,7 @@ impl ExecutionCalldata for LimitOrderExecutionBundle {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LimitOrderExecutionOrderIds {
     pub order_ids: Vec<[u8; 32]>, // bytes32[] calldata orderIds
 }
@@ -194,6 +194,8 @@ pub async fn execute_limit_order_groups<M: Middleware>(
             middleware.clone(),
         )
         .await?;
+
+        println!("gothere");
 
         let pending_tx_hash = transaction_utils::sign_and_send_transaction(
             tx,

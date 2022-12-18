@@ -22,9 +22,9 @@ use crate::{
 
 //TODO: pass in sleep time for checking transactions
 //TODO: pass in pending order ids
-pub async fn handle_pending_transactions<M: 'static + Middleware>(
+pub async fn initialize_pending_transaction_handler<M: 'static + Middleware>(
     pending_order_ids: Arc<Mutex<HashSet<H256>>>,
-    _pending_tx_interval: Duration,
+    pending_tx_interval: Duration,
     middleware: Arc<M>,
 ) -> tokio::sync::mpsc::Sender<(H256, Vec<H256>)> {
     let (tx, mut rx): (
@@ -84,7 +84,7 @@ pub async fn handle_pending_transactions<M: 'static + Middleware>(
                 }
             }
 
-            tokio::time::sleep(Duration::new(0, 1000)).await;
+            tokio::time::sleep(pending_tx_interval).await;
         }
     });
 
@@ -112,22 +112,6 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
         .unwrap();
 
     if configuration.chain.is_eip1559() {
-        //:: EIP 1559 transaction
-        let base_fee = middleware
-            .provider()
-            .get_block(middleware.provider().get_block_number().await?)
-            .await?
-            .unwrap()
-            .base_fee_per_gas
-            .unwrap();
-
-        // let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
-        //     .data(calldata)
-        //     .to(configuration.limit_order_book)
-        //     .from(configuration.wallet_address)
-        //     .chain_id(configuration.chain.chain_id())
-        //     .into();
-
         let tx = fill_and_simulate_transaction(
             calldata,
             configuration.limit_order_book,
@@ -136,11 +120,10 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
             middleware.clone(),
         )
         .await?;
-
-        // println!("tx: {:#?}", tx);
 
         Ok(tx)
     } else {
+        //TODO: legacy tx
         let tx = fill_and_simulate_transaction(
             calldata,
             configuration.limit_order_book,
@@ -149,8 +132,6 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
             middleware.clone(),
         )
         .await?;
-
-        // println!("tx: {:#?}", tx);
 
         Ok(tx)
     }
@@ -187,6 +168,7 @@ pub async fn sign_and_send_transaction<M: Middleware>(
 
                         println!("Max fee per gas: {:?}", eip1559_tx.max_fee_per_gas);
 
+                        //TODO: remove this, just for throttling
                         sleep(Duration::new(1, 0)).await;
 
                         tx = eip1559_tx.to_owned().into();
@@ -230,6 +212,8 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .fill_transaction(&mut tx, None)
         .await
         .map_err(ExecutorError::MiddlewareError)?;
+
+    tx.set_gas_price(tx.gas_price().unwrap() * 2);
 
     //Simulate the tx
     middleware

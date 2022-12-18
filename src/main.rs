@@ -25,7 +25,6 @@ use markets::market::{self, Market};
 
 use orders::execution::{self, fill_orders_at_execution_price};
 use orders::order::{self, Order};
-use transaction_utils::handle_pending_transactions;
 
 //TODO: move this to bin
 

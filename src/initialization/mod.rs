@@ -56,7 +56,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         .expect("Could not initialize state"); //TODO: bubble up this error, just using expect for fast development
 
     let pending_transactions_sender = Arc::new(
-        transaction_utils::handle_pending_transactions(
+        transaction_utils::initialize_pending_transaction_handler(
             state.pending_order_ids.clone(),
             Duration::new(0, 500000000), //500 ms
             middleware.clone(),
