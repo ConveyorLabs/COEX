@@ -11,6 +11,7 @@ use ethers::{
     providers::{Http, Middleware, Provider, Ws},
     types::{BlockNumber, Filter, ValueOrArray, H160, H256, U256},
 };
+use tokio::sync::mpsc::Sender;
 use tracing::info;
 
 use crate::{
@@ -25,8 +26,16 @@ use crate::{
     transaction_utils,
 };
 
-pub async fn initialize_coex<M: Middleware>(
-) -> Result<(config::Config, State, Provider<Ws>, Arc<M>), ExecutorError<M>> {
+pub async fn initialize_coex<M: Middleware>() -> Result<
+    (
+        config::Config,
+        State,
+        Arc<Sender<(H256, Vec<H256>)>>,
+        Provider<Ws>,
+        Arc<NonceManagerMiddleware<ethers::providers::Provider<Http>>>,
+    ),
+    ExecutorError<M>,
+> {
     //Initialize a new configuration
     let configuration = config::Config::new();
     //Initialize the providers
@@ -48,7 +57,7 @@ pub async fn initialize_coex<M: Middleware>(
 
     let pending_transactions_sender = Arc::new(
         transaction_utils::handle_pending_transactions(
-            state.pending_order_ids,
+            state.pending_order_ids.clone(),
             Duration::new(0, 500000000), //500 ms
             middleware.clone(),
         )
@@ -66,15 +75,21 @@ pub async fn initialize_coex<M: Middleware>(
     .await
     .expect("Could not execute orders on initialization"); //TODO: bubble up this error, just using expect for fast development
 
-    Ok(())
+    Ok((
+        configuration,
+        state,
+        pending_transactions_sender,
+        stream_provider,
+        middleware,
+    ))
 }
 
 pub struct State {
-    active_orders: Arc<Mutex<HashMap<H256, Order>>>, //active orders
-    pending_order_ids: Arc<Mutex<HashSet<H256>>>,    //pending_order_ids
-    pool_address_to_market_id: HashMap<H160, U256>,  //pool_address_to_market_id
-    markets: Arc<Mutex<HashMap<U256, Market>>>,      //markets
-    market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
+    pub active_orders: Arc<Mutex<HashMap<H256, Order>>>, //active orders
+    pub pending_order_ids: Arc<Mutex<HashSet<H256>>>,    //pending_order_ids
+    pub pool_address_to_market_id: HashMap<H160, U256>,  //pool_address_to_market_id
+    pub markets: Arc<Mutex<HashMap<U256, Market>>>,      //markets
+    pub market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
 }
 
 async fn initialize_state<M: 'static + Middleware>(

@@ -33,17 +33,20 @@ use transaction_utils::handle_pending_transactions;
 async fn main() -> Result<(), Box<dyn Error>> {
     traces::init_tracing();
 
-    let (configuration, state, stream_provider, middleware) = initialize_coex().await?;
+    let (configuration, state, pending_transactions_sender, stream_provider, middleware) =
+        initialize_coex::<NonceManagerMiddleware<ethers::providers::Provider<Http>>>()
+            .await
+            .unwrap();
 
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
         configuration,
         middleware,
         stream_provider,
-        active_orders,
-        pool_address_to_market_id,
-        markets,
-        market_to_affected_orders,
+        state.active_orders,
+        state.pool_address_to_market_id,
+        state.markets,
+        state.market_to_affected_orders,
         pending_transactions_sender,
     )
     .await?;
