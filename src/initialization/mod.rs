@@ -41,7 +41,9 @@ pub async fn initialize_coex<M: Middleware>() -> Result<(), ExecutorError<M>> {
     ));
 
     //Initialize the markets and order structures
-    let state = initialize_state(&configuration, middleware.clone()).await?;
+    let state = initialize_state(&configuration, middleware.clone())
+        .await
+        .expect("Could not initialize state"); //TODO: bubble up this error, just using expect for fast development
 
     let pending_transactions_sender = Arc::new(
         transaction_utils::handle_pending_transactions(
@@ -60,7 +62,8 @@ pub async fn initialize_coex<M: Middleware>() -> Result<(), ExecutorError<M>> {
         pending_transactions_sender.clone(),
         middleware.clone(),
     )
-    .await?;
+    .await
+    .expect("Could not execute orders on initialization"); //TODO: bubble up this error, just using expect for fast development
 
     Ok(())
 }
