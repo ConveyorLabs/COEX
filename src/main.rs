@@ -11,6 +11,7 @@ pub mod abi;
 pub mod config;
 pub mod error;
 pub mod events;
+pub mod initialization;
 pub mod markets;
 pub mod orders;
 pub mod traces;
@@ -31,45 +32,6 @@ use transaction_utils::handle_pending_transactions;
 async fn main() -> Result<(), Box<dyn Error>> {
     traces::init_tracing();
 
-    //Initialize a new configuration
-    let configuration = config::Config::new();
-    //Initialize the providers
-    let provider: Provider<Http> = Provider::try_from(&configuration.http_endpoint)?;
-    let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint).await?;
-
-    let middleware = Arc::new(NonceManagerMiddleware::new(
-        provider.clone(),
-        configuration.wallet_address,
-    ));
-
-    //Initialize the markets and order structures
-    let (
-        active_orders,
-        pending_order_ids,
-        pool_address_to_market_id,
-        markets,
-        market_to_affected_orders,
-    ) = initialize_executor(&configuration, middleware.clone()).await?;
-
-    let pending_transactions_sender = Arc::new(
-        handle_pending_transactions(
-            pending_order_ids,
-            Duration::new(0, 500000000), //500 ms
-            middleware.clone(),
-        )
-        .await,
-    );
-
-    info!("Checking for orders at execution price...");
-    fill_orders_at_execution_price(
-        active_orders.clone(),
-        markets.clone(),
-        &configuration,
-        pending_transactions_sender.clone(),
-        middleware.clone(),
-    )
-    .await?;
-
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
         configuration,
@@ -84,55 +46,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .await?;
 
     Ok(())
-}
-
-async fn initialize_executor<M: 'static + Middleware>(
-    configuration: &config::Config,
-    middleware: Arc<M>,
-) -> Result<
-    (
-        Arc<Mutex<HashMap<H256, Order>>>,         //active orders
-        Arc<Mutex<HashSet<H256>>>,                //pending_order_ids
-        HashMap<H160, U256>,                      //pool_address_to_market_id
-        Arc<Mutex<HashMap<U256, Market>>>,        //markets
-        Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
-    ),
-    ExecutorError<M>,
-> {
-    info!("Initializing active orders...");
-    //Initialize active orders
-    let active_orders = orders::order::initialize_active_orders(
-        configuration.sandbox_limit_order_book,
-        configuration.limit_order_book,
-        configuration.protocol_creation_block,
-        middleware.clone(),
-    )
-    .await
-    .expect("There was an issue while initializing active orders");
-
-    info!("Active orders initialized");
-
-    info!("Initializing markets...");
-    //initialize markets
-    let (pool_address_to_market_id, markets, market_to_affected_orders) =
-        market::initialize_market_structures(
-            active_orders.clone(),
-            &configuration.dexes,
-            configuration.weth_address,
-            middleware.clone(),
-        )
-        .await
-        .expect("There was an issue while initializing market structures");
-
-    info!("Markets initialized");
-
-    Ok((
-        active_orders,
-        Arc::new(Mutex::new(HashSet::new())),
-        pool_address_to_market_id,
-        markets,
-        market_to_affected_orders,
-    ))
 }
 
 async fn run_loop<M: 'static + Middleware>(
