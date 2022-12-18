@@ -176,20 +176,21 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     for order_group in limit_order_execution_bundle.order_groups {
         let tx = transaction_utils::construct_and_simulate_lo_execution_transaction(
             configuration,
-            vec![order_group.order_ids.clone()[3]],
+            vec![order_group.order_ids.clone()[2]],
             // order_group.order_ids.clone(),
             middleware.clone(),
         )
         .await?;
 
-        let signed_tx = transaction_utils::raw_signed_transaction(tx, &configuration.wallet_key);
+        let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+            tx,
+            &configuration.wallet_key,
+            &configuration.chain,
+            middleware.clone(),
+        )
+        .await?;
 
-        let pending_tx = middleware
-            .send_raw_transaction(signed_tx)
-            .await
-            .map_err(ExecutorError::MiddlewareError)?;
-
-        println!("pending tx: {:?}", pending_tx.tx_hash());
+        println!("pending tx: {:?}", pending_tx_hash);
 
         let order_ids = order_group
             .order_ids
@@ -198,7 +199,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
             .collect::<Vec<H256>>();
 
         pending_transactions_sender
-            .send((pending_tx.tx_hash(), order_ids))
+            .send((pending_tx_hash, order_ids))
             .await?;
     }
 

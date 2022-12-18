@@ -90,6 +90,17 @@ impl Chain {
             Chain::Cronos => 25,
         }
     }
+
+    pub fn is_eip1559(&self) -> bool {
+        match self {
+            Chain::Ethereum => true,
+            Chain::Polygon => true,
+            Chain::Optimism => true,
+            Chain::Arbitrum => true,
+            Chain::BSC => false,
+            Chain::Cronos => false,
+        }
+    }
 }
 
 #[derive(Debug)]
