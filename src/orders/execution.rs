@@ -121,6 +121,8 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     //Clone the markets to simulate all active orders, only do this on initialization, this would be heavy on every time checking order execution, select simulated markets instead
     let simulated_markets = markets.clone();
 
+    //TODO: package this in a function
+
     //:: group all of the orders that are ready to execute and separate them by sandbox limit orders and limit orders
     //Accumulate sandbox limit orders at execution price
     let mut slo_at_execution_price: HashMap<H256, &SandboxLimitOrder> = HashMap::new();
@@ -129,6 +131,8 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     for order in active_orders.values() {
         if order.can_execute(&markets, configuration.weth_address) {
+            //TODO: check if order owner has amount in, and cancel tx if not
+
             //Add the market to the simulation markets structure
 
             match order {
@@ -312,35 +316,12 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
     //execute sandbox limit orders
 
     //execute  limit orders
-    for order_group in limit_order_execution_bundle.order_groups {
-        let tx = transaction_utils::construct_and_simulate_lo_execution_transaction(
-            configuration,
-            order_group.order_ids.clone(),
-            middleware.clone(),
-        )
-        .await?;
-
-        //TODO: simulate the tx
-
-        //TODO: sign tx
-        let signed_tx = configuration.wallet_key.sign_transaction_sync(&tx);
-
-        //Send the tx
-        let pending_tx = middleware
-            .send_raw_transaction(signed_tx.to_vec().into())
-            .await
-            .map_err(ExecutorError::MiddlewareError)?;
-
-        let order_ids = order_group
-            .order_ids
-            .iter()
-            .map(|f| H256::from_slice(f.as_slice()))
-            .collect::<Vec<H256>>();
-
-        pending_transactions_sender
-            .send((pending_tx.tx_hash(), order_ids))
-            .await?;
-    }
-
+    execute_limit_order_groups(
+        limit_order_execution_bundle,
+        configuration,
+        pending_transactions_sender,
+        middleware,
+    )
+    .await?;
     Ok(())
 }
