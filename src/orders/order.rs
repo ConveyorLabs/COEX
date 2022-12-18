@@ -7,11 +7,11 @@ use std::{
 use cfmms::pool::Pool;
 use ethers::{
     abi::RawLog,
-    prelude::{EthLogDecode},
-    providers::{Middleware},
+    prelude::EthLogDecode,
+    providers::Middleware,
     types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U256},
 };
-use tracing::{info};
+use tracing::info;
 
 use crate::{
     abi::{
@@ -47,6 +47,32 @@ impl Order {
 
             Order::LimitOrder(limit_order) => {
                 limit_order.can_execute(limit_order.buy, markets, weth)
+            }
+        }
+    }
+
+    pub async fn has_sufficient_balance<M: Middleware>(
+        &self,
+        middleware: Arc<M>,
+    ) -> Result<bool, ExecutorError<M>> {
+        match self {
+            Order::SandboxLimitOrder(sandbox_limit_order) => {
+                let token_in = abi::IErc20::new(sandbox_limit_order.token_in, middleware);
+
+                let balance = token_in
+                    .balance_of(sandbox_limit_order.owner)
+                    .call()
+                    .await?;
+
+                Ok(balance >= U256::from(sandbox_limit_order.amount_in_remaining))
+            }
+
+            Order::LimitOrder(limit_order) => {
+                let token_in = abi::IErc20::new(limit_order.token_in, middleware);
+
+                let balance = token_in.balance_of(limit_order.owner).call().await?;
+
+                Ok(balance >= U256::from(limit_order.quantity))
             }
         }
     }

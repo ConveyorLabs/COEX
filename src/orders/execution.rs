@@ -131,39 +131,32 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     for order in active_orders.values() {
         if order.can_execute(&markets, configuration.weth_address) {
-            //TODO: check if order owner has amount in, and cancel tx if not
-
-            //Add the market to the simulation markets structure
-
-            match order {
-                Order::SandboxLimitOrder(sandbox_limit_order) => {
-                    if slo_at_execution_price
-                        .get(&sandbox_limit_order.order_id)
-                        .is_none()
-                    {
-                        slo_at_execution_price
-                            .insert(sandbox_limit_order.order_id, sandbox_limit_order);
+            if order.has_sufficient_balance(middleware.clone()).await? {
+                //Add order to orders at execution price
+                match order {
+                    Order::SandboxLimitOrder(sandbox_limit_order) => {
+                        if slo_at_execution_price
+                            .get(&sandbox_limit_order.order_id)
+                            .is_none()
+                        {
+                            slo_at_execution_price
+                                .insert(sandbox_limit_order.order_id, sandbox_limit_order);
+                        }
                     }
-                }
 
-                Order::LimitOrder(limit_order) => {
-                    if lo_at_execution_price.get(&limit_order.order_id).is_none() {
-                        lo_at_execution_price.insert(limit_order.order_id, limit_order);
+                    Order::LimitOrder(limit_order) => {
+                        if lo_at_execution_price.get(&limit_order.order_id).is_none() {
+                            println!("order can execute and has sufficient balance: {:#?}", order);
+
+                            lo_at_execution_price.insert(limit_order.order_id, limit_order);
+                        }
                     }
                 }
             }
         }
     }
 
-    //:: Simulate sandbox limit orders and generate execution transaction calldata
-    //simulate and batch sandbox limit orders
-    // simulate::simulate_and_batch_sandbox_limit_orders(
-    //     slo_at_execution_price,
-    //     simulated_markets,
-    //     v3_quoter_address,
-    //     middleware,
-    // )
-    // .await?;
+    //::TODO: Simulate sandbox limit orders and generate execution transaction calldata
 
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
