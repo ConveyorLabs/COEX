@@ -172,7 +172,7 @@ impl Config {
                 ];
 
                 config.executor_address =
-                    H160::from_str("0x98F3f46A0Cf8b2276513d36d527965C4C36dc733").unwrap();
+                    H160::from_str("0x6143D81c9c2D11bdD7a3B0Dc9328e6a0E6d0E0C5").unwrap();
             }
 
             Chain::Optimism => {}
