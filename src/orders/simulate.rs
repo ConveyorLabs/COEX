@@ -29,6 +29,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     sandbox_limit_orders: HashMap<H256, &SandboxLimitOrder>,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
+    executor_address: H160,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     //Go through the slice of sandbox limit orders and group the orders by market
@@ -47,6 +48,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     //For each order that can execute, add it to the execution calldata, including partial fills
 
     for (_, order_group) in grouped_orders {
+        let mut protocol_fee = 0;
         //NOTE: creating a new tx for each group, otherwise one runner could execute in reverse order one at a time and beat every other runner
         let mut execution_calldata = SandboxLimitOrderExecutionCalldata::new();
         execution_calldata.add_new_order_id_bundle();
@@ -104,13 +106,47 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         execution_calldata.add_fill_amount(order.amount_in_remaining);
                         execution_calldata.add_transfer_address(route[0].address());
 
-                        for pool in route {
-                            execution_calldata
-                                .add_call(Call::new(pool.address(), pool.swap_calldata()));
+                        //TODO: track how much token out you have
+
+                        //TODO: Add call to swap on the pool
+                        for (i, pool) in route.iter().enumerate() {
+                            match pool {
+                                Pool::UniswapV2(uniswap_v2_pool) => {
+                                    let (amount_0_out, amount_1_out) =
+                                        if uniswap_v2_pool.token_a == order.token_in {
+                                            (U256::zero(), amount_out)
+                                        } else {
+                                            (amount_out, U256::zero())
+                                        };
+
+                                    execution_calldata.add_call(Call::new(
+                                        uniswap_v2_pool.address,
+                                        uniswap_v2_pool.swap_calldata(
+                                            amount_0_out,
+                                            amount_1_out,
+                                            wallet_address,
+                                            vec![],
+                                        ),
+                                    ));
+                                }
+
+                                Pool::UniswapV3(uniswap_v3_pool) => {
+                                    //     execution_calldata
+                                    // .add_call(Call::new(pool.address(), pool.swap_calldata()));
+                                }
+                            }
                         }
 
-                        //TODO: add calldata to transfer fee to protocol
+                        //TODO: for each order bundle, check the best pool from out to weth
+
+                        //TODO: check that out to weth amount covers the protocol fee,
+
+                        //TODO: if so, add the swap call to the execution data
+
+                        //TODO: pay the protocol fee
                     }
+
+                    //TODO: add calldata to transfer fee to protocol
                 }
             }
         }
