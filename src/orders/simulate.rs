@@ -1,6 +1,7 @@
 use std::{
     borrow::BorrowMut,
     collections::{HashMap, HashSet},
+    str::FromStr,
     sync::Arc,
 };
 
@@ -152,6 +153,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
 
                     //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
                     if amount_out.as_u128() >= order.amount_out_min {
+                        println!("ao: {}, aom: {}", amount_out, order.amount_out_min);
                         update_pools_along_route(
                             order.token_in,
                             U256::from(order.quantity),
@@ -176,7 +178,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
 //Returns the amount out and a reference to the pools that it took through the route
 async fn find_best_route_across_markets<M: Middleware>(
     amount_in: U256,
-    token_in: H160,
+    mut token_in: H160,
     markets: Vec<&Market>,
     middleware: Arc<M>,
 ) -> Result<(U256, Vec<Pool>), ExecutorError<M>> {
@@ -200,15 +202,32 @@ async fn find_best_route_across_markets<M: Middleware>(
         }
 
         amount_in = best_amount_out;
-
         route.push(best_pool);
+
+        //update token in
+        token_in = match market.values().next().unwrap() {
+            Pool::UniswapV2(uniswap_v2_pool) => {
+                if uniswap_v2_pool.token_a == token_in {
+                    uniswap_v2_pool.token_b
+                } else {
+                    uniswap_v2_pool.token_a
+                }
+            }
+            Pool::UniswapV3(uniswap_v3_pool) => {
+                if uniswap_v3_pool.token_a == token_in {
+                    uniswap_v3_pool.token_b
+                } else {
+                    uniswap_v3_pool.token_a
+                }
+            }
+        };
     }
 
     Ok((amount_in, route))
 }
 
 async fn update_pools_along_route<M: Middleware>(
-    token_in: H160,
+    mut token_in: H160,
     amount_in: U256,
     markets: &mut HashMap<U256, Market>,
     route: Vec<Pool>,
@@ -233,6 +252,24 @@ async fn update_pools_along_route<M: Middleware>(
         amount_in = pool_in_market
             .simulate_swap_mut(token_in, amount_in, middleware.clone())
             .await?;
+
+        //update token in
+        token_in = match pool_in_market {
+            Pool::UniswapV2(uniswap_v2_pool) => {
+                if uniswap_v2_pool.token_a == token_in {
+                    uniswap_v2_pool.token_b
+                } else {
+                    uniswap_v2_pool.token_a
+                }
+            }
+            Pool::UniswapV3(uniswap_v3_pool) => {
+                if uniswap_v3_pool.token_a == token_in {
+                    uniswap_v3_pool.token_b
+                } else {
+                    uniswap_v3_pool.token_a
+                }
+            }
+        };
     }
 
     Ok(())
