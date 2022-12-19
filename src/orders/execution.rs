@@ -160,6 +160,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     simulate::simulate_and_batch_sandbox_limit_orders(
         slo_at_execution_price,
         &mut simulated_markets,
+        configuration.weth_address,
         middleware.clone(),
     )
     .await?;
