@@ -102,7 +102,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         routing::find_best_weth_exit_from_route(
                             order.token_in,
                             U256::from(order.amount_in_remaining),
-                            route,
+                            route.clone(),
                             U256::from(order.amount_out_remaining),
                             simulated_markets,
                             weth,

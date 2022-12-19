@@ -47,7 +47,7 @@ pub struct Call {
 
 impl SandboxLimitOrderExecutionCalldata {
     pub fn new() -> SandboxLimitOrderExecutionCalldata {
-        let calldata = SandboxLimitOrderExecutionCalldata::default();
+        let mut calldata = SandboxLimitOrderExecutionCalldata::default();
         calldata.add_new_order_id_bundle();
         calldata
     }
@@ -209,6 +209,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
         slo_at_execution_price,
         &mut simulated_markets,
         configuration.weth_address,
+        configuration.executor_address,
         middleware.clone(),
     )
     .await?;

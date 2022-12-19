@@ -29,6 +29,7 @@ pub struct Config {
     pub limit_order_book: H160,
     pub sandbox_limit_order_book: H160,
     pub dexes: Vec<Dex>,
+    pub executor_address: H160,
     pub protocol_creation_block: BlockNumber,
     pub wallet_address: H160,
     pub wallet_key: LocalWallet,
@@ -46,6 +47,7 @@ impl Default for Config {
             limit_order_book: H160::zero(),
             sandbox_limit_order_book: H160::zero(),
             dexes: vec![],
+            executor_address: H160::zero(),
             protocol_creation_block: BlockNumber::Latest,
             wallet_address: H160::zero(),
             wallet_key: LocalWallet::new(&mut rand::thread_rng()),
@@ -168,6 +170,9 @@ impl Config {
                         4931780,
                     ),
                 ];
+
+                config.executor_address =
+                    H160::from_str("0x98F3f46A0Cf8b2276513d36d527965C4C36dc733").unwrap();
             }
 
             Chain::Optimism => {}
