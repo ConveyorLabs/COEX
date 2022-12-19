@@ -19,7 +19,7 @@ use crate::{
 };
 
 use super::{
-    execution::{LimitOrderExecutionBundle, SandboxLimitOrderExecutionCalldata},
+    execution::{LimitOrderExecutionBundle, SandboxLimitOrderExecutionBundle},
     limit_order::LimitOrder,
     sandbox_limit_order::SandboxLimitOrder,
 };
@@ -43,11 +43,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
     //For each order that can execute, add it to the execution calldata, including partial fills
 
-    for (order_id, order) in sandbox_limit_orders {
-        let mut protocol_fee = 0;
-        //NOTE: creating a new tx for each group, otherwise one runner could execute in reverse order one at a time and beat every other runner
-        let mut execution_calldata = SandboxLimitOrderExecutionCalldata::new();
-
+    for order in sandbox_limit_orders.into_values() {
         let middleware = middleware.clone();
 
         //Check if the order can execute within the updated simulated markets
@@ -92,9 +88,15 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         )
                         .await?;
 
-                        //TODO: construct call:
+                        //Construct call for execution
+                        let mut execution_bundle = SandboxLimitOrderExecutionBundle::new();
+                        execution_bundle.add_order_id_to_current_bundle(order.order_id);
+                        execution_bundle.add_fill_amount(order.amount_in_remaining);
+                        execution_bundle.add_transfer_address(route[0].address());
+
                         //TODO: construct calls on route (send amount out to multicall contract)
-                        //TODO: send exact to user
+
+                        //TODO: send exact amount out remaining to user
                         //TODO: pay protocol fee
                     }
                 } else {

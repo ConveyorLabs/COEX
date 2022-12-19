@@ -31,8 +31,8 @@ pub trait ExecutionCalldata {
 }
 
 #[derive(Debug, Default)]
-pub struct SandboxLimitOrderExecutionCalldata {
-    current_id_bundle_idx: usize,
+pub struct SandboxLimitOrderExecutionBundle {
+    order_id_bundle_idx: usize,
     pub order_id_bundles: Vec<Vec<H256>>, //bytes32[][] orderIdBundles
     pub fill_amounts: Vec<u128>,          // uint128[] fillAmounts
     pub transfer_addresses: Vec<H160>,    // address[] transferAddresses
@@ -45,25 +45,21 @@ pub struct Call {
     pub call_data: Vec<u8>, // bytes callData
 }
 
-impl SandboxLimitOrderExecutionCalldata {
-    pub fn new() -> SandboxLimitOrderExecutionCalldata {
-        let mut calldata = SandboxLimitOrderExecutionCalldata::default();
-        calldata.add_new_order_id_bundle();
-        calldata
+impl SandboxLimitOrderExecutionBundle {
+    pub fn new() -> SandboxLimitOrderExecutionBundle {
+        let mut execution_bundle = SandboxLimitOrderExecutionBundle::default();
+        execution_bundle.add_new_order_id_bundle();
+
+        execution_bundle
     }
 
     pub fn add_order_id_to_current_bundle(&mut self, order_id: H256) {
-        self.order_id_bundles[self.current_id_bundle_idx].push(order_id);
+        self.order_id_bundles[self.order_id_bundle_idx].push(order_id);
     }
 
     pub fn add_new_order_id_bundle(&mut self) {
-        if self.order_id_bundles.is_empty() {
-            self.order_id_bundles.push(vec![]);
-            self.current_id_bundle_idx += 1;
-        } else if !self.order_id_bundles[self.current_id_bundle_idx].is_empty() {
-            self.order_id_bundles.push(vec![]);
-            self.current_id_bundle_idx += 1;
-        }
+        self.order_id_bundles.push(vec![]);
+        self.order_id_bundle_idx += 1;
     }
 
     pub fn add_fill_amount(&mut self, fill_amount: u128) {
