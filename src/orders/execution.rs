@@ -168,15 +168,17 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     )
     .await?;
 
-    //execute sandbox limit orders
-    execute_limit_order_groups(
-        limit_order_execution_bundle,
-        configuration,
-        pending_transactions_sender,
-        middleware.clone(),
-    )
-    .await?;
-
+    //Execute orders if there are any order groups for execution
+    if !limit_order_execution_bundle.order_groups.is_empty() {
+        //execute sandbox limit orders
+        execute_limit_order_groups(
+            limit_order_execution_bundle,
+            configuration,
+            pending_transactions_sender,
+            middleware.clone(),
+        )
+        .await?;
+    }
     Ok(())
 }
 

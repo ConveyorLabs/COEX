@@ -151,6 +151,10 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
                         .await?;
                     }
 
+                    println!(
+                        "amount out: {}, amount out min: {}",
+                        amount_out, order.amount_out_min
+                    );
                     //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
                     if amount_out.as_u128() >= order.amount_out_min {
                         println!("ao: {}, aom: {}", amount_out, order.amount_out_min);
