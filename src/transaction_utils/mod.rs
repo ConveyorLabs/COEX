@@ -100,12 +100,6 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
     middleware: Arc<M>,
 ) -> Result<TypedTransaction, ExecutorError<M>> {
     //TODO: For the love of god, refactor the transaction composition
-
-    for order_id in order_ids.clone() {
-        //TODO: remove this
-        println!("order id for construction: {:?}", H256::from(order_id));
-    }
-
     let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
         .execute_limit_orders(order_ids)
         .calldata()

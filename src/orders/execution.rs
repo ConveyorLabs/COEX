@@ -57,8 +57,15 @@ impl LimitOrderExecutionBundle {
     }
 
     pub fn add_empty_order_group(&mut self) {
-        self.order_groups
-            .push(LimitOrderExecutionOrderIds::default());
+        if let Some(order_group) = self.order_groups.last() {
+            if !order_group.order_ids.is_empty() {
+                self.order_groups
+                    .push(LimitOrderExecutionOrderIds::default());
+            }
+        } else {
+            self.order_groups
+                .push(LimitOrderExecutionOrderIds::default());
+        };
     }
 
     pub fn append_order_id_to_latest_order_group(&mut self, order_id: H256) {
@@ -177,6 +184,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     //Execute orders if there are any order groups for execution
     if !limit_order_execution_bundle.order_groups.is_empty() {
+        println!("here: {:?}", limit_order_execution_bundle.order_groups);
         //execute sandbox limit orders
         execute_limit_order_groups(
             limit_order_execution_bundle,
@@ -197,34 +205,34 @@ pub async fn execute_limit_order_groups<M: Middleware>(
 ) -> Result<(), ExecutorError<M>> {
     // execute limit orders
     for order_group in limit_order_execution_bundle.order_groups {
-        let tx = transaction_utils::construct_and_simulate_lo_execution_transaction(
-            configuration,
-            order_group.order_ids.clone(),
-            middleware.clone(),
-        )
-        .await?;
-
-        println!("gothere");
-
-        let pending_tx_hash = transaction_utils::sign_and_send_transaction(
-            tx,
-            &configuration.wallet_key,
-            &configuration.chain,
-            middleware.clone(),
-        )
-        .await?;
-
-        println!("pending tx: {:?}", pending_tx_hash);
-
-        let order_ids = order_group
-            .order_ids
-            .iter()
-            .map(|f| H256::from_slice(f.as_slice()))
-            .collect::<Vec<H256>>();
-
-        pending_transactions_sender
-            .send((pending_tx_hash, order_ids))
+        if !order_group.order_ids.is_empty() {
+            let tx = transaction_utils::construct_and_simulate_lo_execution_transaction(
+                configuration,
+                order_group.order_ids.clone(),
+                middleware.clone(),
+            )
             .await?;
+
+            let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+                tx,
+                &configuration.wallet_key,
+                &configuration.chain,
+                middleware.clone(),
+            )
+            .await?;
+
+            tracing::info!("Pending limit order execution tx: {:?}", pending_tx_hash);
+
+            let order_ids = order_group
+                .order_ids
+                .iter()
+                .map(|f| H256::from_slice(f.as_slice()))
+                .collect::<Vec<H256>>();
+
+            pending_transactions_sender
+                .send((pending_tx_hash, order_ids))
+                .await?;
+        }
     }
 
     Ok(())

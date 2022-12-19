@@ -198,7 +198,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
                         )
                         .await?;
 
-                        //TODO: add the data to the calldata
+                        execution_calldata.append_order_id_to_latest_order_group(order.order_id);
                     }
                 }
             }
