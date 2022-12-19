@@ -47,7 +47,9 @@ pub struct Call {
 
 impl SandboxLimitOrderExecutionCalldata {
     pub fn new() -> SandboxLimitOrderExecutionCalldata {
-        SandboxLimitOrderExecutionCalldata::default()
+        let calldata = SandboxLimitOrderExecutionCalldata::default();
+        calldata.add_new_order_id_bundle();
+        calldata
     }
 
     pub fn add_order_id_to_current_bundle(&mut self, order_id: H256) {

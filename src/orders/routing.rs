@@ -20,19 +20,14 @@ use crate::{
     },
 };
 
-use super::order::Order;
-
 pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
-    order: &Order,
+    token_in: H160,
+    token_out: H160,
+    amount_in: U256,
     weth: H160,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     middleware: Arc<M>,
 ) -> Result<(U256, Vec<Pool>), ExecutorError<M>> {
-    let (token_in, amount_in, token_out) = match order {
-        Order::SandboxLimitOrder(slo) => (slo.token_in, slo.amount_in_remaining, slo.token_out),
-        Order::LimitOrder(lo) => (lo.token_in, lo.quantity, lo.token_out),
-    };
-
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     // Simulate order along route for token_a -> weth -> token_b
     let a_to_weth_market = simulated_markets
@@ -61,15 +56,12 @@ pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
 }
 
 pub async fn find_best_a_to_b_route<M: Middleware>(
-    order: &Order,
+    token_in: H160,
+    token_out: H160,
+    amount_in: U256,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     middleware: Arc<M>,
 ) -> Result<(U256, Vec<Pool>), ExecutorError<M>> {
-    let (token_in, amount_in, token_out) = match order {
-        Order::SandboxLimitOrder(slo) => (slo.token_in, slo.amount_in_remaining, slo.token_out),
-        Order::LimitOrder(lo) => (lo.token_in, lo.quantity, lo.token_out),
-    };
-
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     // Simulate order along route for token_a -> weth -> token_b
     let a_to_b_market = simulated_markets
