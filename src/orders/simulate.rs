@@ -30,6 +30,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
     executor_address: H160,
+    wallet_address: H160,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     //TODO: sort these by usd value in the future
@@ -96,7 +97,37 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
                         //TODO: construct calls on route (send amount out to multicall contract)
 
+                        //TODO: Add call to swap on the pool
+                        for pool in route {
+                            match pool {
+                                Pool::UniswapV2(uniswap_v2_pool) => {
+                                    let (amount_0_out, amount_1_out) =
+                                        if uniswap_v2_pool.token_a == order.token_in {
+                                            (U256::zero(), amount_out)
+                                        } else {
+                                            (amount_out, U256::zero())
+                                        };
+
+                                    execution_bundle.add_call(Call::new(
+                                        uniswap_v2_pool.address,
+                                        uniswap_v2_pool.swap_calldata(
+                                            amount_0_out,
+                                            amount_1_out,
+                                            wallet_address,
+                                            vec![],
+                                        ),
+                                    ));
+                                }
+
+                                Pool::UniswapV3(uniswap_v3_pool) => {
+                                    //     execution_calldata
+                                    // .add_call(Call::new(pool.address(), pool.swap_calldata()));
+                                }
+                            }
+                        }
+
                         //TODO: send exact amount out remaining to user
+
                         //TODO: pay protocol fee
                     }
                 } else {

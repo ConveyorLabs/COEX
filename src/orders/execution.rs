@@ -206,6 +206,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
         &mut simulated_markets,
         configuration.weth_address,
         configuration.executor_address,
+        configuration.wallet_address,
         middleware.clone(),
     )
     .await?;
