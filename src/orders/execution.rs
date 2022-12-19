@@ -119,7 +119,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
     //NOTE: remove this note with a better comment
     //Clone the markets to simulate all active orders, only do this on initialization, this would be heavy on every time checking order execution, select simulated markets instead
-    let simulated_markets = markets.clone();
+    let mut simulated_markets = markets.clone();
 
     //TODO: package this in a function
 
@@ -157,12 +157,18 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     }
 
     //::TODO: Simulate sandbox limit orders and generate execution transaction calldata
+    simulate::simulate_and_batch_sandbox_limit_orders(
+        slo_at_execution_price,
+        &mut simulated_markets,
+        middleware.clone(),
+    )
+    .await?;
 
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
     let limit_order_execution_bundle = simulate::simulate_and_batch_limit_orders(
         lo_at_execution_price,
-        simulated_markets,
+        &mut simulated_markets,
         configuration.weth_address,
         middleware.clone(),
     )
@@ -304,7 +310,7 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
     //:: Simulate sandbox limit orders and generate execution transaction calldata
     let limit_order_execution_bundle = simulate::simulate_and_batch_limit_orders(
         lo_at_execution_price,
-        simulated_markets,
+        &mut simulated_markets,
         configuration.weth_address,
         middleware.clone(),
     )
