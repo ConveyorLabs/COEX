@@ -180,13 +180,6 @@ pub async fn sign_and_send_transaction<M: Middleware>(
                         eip1559_tx.max_fee_per_gas =
                             Some(eip1559_tx.max_fee_per_gas.unwrap() * 150 / 100);
 
-                        println!(
-                            "Max priority fee per gas: {:?}",
-                            eip1559_tx.max_priority_fee_per_gas
-                        );
-
-                        println!("Max fee per gas: {:?}", eip1559_tx.max_fee_per_gas);
-
                         //TODO: remove this, just for throttling
                         sleep(Duration::new(1, 0)).await;
 
@@ -234,16 +227,11 @@ async fn fill_and_simulate_transaction<M: Middleware>(
 
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
 
-    println!("tx: {:#?}", tx);
-
-    println!("presim");
     //Simulate the tx
     middleware
         .call(&tx, None)
         .await
         .map_err(ExecutorError::MiddlewareError)?;
-
-    println!("postsim");
 
     Ok(tx)
 }
