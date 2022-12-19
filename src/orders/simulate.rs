@@ -79,69 +79,94 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                 route = a_weth_b_route;
             }
 
-            //TODO: if the order can fully fill, then update the route with the full amt, else update with a partial fill
-
             //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
             if amount_out.as_u128() >= order.amount_out_remaining {
-                //TODO: FIXME: NOTE:
-                // IF the amount out reaches the amount out remaining,
+                if order.token_out == weth {
+                    if amount_out.as_u128() > order.fee_remaining {
+                        routing::update_pools_along_route(
+                            order.token_in,
+                            U256::from(order.amount_in_remaining),
+                            simulated_markets,
+                            route.clone(),
+                            middleware,
+                        )
+                        .await?;
 
-                println!("sandbox order can execute: {:?}", order.order_id);
-                routing::update_pools_along_route(
-                    order.token_in,
-                    U256::from(order.amount_in_remaining),
-                    simulated_markets,
-                    route.clone(),
-                    middleware,
-                )
-                .await?;
+                        //TODO: construct call:
+                        //TODO: construct calls on route (send amount out to multicall contract)
+                        //TODO: send exact to user
+                        //TODO: pay protocol fee
+                    }
+                } else {
+                    let (weth_amount_out, weth_exit_pool) =
+                        routing::find_best_weth_exit_from_route(
+                            order.token_in,
+                            U256::from(order.amount_in_remaining),
+                            route,
+                            U256::from(order.amount_out_remaining),
+                            simulated_markets,
+                            weth,
+                            middleware.clone(),
+                        )
+                        .await?;
 
-                //:: For each order group, there is a new array that is initialized and order ids that are ready for execution are added to this array.
-                //:: Then that array is appended to the execution calldata
-                execution_calldata.add_order_id_to_current_bundle(order.order_id);
-                execution_calldata.add_fill_amount(order.amount_in_remaining);
-                execution_calldata.add_transfer_address(route[0].address());
+                    if weth_amount_out.as_u128() > order.fee_remaining {
+                        routing::update_pools_along_route_with_weth_exit(
+                            order.token_in,
+                            U256::from(order.amount_in_remaining),
+                            simulated_markets,
+                            route,
+                            U256::from(order.amount_out_remaining),
+                            weth,
+                            weth_exit_pool.address(),
+                            middleware,
+                        )
+                        .await?;
 
-                //TODO: track how much token out you have
-
-                //TODO: Add call to swap on the pool
-                for (i, pool) in route.iter().enumerate() {
-                    match pool {
-                        Pool::UniswapV2(uniswap_v2_pool) => {
-                            let (amount_0_out, amount_1_out) =
-                                if uniswap_v2_pool.token_a == order.token_in {
-                                    (U256::zero(), amount_out)
-                                } else {
-                                    (amount_out, U256::zero())
-                                };
-
-                            execution_calldata.add_call(Call::new(
-                                uniswap_v2_pool.address,
-                                uniswap_v2_pool.swap_calldata(
-                                    amount_0_out,
-                                    amount_1_out,
-                                    wallet_address,
-                                    vec![],
-                                ),
-                            ));
-                        }
-
-                        Pool::UniswapV3(uniswap_v3_pool) => {
-                            //     execution_calldata
-                            // .add_call(Call::new(pool.address(), pool.swap_calldata()));
-                        }
+                        //TODO: construct call:
+                        //TODO: construct calls on route (send amount out to multicall contract)
+                        //TODO: send exact to user
+                        //TODO: swap on weth exit pool
+                        //TODO: pay protocol fee
                     }
                 }
 
-                //TODO: for each order bundle, check the best pool from out to weth
+                //     //:: For each order group, there is a new array that is initialized and order ids that are ready for execution are added to this array.
+                //     //:: Then that array is appended to the execution calldata
+                //     execution_calldata.add_order_id_to_current_bundle(order.order_id);
+                //     execution_calldata.add_fill_amount(order.amount_in_remaining);
+                //     execution_calldata.add_transfer_address(route[0].address());
 
-                //TODO: check that out to weth amount covers the protocol fee,
+                //     //TODO: track how much token out you have
 
-                //TODO: if so, add the swap call to the execution data
+                //     //TODO: Add call to swap on the pool
+                //     for (i, pool) in route.iter().enumerate() {
+                //         match pool {
+                //             Pool::UniswapV2(uniswap_v2_pool) => {
+                //                 let (amount_0_out, amount_1_out) =
+                //                     if uniswap_v2_pool.token_a == order.token_in {
+                //                         (U256::zero(), amount_out)
+                //                     } else {
+                //                         (amount_out, U256::zero())
+                //                     };
 
-                //TODO: pay the protocol fee
+                //                 execution_calldata.add_call(Call::new(
+                //                     uniswap_v2_pool.address,
+                //                     uniswap_v2_pool.swap_calldata(
+                //                         amount_0_out,
+                //                         amount_1_out,
+                //                         wallet_address,
+                //                         vec![],
+                //                     ),
+                //                 ));
+                //             }
 
-                //TODO: add calldata to transfer fee to protocol
+                //             Pool::UniswapV3(uniswap_v3_pool) => {
+                //                 //     execution_calldata
+                //                 // .add_call(Call::new(pool.address(), pool.swap_calldata()));
+                //             }
+                //         }
+                //     }
             }
         }
     }

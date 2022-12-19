@@ -128,6 +128,67 @@ pub async fn find_best_route_across_markets<M: Middleware>(
     Ok((amount_in, route))
 }
 
+pub async fn find_best_weth_exit_from_route<M: Middleware>(
+    mut token_in: H160,
+    amount_in: U256,
+    route: Vec<Pool>,
+    order_fill_amount: U256,
+    markets: &mut HashMap<U256, Market>,
+    weth: H160,
+    middleware: Arc<M>,
+) -> Result<(U256, Pool), ExecutorError<M>> {
+    let mut amount_in = amount_in;
+
+    for pool_in_route in route {
+        let (pool_token_in, pool_token_out) = match pool_in_route {
+            Pool::UniswapV2(uniswap_v2_pool) => (uniswap_v2_pool.token_a, uniswap_v2_pool.token_b),
+
+            Pool::UniswapV3(uniswap_v3_pool) => (uniswap_v3_pool.token_a, uniswap_v3_pool.token_b),
+        };
+
+        let market_id = markets::market::get_market_id(pool_token_in, pool_token_out);
+        let pool_in_market = markets
+            .get_mut(&market_id)
+            .unwrap()
+            .get_mut(&pool_in_route.address())
+            .unwrap();
+
+        amount_in = pool_in_market
+            .simulate_swap(token_in, amount_in, middleware.clone())
+            .await?;
+
+        //update token in
+        token_in = match pool_in_market {
+            Pool::UniswapV2(uniswap_v2_pool) => {
+                if uniswap_v2_pool.token_a == token_in {
+                    uniswap_v2_pool.token_b
+                } else {
+                    uniswap_v2_pool.token_a
+                }
+            }
+            Pool::UniswapV3(uniswap_v3_pool) => {
+                if uniswap_v3_pool.token_a == token_in {
+                    uniswap_v3_pool.token_b
+                } else {
+                    uniswap_v3_pool.token_a
+                }
+            }
+        };
+    }
+
+    //Find best token out to weth pool
+    let (weth_amount_out, route) = find_best_a_to_b_route(
+        token_in,
+        weth,
+        amount_in - order_fill_amount,
+        markets,
+        middleware.clone(),
+    )
+    .await?;
+
+    Ok((weth_amount_out, route[0]))
+}
+
 pub async fn update_pools_along_route<M: Middleware>(
     mut token_in: H160,
     amount_in: U256,
@@ -173,6 +234,69 @@ pub async fn update_pools_along_route<M: Middleware>(
             }
         };
     }
+
+    Ok(())
+}
+
+pub async fn update_pools_along_route_with_weth_exit<M: Middleware>(
+    mut token_in: H160,
+    amount_in: U256,
+    markets: &mut HashMap<U256, Market>,
+    route: Vec<Pool>,
+    order_fill_amount: U256,
+    weth: H160,
+    weth_exit_address: H160,
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
+    let mut amount_in = amount_in;
+
+    for pool_in_route in route {
+        let (pool_token_in, pool_token_out) = match pool_in_route {
+            Pool::UniswapV2(uniswap_v2_pool) => (uniswap_v2_pool.token_a, uniswap_v2_pool.token_b),
+
+            Pool::UniswapV3(uniswap_v3_pool) => (uniswap_v3_pool.token_a, uniswap_v3_pool.token_b),
+        };
+
+        let market_id = markets::market::get_market_id(pool_token_in, pool_token_out);
+        let pool_in_market = markets
+            .get_mut(&market_id)
+            .unwrap()
+            .get_mut(&pool_in_route.address())
+            .unwrap();
+
+        amount_in = pool_in_market
+            .simulate_swap_mut(token_in, amount_in, middleware.clone())
+            .await?;
+
+        //update token in
+        token_in = match pool_in_market {
+            Pool::UniswapV2(uniswap_v2_pool) => {
+                if uniswap_v2_pool.token_a == token_in {
+                    uniswap_v2_pool.token_b
+                } else {
+                    uniswap_v2_pool.token_a
+                }
+            }
+            Pool::UniswapV3(uniswap_v3_pool) => {
+                if uniswap_v3_pool.token_a == token_in {
+                    uniswap_v3_pool.token_b
+                } else {
+                    uniswap_v3_pool.token_a
+                }
+            }
+        };
+    }
+
+    let token_out_to_weth_market_id = markets::market::get_market_id(token_in, weth);
+    let token_out_to_weth_pool = markets
+        .get_mut(&token_out_to_weth_market_id)
+        .unwrap()
+        .get_mut(&weth_exit_address)
+        .unwrap();
+
+    token_out_to_weth_pool
+        .simulate_swap_mut(token_in, amount_in - order_fill_amount, middleware)
+        .await?;
 
     Ok(())
 }
