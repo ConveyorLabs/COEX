@@ -59,68 +59,46 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                     let mut amount_out = U256::zero();
                     let mut route: Vec<Pool> = vec![];
 
-                    //:: First get the a to weth market and then get the weth to b market from the simulated markets
-                    // Simulate order along route for token_a -> weth -> token_b
-                    let a_to_weth_market = simulated_markets
-                        .get(&get_market_id(order.token_in, weth))
-                        .expect("Could not get token_a to weth market");
+                    (amount_out, route) = routing::find_best_a_to_b_route(
+                        &Order::SandboxLimitOrder(order.clone()), //TODO: FIXME: going to use Order, updating order to trait, this is temporary, shield your eyes
+                        simulated_markets,
+                        middleware.clone(),
+                    )
+                    .await?;
 
-                    let weth_to_b_market = simulated_markets
-                        .get(&get_market_id(order.token_out, weth))
-                        .expect("Could not get weth to token_b market");
+                    let (a_weth_b_amount_out, a_weth_b_route) =
+                        routing::find_best_a_to_weth_to_b_route(
+                            &Order::SandboxLimitOrder(order.clone()), //TODO: FIXME: going to use Order, updating order to trait, this is temporary, shield your eyes
+                            weth,
+                            simulated_markets,
+                            middleware.clone(),
+                        )
+                        .await?;
 
-                    if order.token_out == weth {
-                        //:: Then find the route that yields the best amount out across the markets
-                        (amount_out, route) = routing::find_best_route_across_markets(
-                            U256::from(order.amount_in_remaining),
-                            order.token_in,
-                            vec![a_to_weth_market],
-                            middleware.clone(),
-                        )
-                        .await?;
-                    } else if order.token_in == weth {
-                        //:: Then find the route that yields the best amount out across the markets
-                        (amount_out, route) = routing::find_best_route_across_markets(
-                            U256::from(order.amount_in_remaining),
-                            order.token_in,
-                            vec![weth_to_b_market],
-                            middleware.clone(),
-                        )
-                        .await?;
-                    } else {
-                        //:: Then find the route that yields the best amount out across the markets
-                        (amount_out, route) = routing::find_best_route_across_markets(
-                            U256::from(order.amount_in_remaining),
-                            order.token_in,
-                            vec![a_to_weth_market, weth_to_b_market],
-                            middleware.clone(),
-                        )
-                        .await?;
+                    if a_weth_b_amount_out > amount_out {
+                        amount_out = a_weth_b_amount_out;
+                        route = a_weth_b_route;
                     }
-
-                    println!(
-                        "amount out: {}, amount out min: {}",
-                        amount_out, order.amount_out_remaining
-                    );
 
                     //TODO: if the order is full filled, then update the route with the full amt, else update with a partial fill
 
-                    // //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
-                    // if amount_out.as_u128() >= order.amount_out_min {
-                    //     println!("ao: {}, aom: {}", amount_out, order.amount_out_min);
-                    //     update_pools_along_route(
-                    //         order.token_in,
-                    //         U256::from(order.quantity),
-                    //         simulated_markets,
-                    //         route,
-                    //         middleware,
-                    //     )
-                    //     .await?;
+                    //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
+                    if amount_out.as_u128() >= order.amount_out_remaining {
+                        println!("ao: {}, aor: {}", amount_out, order.amount_out_remaining);
+                        routing::update_pools_along_route(
+                            order.token_in,
+                            U256::from(order.amount_in_remaining),
+                            simulated_markets,
+                            route,
+                            middleware,
+                        )
+                        .await?;
 
-                    //:: For each order group, there is a new array that is initialized and order ids that are ready for execution are added to this array.
-                    //:: Then that array is appended to the execution calldata
+                        //:: For each order group, there is a new array that is initialized and order ids that are ready for execution are added to this array.
+                        //:: Then that array is appended to the execution calldata
 
-                    //TODO: add the data to the calldata
+                        //TODO: add the data to the calldata
+                    }
                 }
             }
         }

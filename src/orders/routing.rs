@@ -60,6 +60,31 @@ pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
     .await?)
 }
 
+pub async fn find_best_a_to_b_route<M: Middleware>(
+    order: &Order,
+    simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
+    middleware: Arc<M>,
+) -> Result<(U256, Vec<Pool>), ExecutorError<M>> {
+    let (token_in, amount_in, token_out) = match order {
+        Order::SandboxLimitOrder(slo) => (slo.token_in, slo.amount_in_remaining, slo.token_out),
+        Order::LimitOrder(lo) => (lo.token_in, lo.quantity, lo.token_out),
+    };
+
+    //:: First get the a to weth market and then get the weth to b market from the simulated markets
+    // Simulate order along route for token_a -> weth -> token_b
+    let a_to_b_market = simulated_markets
+        .get(&market::get_market_id(token_in, token_out))
+        .expect("Could not get token_a to weth market");
+
+    Ok(find_best_route_across_markets(
+        U256::from(amount_in),
+        token_in,
+        vec![a_to_b_market],
+        middleware.clone(),
+    )
+    .await?)
+}
+
 //Returns the amount out and a reference to the pools that it took through the route
 pub async fn find_best_route_across_markets<M: Middleware>(
     amount_in: U256,

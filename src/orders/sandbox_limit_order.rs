@@ -6,7 +6,9 @@ use num_bigfloat::BigFloat;
 
 use crate::markets::market::get_best_market_price;
 
-#[derive(Debug)]
+//TODO: FIXME: remove the clone copy, this is not needed, only used in ~ one place, need to update to not use clone or copy
+//TODO: regarding clone note, Update when refactoring the codebase
+#[derive(Debug, Clone, Copy)]
 pub struct SandboxLimitOrder {
     pub last_refresh_timestamp: u32,
     pub expiration_timestamp: u32,
