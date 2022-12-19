@@ -69,7 +69,7 @@ async fn run_loop<M: 'static + Middleware>(
     let event_sig_to_belt_event = events::get_event_signature_to_belt_event();
 
     //TODO: maybe change this to something else?
-    info!("Listening for order execution");
+    info!("Listening for execution conditions...");
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
         let (order_events, pool_events) = events::sort_events(

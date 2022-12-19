@@ -15,11 +15,12 @@ use ethers::{
 use crate::{
     error::ExecutorError,
     markets::market::{get_market_id, Market},
-    orders::{order::Order, routing},
+    orders::{execution::Call, order::Order, routing},
 };
 
 use super::{
-    execution::LimitOrderExecutionBundle, limit_order::LimitOrder,
+    execution::{LimitOrderExecutionBundle, SandboxLimitOrderExecutionCalldata},
+    limit_order::LimitOrder,
     sandbox_limit_order::SandboxLimitOrder,
 };
 
@@ -31,9 +32,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     //Go through the slice of sandbox limit orders and group the orders by market
-    let orders_grouped_by_market = group_sandbox_limit_orders_by_market(sandbox_limit_orders);
-    let sorted_orders_grouped_by_market =
-        sort_sandbox_limit_orders_by_amount_in(orders_grouped_by_market);
+    let grouped_orders = group_sandbox_limit_orders(sandbox_limit_orders);
 
     //TODO: sort these by usd value in the future
 
@@ -46,8 +45,13 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
     let mut order_ids_in_calldata: HashSet<H256> = HashSet::new();
     //For each order that can execute, add it to the execution calldata, including partial fills
-    for (_market_id, orders) in sorted_orders_grouped_by_market {
-        for order in orders {
+
+    for (_, order_group) in grouped_orders {
+        //NOTE: creating a new tx for each group, otherwise one runner could execute in reverse order one at a time and beat every other runner
+        let mut execution_calldata = SandboxLimitOrderExecutionCalldata::new();
+        execution_calldata.add_new_order_id_bundle();
+
+        for order in order_group {
             let middleware = middleware.clone();
 
             //:: If the order is not already added to calldata, continue simulating and checking for execution
@@ -80,24 +84,32 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         route = a_weth_b_route;
                     }
 
-                    //TODO: if the order is full filled, then update the route with the full amt, else update with a partial fill
+                    //TODO: if the order can fully fill, then update the route with the full amt, else update with a partial fill
 
                     //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
                     if amount_out.as_u128() >= order.amount_out_remaining {
-                        println!("ao: {}, aor: {}", amount_out, order.amount_out_remaining);
+                        println!("sandbox order can execute: {:?}", order.order_id);
                         routing::update_pools_along_route(
                             order.token_in,
                             U256::from(order.amount_in_remaining),
                             simulated_markets,
-                            route,
+                            route.clone(),
                             middleware,
                         )
                         .await?;
 
                         //:: For each order group, there is a new array that is initialized and order ids that are ready for execution are added to this array.
                         //:: Then that array is appended to the execution calldata
+                        execution_calldata.add_order_id_to_current_bundle(order.order_id);
+                        execution_calldata.add_fill_amount(order.amount_in_remaining);
+                        execution_calldata.add_transfer_address(route[0].address());
 
-                        //TODO: add the data to the calldata
+                        for pool in route {
+                            execution_calldata
+                                .add_call(Call::new(pool.address(), pool.swap_calldata()));
+                        }
+
+                        //TODO: add calldata to transfer fee to protocol
                     }
                 }
             }
@@ -110,20 +122,28 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     Ok(())
 }
 
-fn group_sandbox_limit_orders_by_market(
-    limit_orders: HashMap<H256, &SandboxLimitOrder>,
+fn group_sandbox_limit_orders(
+    sandbox_limit_orders: HashMap<H256, &SandboxLimitOrder>,
 ) -> HashMap<U256, Vec<&SandboxLimitOrder>> {
-    let mut orders_grouped_by_market: HashMap<U256, Vec<&SandboxLimitOrder>> = HashMap::new();
-    for (_, order) in limit_orders {
-        let market_id = get_market_id(order.token_in, order.token_out);
-        if let Some(order_group) = orders_grouped_by_market.get_mut(&market_id) {
+    let mut grouped_orders: HashMap<U256, Vec<&SandboxLimitOrder>> = HashMap::new();
+    for (_, order) in sandbox_limit_orders {
+        let hash = U256::from_little_endian(&keccak256(
+            vec![
+                order.token_in.as_bytes(),
+                order.token_out.as_bytes(),
+                &order.owner.to_fixed_bytes(),
+            ]
+            .concat(),
+        ));
+
+        if let Some(order_group) = grouped_orders.get_mut(&hash) {
             order_group.push(order);
         } else {
-            orders_grouped_by_market.insert(market_id, vec![order]);
+            grouped_orders.insert(hash, vec![order]);
         }
     }
 
-    orders_grouped_by_market
+    grouped_orders
 }
 
 fn sort_sandbox_limit_orders_by_amount_in(
@@ -182,13 +202,8 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
                     )
                     .await?;
 
-                    println!(
-                        "amount out: {}, amount out min: {}",
-                        amount_out, order.amount_out_min
-                    );
                     //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
                     if amount_out.as_u128() >= order.amount_out_min {
-                        println!("ao: {}, aom: {}", amount_out, order.amount_out_min);
                         routing::update_pools_along_route(
                             order.token_in,
                             U256::from(order.quantity),

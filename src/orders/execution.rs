@@ -30,16 +30,57 @@ pub trait ExecutionCalldata {
     fn to_bytes(&self) -> Bytes;
 }
 
+#[derive(Debug, Default)]
 pub struct SandboxLimitOrderExecutionCalldata {
+    current_id_bundle_idx: usize,
     pub order_id_bundles: Vec<Vec<H256>>, //bytes32[][] orderIdBundles
     pub fill_amounts: Vec<u128>,          // uint128[] fillAmounts
     pub transfer_addresses: Vec<H160>,    // address[] transferAddresses
     pub calls: Vec<Call>,                 // Call[] calls
 }
 
+#[derive(Debug, Default)]
 pub struct Call {
     pub target: H160,       // address target
     pub call_data: Vec<u8>, // bytes callData
+}
+
+impl SandboxLimitOrderExecutionCalldata {
+    pub fn new() -> SandboxLimitOrderExecutionCalldata {
+        SandboxLimitOrderExecutionCalldata::default()
+    }
+
+    pub fn add_order_id_to_current_bundle(&mut self, order_id: H256) {
+        self.order_id_bundles[self.current_id_bundle_idx].push(order_id);
+    }
+
+    pub fn add_new_order_id_bundle(&mut self) {
+        if self.order_id_bundles.is_empty() {
+            self.order_id_bundles.push(vec![]);
+            self.current_id_bundle_idx += 1;
+        } else if !self.order_id_bundles[self.current_id_bundle_idx].is_empty() {
+            self.order_id_bundles.push(vec![]);
+            self.current_id_bundle_idx += 1;
+        }
+    }
+
+    pub fn add_fill_amount(&mut self, fill_amount: u128) {
+        self.fill_amounts.push(fill_amount);
+    }
+
+    pub fn add_transfer_address(&mut self, transfer_address: H160) {
+        self.transfer_addresses.push(transfer_address);
+    }
+
+    pub fn add_call(&mut self, call: Call) {
+        self.calls.push(call);
+    }
+}
+
+impl Call {
+    pub fn new(target: H160, call_data: Vec<u8>) -> Call {
+        Call { target, call_data }
+    }
 }
 
 #[derive(Default, Debug)]
@@ -153,8 +194,6 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
                     Order::LimitOrder(limit_order) => {
                         if lo_at_execution_price.get(&limit_order.order_id).is_none() {
-                            println!("order can execute and has sufficient balance: {:#?}", order);
-
                             lo_at_execution_price.insert(limit_order.order_id, limit_order);
                         }
                     }
@@ -184,7 +223,6 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     //Execute orders if there are any order groups for execution
     if !limit_order_execution_bundle.order_groups.is_empty() {
-        println!("here: {:?}", limit_order_execution_bundle.order_groups);
         //execute sandbox limit orders
         execute_limit_order_groups(
             limit_order_execution_bundle,
