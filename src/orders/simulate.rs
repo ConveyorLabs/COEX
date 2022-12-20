@@ -7,12 +7,14 @@ use std::{
 
 use cfmms::pool::{self, Pool, UniswapV2Pool};
 use ethers::{
+    abi::Token,
     providers::Middleware,
     types::{H160, H256, U256},
     utils::keccak256,
 };
 
 use crate::{
+    abi,
     error::ExecutorError,
     markets::market::{get_market_id, Market},
     orders::{execution::Call, order::Order, routing},
@@ -95,10 +97,14 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         execution_bundle.add_fill_amount(order.amount_in_remaining);
                         execution_bundle.add_transfer_address(route[0].address());
 
-                        //TODO: construct calls on route (send amount out to multicall contract)
+                        //Add calls for each swap throughout the route
+                        for (i, pool) in route.iter().enumerate() {
+                            let to = if i == route.len() - 1 {
+                                wallet_address
+                            } else {
+                                route[i + 1].address()
+                            };
 
-                        //TODO: Add call to swap on the pool
-                        for pool in route {
                             match pool {
                                 Pool::UniswapV2(uniswap_v2_pool) => {
                                     let (amount_0_out, amount_1_out) =
@@ -113,7 +119,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                                         uniswap_v2_pool.swap_calldata(
                                             amount_0_out,
                                             amount_1_out,
-                                            wallet_address,
+                                            to,
                                             vec![],
                                         ),
                                     ));
@@ -126,9 +132,31 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             }
                         }
 
-                        //TODO: send exact amount out remaining to user
+                        //Add a call to send the exact amount to the user
+                        execution_bundle.add_call(Call::new(
+                            weth,
+                            abi::IERC20_ABI
+                                .function("transfer")
+                                .unwrap()
+                                .encode_input(&vec![
+                                    Token::Address(order.owner),
+                                    Token::Uint(U256::from(order.amount_out_remaining)),
+                                ])
+                                .expect("Could not encode Weth transfer inputs"),
+                        ));
 
-                        //TODO: pay protocol fee
+                        //pay protocol fee
+                        execution_bundle.add_call(Call::new(
+                            weth,
+                            abi::IERC20_ABI
+                                .function("transfer")
+                                .unwrap()
+                                .encode_input(&vec![
+                                    Token::Address(executor_address),
+                                    Token::Uint(U256::from(order.fee_remaining)),
+                                ])
+                                .expect("Could not encode Weth transfer inputs"),
+                        ));
                     }
                 } else {
                     let (weth_amount_out, weth_exit_pool) =
