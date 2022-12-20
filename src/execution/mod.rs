@@ -1,187 +1,33 @@
+pub mod limit_order;
+pub mod sandbox_limit_order;
+
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex},
 };
 
-use cfmms::pool::Pool;
 use ethers::{
-    abi::{ethabi::Bytes, Token},
-    prelude::NonceManagerMiddleware,
+    abi::ethabi::Bytes,
     providers::Middleware,
-    types::{
-        transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, TransactionRequest,
-        H160, H256, U256,
-    },
+    types::{H256, U256},
 };
 
 use crate::{
-    abi::{self, SandboxMulticall},
-    config::{self, Chain},
+    config::{self},
     error::ExecutorError,
     markets::market::Market,
+    orders::{
+        limit_order::LimitOrder, order::Order, sandbox_limit_order::SandboxLimitOrder, simulate,
+    },
     transaction_utils,
 };
 
-use super::{
-    limit_order::LimitOrder, order::Order, sandbox_limit_order::SandboxLimitOrder, simulate,
+use self::{
+    limit_order::LimitOrderExecutionBundle, sandbox_limit_order::SandboxLimitOrderExecutionBundle,
 };
 
 pub trait ExecutionCalldata {
     fn to_bytes(&self) -> Bytes;
-}
-
-#[derive(Debug, Default)]
-pub struct SandboxLimitOrderExecutionBundle {
-    order_id_bundle_idx: usize,
-    pub order_id_bundles: Vec<Vec<H256>>, //bytes32[][] orderIdBundles
-    pub fill_amounts: Vec<u128>,          // uint128[] fillAmounts
-    pub transfer_addresses: Vec<H160>,    // address[] transferAddresses
-    pub calls: Vec<Call>,                 // Call[] calls
-}
-
-impl SandboxLimitOrderExecutionBundle {
-    pub fn to_sandbox_multicall(self) -> SandboxMulticall {
-        let order_id_bundles: Vec<Vec<[u8; 32]>> = self
-            .order_id_bundles
-            .iter()
-            .map(|bundle| {
-                bundle
-                    .iter()
-                    .map(|order_id| order_id.as_fixed_bytes().to_owned())
-                    .collect()
-            })
-            .collect();
-
-        let calls: Vec<abi::Call> = self
-            .calls
-            .iter()
-            .map(|call| abi::Call {
-                target: call.target,
-                call_data: ethers::types::Bytes::from(call.call_data.to_owned()),
-            })
-            .collect();
-
-        SandboxMulticall {
-            order_id_bundles,
-            fill_amounts: self.fill_amounts,
-            transfer_addresses: self.transfer_addresses,
-            calls: calls,
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Call {
-    pub target: H160,       // address target
-    pub call_data: Vec<u8>, // bytes callData
-}
-
-impl SandboxLimitOrderExecutionBundle {
-    pub fn new() -> SandboxLimitOrderExecutionBundle {
-        let mut execution_bundle = SandboxLimitOrderExecutionBundle::default();
-        execution_bundle.add_new_order_id_bundle();
-
-        execution_bundle
-    }
-
-    pub fn add_order_id_to_current_bundle(&mut self, order_id: H256) {
-        self.order_id_bundles[self.order_id_bundle_idx].push(order_id);
-    }
-
-    pub fn add_new_order_id_bundle(&mut self) {
-        self.order_id_bundles.push(vec![]);
-        self.order_id_bundle_idx += 1;
-    }
-
-    pub fn add_fill_amount(&mut self, fill_amount: u128) {
-        self.fill_amounts.push(fill_amount);
-    }
-
-    pub fn add_transfer_address(&mut self, transfer_address: H160) {
-        self.transfer_addresses.push(transfer_address);
-    }
-
-    pub fn add_call(&mut self, call: Call) {
-        self.calls.push(call);
-    }
-}
-
-impl Call {
-    pub fn new(target: H160, call_data: Bytes) -> Call {
-        Call { target, call_data }
-    }
-}
-
-#[derive(Default, Debug)]
-pub struct LimitOrderExecutionBundle {
-    pub order_groups: Vec<LimitOrderExecutionOrderIds>, // bytes32[] calldata orderIds
-}
-
-impl LimitOrderExecutionBundle {
-    pub fn new() -> LimitOrderExecutionBundle {
-        LimitOrderExecutionBundle::default()
-    }
-
-    pub fn add_order_group(&mut self, order_group: LimitOrderExecutionOrderIds) {
-        self.order_groups.push(order_group);
-    }
-
-    pub fn add_empty_order_group(&mut self) {
-        if let Some(order_group) = self.order_groups.last() {
-            if !order_group.order_ids.is_empty() {
-                self.order_groups
-                    .push(LimitOrderExecutionOrderIds::default());
-            }
-        } else {
-            self.order_groups
-                .push(LimitOrderExecutionOrderIds::default());
-        };
-    }
-
-    pub fn append_order_id_to_latest_order_group(&mut self, order_id: H256) {
-        if let Some(order_group) = self.order_groups.last_mut() {
-            order_group.add_order_id(order_id);
-        } else {
-            self.add_empty_order_group();
-            self.append_order_id_to_latest_order_group(order_id);
-        }
-    }
-}
-
-impl ExecutionCalldata for LimitOrderExecutionBundle {
-    fn to_bytes(&self) -> Bytes {
-        self.order_groups
-            .iter()
-            .flat_map(|order_group| order_group.to_bytes())
-            .collect::<Vec<u8>>()
-    }
-}
-
-#[derive(Default, Debug)]
-pub struct LimitOrderExecutionOrderIds {
-    pub order_ids: Vec<[u8; 32]>, // bytes32[] calldata orderIds
-}
-
-impl LimitOrderExecutionOrderIds {
-    pub fn new() -> LimitOrderExecutionOrderIds {
-        LimitOrderExecutionOrderIds::default()
-    }
-
-    pub fn add_order_id(&mut self, order_id: H256) {
-        self.order_ids.push(order_id.to_fixed_bytes());
-    }
-}
-
-impl ExecutionCalldata for LimitOrderExecutionOrderIds {
-    fn to_bytes(&self) -> Bytes {
-        ethers::abi::encode(
-            &self
-                .order_ids
-                .iter()
-                .map(|order_id| Token::FixedBytes(order_id.to_vec()))
-                .collect::<Vec<Token>>(),
-        )
-    }
 }
 
 pub async fn fill_orders_at_execution_price<M: Middleware>(
@@ -247,13 +93,14 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
 
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
-    let limit_order_execution_bundle = simulate::simulate_and_batch_limit_orders(
-        lo_at_execution_price,
-        &mut simulated_markets,
-        configuration.weth_address,
-        middleware.clone(),
-    )
-    .await?;
+    let limit_order_execution_bundle: LimitOrderExecutionBundle =
+        simulate::simulate_and_batch_limit_orders(
+            lo_at_execution_price,
+            &mut simulated_markets,
+            configuration.weth_address,
+            middleware.clone(),
+        )
+        .await?;
 
     //TODO: rename the limit order execution bundle order groiups to just be execution bundles and return a vec of bundle
     //Execute orders if there are any order groups
@@ -276,7 +123,6 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
-    // // execute limit orders
     for bundle in slo_bundles {
         let order_id_bundles = bundle.order_id_bundles.clone();
 

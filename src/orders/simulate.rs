@@ -16,15 +16,12 @@ use ethers::{
 use crate::{
     abi,
     error::ExecutorError,
+    execution::{self},
     markets::market::{get_market_id, Market},
-    orders::{execution::Call, order::Order, routing},
+    orders::{order::Order, routing},
 };
 
-use super::{
-    execution::{LimitOrderExecutionBundle, SandboxLimitOrderExecutionBundle},
-    limit_order::LimitOrder,
-    sandbox_limit_order::SandboxLimitOrder,
-};
+use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
 pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
@@ -34,7 +31,8 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     executor_address: H160,
     wallet_address: H160,
     middleware: Arc<M>,
-) -> Result<Vec<SandboxLimitOrderExecutionBundle>, ExecutorError<M>> {
+) -> Result<Vec<execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle>, ExecutorError<M>>
+{
     //TODO: sort these by usd value in the future
 
     //TODO: update this comment later, but we add order ids to this hashset so that we dont recalc orders for execution viability if they are already in an order group
@@ -94,7 +92,8 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         .await?;
 
                         //Construct call for execution
-                        let mut execution_bundle = SandboxLimitOrderExecutionBundle::new();
+                        let mut execution_bundle =
+                            execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle::new();
                         execution_bundle.add_order_id_to_current_bundle(order.order_id);
                         execution_bundle.add_fill_amount(order.amount_in_remaining);
                         execution_bundle.add_transfer_address(route[0].address());
@@ -116,15 +115,17 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                                             (amount_out, U256::zero())
                                         };
 
-                                    execution_bundle.add_call(Call::new(
-                                        uniswap_v2_pool.address,
-                                        uniswap_v2_pool.swap_calldata(
-                                            amount_0_out,
-                                            amount_1_out,
-                                            to,
-                                            vec![],
+                                    execution_bundle.add_call(
+                                        execution::sandbox_limit_order::Call::new(
+                                            uniswap_v2_pool.address,
+                                            uniswap_v2_pool.swap_calldata(
+                                                amount_0_out,
+                                                amount_1_out,
+                                                to,
+                                                vec![],
+                                            ),
                                         ),
-                                    ));
+                                    );
                                 }
 
                                 Pool::UniswapV3(uniswap_v3_pool) => {
@@ -135,7 +136,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         }
 
                         //Add a call to send the exact amount to the user
-                        execution_bundle.add_call(Call::new(
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
                             weth,
                             abi::IERC20_ABI
                                 .function("transfer")
@@ -148,7 +149,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         ));
 
                         //pay protocol fee
-                        execution_bundle.add_call(Call::new(
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
                             weth,
                             abi::IERC20_ABI
                                 .function("transfer")
@@ -281,7 +282,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
     middleware: Arc<M>,
-) -> Result<LimitOrderExecutionBundle, ExecutorError<M>> {
+) -> Result<execution::limit_order::LimitOrderExecutionBundle, ExecutorError<M>> {
     //:: First group the orders by market and sort each of the orders by the amount in (ie quantity)
     //Go through the slice of sandbox limit orders and group the orders
 
@@ -297,7 +298,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
     let mut order_ids_in_calldata: HashSet<H256> = HashSet::new();
 
     //:: This is a vec of order groups, ie vec of vec of bytes32
-    let mut execution_calldata = LimitOrderExecutionBundle::new();
+    let mut execution_calldata = execution::limit_order::LimitOrderExecutionBundle::new();
     //:: Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
 
     for (_, orders) in sorted_orders_grouped_by_market {

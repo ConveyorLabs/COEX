@@ -12,6 +12,7 @@ pub mod abi;
 pub mod config;
 pub mod error;
 pub mod events;
+pub mod execution;
 pub mod initialization;
 pub mod markets;
 pub mod orders;
@@ -23,7 +24,6 @@ use ethers::providers::StreamExt;
 use ethers::types::{H160, H256, U256};
 use markets::market::{self, Market};
 
-use orders::execution::{self, fill_orders_at_execution_price};
 use orders::order::{self, Order};
 
 //TODO: move this to bin
