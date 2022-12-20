@@ -89,6 +89,11 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
     )
     .await?;
 
+    for bundle in sandbox_execution_bundles.iter() {
+        println!("Slo multicall: {:?}", bundle);
+        println!("");
+        println!("");
+    }
     //Execute orders if there are any order groups
     if !sandbox_execution_bundles.is_empty() {
         execute_sandbox_limit_order_bundles(
@@ -99,6 +104,8 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
         )
         .await?;
     }
+
+    println!("gothere");
 
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
@@ -111,7 +118,7 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
         )
         .await?;
 
-    //TODO: rename the limit order execution bundle order groiups to just be execution bundles and return a vec of bundle
+    //TODO: rename the limit order execution bundle order groups to just be execution bundles and return a vec of bundle
     //Execute orders if there are any order groups
     if !limit_order_execution_bundle.order_groups.is_empty() {
         //execute sandbox limit orders
