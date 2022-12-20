@@ -40,7 +40,7 @@ pub struct SandboxLimitOrderExecutionBundle {
 }
 
 impl SandboxLimitOrderExecutionBundle {
-    fn to_sandbox_multicall(self) -> SandboxMulticall {
+    pub fn to_sandbox_multicall(self) -> SandboxMulticall {
         let order_id_bundles: Vec<Vec<[u8; 32]>> = self
             .order_id_bundles
             .iter()

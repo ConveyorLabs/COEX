@@ -101,7 +101,6 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
     order_ids: Vec<[u8; 32]>,
     middleware: Arc<M>,
 ) -> Result<TypedTransaction, ExecutorError<M>> {
-    //TODO: For the love of god, refactor the transaction composition
     let calldata = abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
         .execute_limit_orders(order_ids)
         .calldata()
@@ -109,22 +108,8 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
 
     if configuration.chain.is_eip1559() {
         //:: EIP 1559 transaction
-        let base_fee = middleware
-            .provider()
-            .get_block(middleware.provider().get_block_number().await?)
-            .await?
-            .unwrap()
-            .base_fee_per_gas
-            .unwrap();
 
-        // let mut tx: TypedTransaction = Eip1559TransactionRequest::new()
-        //     .data(calldata)
-        //     .to(configuration.limit_order_book)
-        //     .from(configuration.wallet_address)
-        //     .chain_id(configuration.chain.chain_id())
-        //     .into();
-
-        let mut tx = fill_and_simulate_transaction(
+        let tx = fill_and_simulate_transaction(
             calldata,
             configuration.limit_order_book,
             configuration.wallet_address,
@@ -133,10 +118,9 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
         )
         .await?;
 
-        // println!("tx: {:#?}", tx);
-
         Ok(tx)
     } else {
+        //TODO: legacy transaction
         let tx = fill_and_simulate_transaction(
             calldata,
             configuration.limit_order_book,
@@ -160,7 +144,41 @@ pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
     slo_bundle: SandboxLimitOrderExecutionBundle,
     middleware: Arc<M>,
 ) -> Result<TypedTransaction, ExecutorError<M>> {
-    panic!("stopping here TODO: remove this")
+    let sandbox_limit_order_router = abi::ISandboxLimitOrderRouter::new(
+        configuration.sandbox_limit_order_router,
+        middleware.clone(),
+    );
+    let calldata = sandbox_limit_order_router
+        .execute_sandbox_multicall(slo_bundle.to_sandbox_multicall())
+        .calldata()
+        .unwrap();
+
+    if configuration.chain.is_eip1559() {
+        let tx = fill_and_simulate_transaction(
+            calldata,
+            configuration.limit_order_book,
+            configuration.wallet_address,
+            configuration.chain.chain_id(),
+            middleware.clone(),
+        )
+        .await?;
+
+        Ok(tx)
+    } else {
+        //TODO: legacy transactions
+        let tx = fill_and_simulate_transaction(
+            calldata,
+            configuration.limit_order_book,
+            configuration.wallet_address,
+            configuration.chain.chain_id(),
+            middleware.clone(),
+        )
+        .await?;
+
+        // println!("tx: {:#?}", tx);
+
+        Ok(tx)
+    }
 }
 
 //Signs and sends transaction, bumps gas if necessary
