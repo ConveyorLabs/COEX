@@ -76,6 +76,9 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
             if a_to_b_amounts_out.last() > a_weth_b_amount_out.last() {
                 amounts_out = a_to_b_amounts_out;
                 route = a_to_b_route;
+            } else {
+                amounts_out = a_weth_b_amount_out;
+                route = a_weth_b_route;
             }
 
             let last_amount_out = amounts_out.last().unwrap();
