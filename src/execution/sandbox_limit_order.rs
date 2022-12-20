@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
+use cfmms::pool::Pool;
 use ethers::abi::ethabi::Bytes;
 use ethers::providers::Middleware;
-use ethers::types::{H160, H256};
+use ethers::types::{H160, H256, U256};
 
 use crate::error::ExecutorError;
+use crate::orders::sandbox_limit_order::SandboxLimitOrder;
 use crate::{abi, config, transaction_utils};
 
 #[derive(Debug, Default)]
@@ -80,6 +82,43 @@ impl SandboxLimitOrderExecutionBundle {
 
     pub fn add_call(&mut self, call: Call) {
         self.calls.push(call);
+    }
+
+    pub fn add_route_to_calls(
+        &mut self,
+        route: Vec<Pool>,
+        order: &SandboxLimitOrder,
+        wallet_address: H160,
+    ) {
+        //Add calls for each swap throughout the route
+        for (i, pool) in route.iter().enumerate() {
+            let to = if i == route.len() - 1 {
+                wallet_address
+            } else {
+                route[i + 1].address()
+            };
+
+            match pool {
+                Pool::UniswapV2(uniswap_v2_pool) => {
+                    let (amount_0_out, amount_1_out) = if uniswap_v2_pool.token_a == order.token_in
+                    {
+                        (U256::zero(), amount_out)
+                    } else {
+                        (amount_out, U256::zero())
+                    };
+
+                    self.add_call(Call::new(
+                        uniswap_v2_pool.address,
+                        uniswap_v2_pool.swap_calldata(amount_0_out, amount_1_out, to, vec![]),
+                    ));
+                }
+
+                Pool::UniswapV3(uniswap_v3_pool) => {
+                    //     execution_calldata
+                    // .add_call(Call::new(pool.address(), pool.swap_calldata()));
+                }
+            }
+        }
     }
 }
 
