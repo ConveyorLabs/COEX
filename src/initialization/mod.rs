@@ -59,7 +59,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
     let pending_transactions_sender = Arc::new(
         transaction_utils::initialize_pending_transaction_handler(
             state.pending_order_ids.clone(),
-            Duration::new(0, 500000000), //500 ms
+            Duration::new(0, 100000000), //100 ms
             middleware.clone(),
         )
         .await,

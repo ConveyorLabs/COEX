@@ -443,9 +443,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cfmms"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69426cb83df46a328c1759d869d95d5772a2488fdbb866dc1103170b59ebd769"
+checksum = "090d46bdd17605017875bb710da1ed7e7ad46f99490c9ecb76ce5509e00c5ee5"
 dependencies = [
  "async-trait",
  "ethers",

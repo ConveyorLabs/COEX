@@ -58,7 +58,7 @@ pub struct Call {
 impl SandboxLimitOrderExecutionBundle {
     pub fn new() -> SandboxLimitOrderExecutionBundle {
         let mut execution_bundle = SandboxLimitOrderExecutionBundle::default();
-        execution_bundle.add_new_order_id_bundle();
+        execution_bundle.order_id_bundles.push(vec![]);
 
         execution_bundle
     }

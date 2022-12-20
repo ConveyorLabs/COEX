@@ -261,7 +261,7 @@ pub async fn get_remote_order<M: Middleware>(
 ) -> Result<Order, ExecutorError<M>> {
     match order_variant {
         OrderVariant::SandboxLimitOrder => {
-            let slob = abi::ISandboxLimitOrderBook::new(order_book_address, middleware);
+            let slob = abi::ISandboxLimitOrderBook::new(order_book_address, middleware.clone());
 
             let return_data = slob
                 .get_order_by_id(order_id.to_fixed_bytes())
@@ -269,7 +269,7 @@ pub async fn get_remote_order<M: Middleware>(
                 .await?;
 
             Ok(Order::SandboxLimitOrder(
-                SandboxLimitOrder::new_from_return_data(return_data),
+                SandboxLimitOrder::new_from_return_data(return_data, middleware).await?,
             ))
         }
 

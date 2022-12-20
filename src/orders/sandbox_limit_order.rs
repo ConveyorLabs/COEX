@@ -1,10 +1,13 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use cfmms::pool::Pool;
-use ethers::types::{H160, H256, U256};
+use ethers::{
+    providers::Middleware,
+    types::{H160, H256, U256},
+};
 use num_bigfloat::BigFloat;
 
-use crate::markets::market::get_best_market_price;
+use crate::{abi, error::ExecutorError, markets::market::get_best_market_price};
 
 //TODO: FIXME: remove the clone copy, this is not needed, only used in ~ one place, need to update to not use clone or copy
 //TODO: regarding clone note, Update when refactoring the codebase
@@ -55,7 +58,7 @@ impl SandboxLimitOrder {
         }
     }
 
-    pub fn new_from_return_data(
+    pub async fn new_from_return_data<M: Middleware>(
         return_data: (
             u32,
             u32,
@@ -69,13 +72,30 @@ impl SandboxLimitOrder {
             H160,
             [u8; 32],
         ),
-    ) -> SandboxLimitOrder {
-        //TODO: need to account for decimals and get the common decimals of the two before calculating the price
-        let price = BigFloat::from_u128(return_data.4)
-            .div(&BigFloat::from_u128(return_data.5))
+        middleware: Arc<M>,
+    ) -> Result<SandboxLimitOrder, ExecutorError<M>> {
+        let token_in_decimals = abi::IErc20::new(return_data.8, middleware.clone())
+            .decimals()
+            .call()
+            .await?;
+
+        let token_out_decimals = abi::IErc20::new(return_data.9, middleware.clone())
+            .decimals()
+            .call()
+            .await?;
+
+        let (amount_in, amount_out, _) = cfmms::pool::convert_to_common_decimals(
+            U256::from(return_data.4),
+            token_in_decimals,
+            U256::from(return_data.5),
+            token_out_decimals,
+        );
+
+        let price = BigFloat::from_u128(amount_in.as_u128())
+            .div(&BigFloat::from_u128(amount_out.as_u128()))
             .to_f64();
 
-        SandboxLimitOrder::new(
+        Ok(SandboxLimitOrder::new(
             return_data.0,
             return_data.1,
             return_data.2,
@@ -88,7 +108,7 @@ impl SandboxLimitOrder {
             return_data.8,
             return_data.9,
             return_data.10.into(),
-        )
+        ))
     }
     pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
         self.price >= self.get_best_market_price(markets, weth)

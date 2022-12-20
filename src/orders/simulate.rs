@@ -51,9 +51,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
         //Check if the order can execute within the updated simulated markets
         if order.can_execute(&simulated_markets, weth) {
-            let mut amounts_out = vec![];
-            let mut route: Vec<Pool> = vec![];
-
             let (a_to_b_amounts_out, a_to_b_route) = routing::find_best_a_to_b_route(
                 order.token_in,
                 order.token_out,
@@ -73,21 +70,17 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
             )
             .await?;
 
-            if a_to_b_amounts_out.last() > a_weth_b_amount_out.last() {
-                amounts_out = a_to_b_amounts_out;
-                route = a_to_b_route;
+            let (amounts_out, route) = if a_to_b_amounts_out.last() > a_weth_b_amount_out.last() {
+                (a_to_b_amounts_out, a_to_b_route)
             } else {
-                amounts_out = a_weth_b_amount_out;
-                route = a_weth_b_route;
-            }
+                (a_weth_b_amount_out, a_weth_b_route)
+            };
 
             let last_amount_out = amounts_out.last().unwrap();
 
             //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
             if last_amount_out.as_u128() >= order.amount_out_remaining {
                 if order.token_out == weth {
-                    println!("out is weth");
-
                     if last_amount_out.as_u128() > order.fee_remaining {
                         routing::update_pools_along_route(
                             order.token_in,
