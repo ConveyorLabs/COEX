@@ -84,6 +84,7 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
         &mut simulated_markets,
         configuration.weth_address,
         configuration.executor_address,
+        configuration.sandbox_limit_order_router,
         configuration.wallet_address,
         middleware.clone(),
     )
@@ -162,11 +163,14 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
     //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
     for market_id in affected_markets {
         //TODO: FIXME: sanity check that the a -> b and a -> weth and weth -> markets are all covered when they need to be.
+
+        //TODO: FIXME: For the love of god, do this ^^^^^^^^^^
+
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
             for order_id in affected_orders {
                 if let Some(order) = active_orders.get(order_id) {
                     if order.can_execute(&markets, configuration.weth_address) {
-                        //TODO: FIXME: make sure that we are checking if the order owner has the balance somewhere
+                        //TODO: make sure that we are checking if the order owner has the balance somewhere
 
                         //Add the market to the simulation markets structure
                         simulated_markets.insert(
@@ -209,6 +213,7 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
         &mut simulated_markets,
         configuration.weth_address,
         configuration.executor_address,
+        configuration.sandbox_limit_order_router,
         configuration.wallet_address,
         middleware.clone(),
     )

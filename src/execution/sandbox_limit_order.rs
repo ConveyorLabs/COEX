@@ -10,6 +10,8 @@ use crate::orders::sandbox_limit_order::SandboxLimitOrder;
 use crate::{abi, config, transaction_utils};
 
 #[derive(Debug, Default)]
+
+//TODO: rename this to SandboxMulticall but be mindful of abi::SandboxMulticall
 pub struct SandboxLimitOrderExecutionBundle {
     order_id_bundle_idx: usize,
     pub order_id_bundles: Vec<Vec<H256>>, //bytes32[][] orderIdBundles
@@ -89,14 +91,16 @@ impl SandboxLimitOrderExecutionBundle {
         route: Vec<Pool>,
         amounts_out: Vec<U256>,
         order: &SandboxLimitOrder,
-        wallet_address: H160,
+        sandbox_limit_order_router: H160,
     ) {
         //Add calls for each swap throughout the route
+
+        //TODO: FIXME: implement checks for v3 and make sure it checks out
 
         let mut token_in = order.token_in;
         for (i, pool) in route.iter().enumerate() {
             let to = if i == route.len() - 1 {
-                wallet_address
+                sandbox_limit_order_router
             } else {
                 route[i + 1].address()
             };

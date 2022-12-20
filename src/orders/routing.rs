@@ -83,7 +83,6 @@ pub async fn find_best_route_across_markets<M: Middleware>(
     mut token_in: H160,
     markets: Vec<&Market>,
     middleware: Arc<M>,
-    //TODO: needs to return Vec<U256> for amounts out
 ) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     let mut amount_in = amount_in;
     let mut amounts_out: Vec<U256> = vec![];
@@ -99,7 +98,7 @@ pub async fn find_best_route_across_markets<M: Middleware>(
                 .simulate_swap(token_in, amount_in, middleware.clone())
                 .await?;
 
-            if swap_amount_out > best_amount_out || best_amount_out == U256::zero() {
+            if swap_amount_out > best_amount_out {
                 best_amount_out = swap_amount_out;
                 best_pool = pool.clone();
             }
@@ -132,15 +131,16 @@ pub async fn find_best_route_across_markets<M: Middleware>(
 }
 
 pub async fn find_best_weth_exit_from_route<M: Middleware>(
-    mut token_in: H160,
+    token_in: H160,
     amount_in: U256,
     route: Vec<Pool>,
-    order_fill_amount: U256,
+    order_amount_out_remaining: U256,
     markets: &mut HashMap<U256, Market>,
     weth: H160,
     middleware: Arc<M>,
-) -> Result<(Vec<U256>, Pool), ExecutorError<M>> {
-    let mut amount_in = amount_in;
+) -> Result<(U256, Pool), ExecutorError<M>> {
+    let mut swap_token = token_in;
+    let mut swap_amount = amount_in;
 
     for pool_in_route in route {
         let (pool_token_in, pool_token_out) = match pool_in_route {
@@ -156,12 +156,12 @@ pub async fn find_best_weth_exit_from_route<M: Middleware>(
             .get_mut(&pool_in_route.address())
             .unwrap();
 
-        amount_in = pool_in_market
+        swap_amount = pool_in_market
             .simulate_swap(token_in, amount_in, middleware.clone())
             .await?;
 
         //update token in
-        token_in = match pool_in_market {
+        swap_token = match pool_in_market {
             Pool::UniswapV2(uniswap_v2_pool) => {
                 if uniswap_v2_pool.token_a == token_in {
                     uniswap_v2_pool.token_b
@@ -181,15 +181,15 @@ pub async fn find_best_weth_exit_from_route<M: Middleware>(
 
     //Find best token out to weth pool
     let (weth_amount_out, route) = find_best_a_to_b_route(
-        token_in,
+        swap_token,
         weth,
-        amount_in - order_fill_amount,
+        swap_amount - order_amount_out_remaining,
         markets,
         middleware.clone(),
     )
     .await?;
 
-    Ok((weth_amount_out, route[0]))
+    Ok((*weth_amount_out.last().unwrap(), route[0]))
 }
 
 pub async fn update_pools_along_route<M: Middleware>(
