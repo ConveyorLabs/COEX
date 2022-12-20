@@ -66,7 +66,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
     );
 
     info!("Checking for orders at execution price...");
-    execution::fill_orders_at_execution_price(
+    execution::fill_all_orders_at_execution_price(
         state.active_orders.clone(),
         state.markets.clone(),
         &configuration,

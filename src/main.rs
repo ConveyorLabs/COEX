@@ -106,7 +106,7 @@ async fn run_loop<M: 'static + Middleware>(
 
         //Evaluate orders for execution
         if !markets_updated.is_empty() {
-            execution::evaluate_and_execute_orders(
+            execution::fill_orders_at_execution_price(
                 markets_updated,
                 market_to_affected_orders.clone(),
                 active_orders.clone(),

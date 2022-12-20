@@ -1,7 +1,11 @@
+use std::sync::Arc;
+
 use ethers::abi::ethabi::Bytes;
+use ethers::providers::Middleware;
 use ethers::types::{H160, H256};
 
-use crate::abi;
+use crate::error::ExecutorError;
+use crate::{abi, config, transaction_utils};
 
 #[derive(Debug, Default)]
 pub struct SandboxLimitOrderExecutionBundle {
@@ -83,4 +87,40 @@ impl Call {
     pub fn new(target: H160, call_data: Bytes) -> Call {
         Call { target, call_data }
     }
+}
+
+pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
+    slo_bundles: Vec<SandboxLimitOrderExecutionBundle>,
+    configuration: &config::Config,
+    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
+    for bundle in slo_bundles {
+        let order_id_bundles = bundle.order_id_bundles.clone();
+
+        let tx = transaction_utils::construct_and_simulate_slo_execution_transaction(
+            configuration,
+            bundle,
+            middleware.clone(),
+        )
+        .await?;
+
+        let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+            tx,
+            &configuration.wallet_key,
+            &configuration.chain,
+            middleware.clone(),
+        )
+        .await?;
+
+        tracing::info!("Pending limit order execution tx: {:?}", pending_tx_hash);
+
+        for order_ids in order_id_bundles {
+            pending_transactions_sender
+                .send((pending_tx_hash, order_ids))
+                .await?;
+        }
+    }
+
+    Ok(())
 }

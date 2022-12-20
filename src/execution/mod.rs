@@ -23,14 +23,15 @@ use crate::{
 };
 
 use self::{
-    limit_order::LimitOrderExecutionBundle, sandbox_limit_order::SandboxLimitOrderExecutionBundle,
+    limit_order::LimitOrderExecutionBundle,
+    sandbox_limit_order::{execute_sandbox_limit_order_bundles, SandboxLimitOrderExecutionBundle},
 };
 
 pub trait ExecutionCalldata {
     fn to_bytes(&self) -> Bytes;
 }
 
-pub async fn fill_orders_at_execution_price<M: Middleware>(
+pub async fn fill_all_orders_at_execution_price<M: Middleware>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     markets: Arc<Mutex<HashMap<U256, Market>>>,
     configuration: &config::Config,
@@ -89,7 +90,15 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     .await?;
 
     //Execute orders if there are any order groups
-    if !sandbox_execution_bundles.is_empty() {}
+    if !sandbox_execution_bundles.is_empty() {
+        execute_sandbox_limit_order_bundles(
+            sandbox_execution_bundles,
+            configuration,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await?;
+    }
 
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
@@ -106,7 +115,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     //Execute orders if there are any order groups
     if !limit_order_execution_bundle.order_groups.is_empty() {
         //execute sandbox limit orders
-        execute_limit_order_groups(
+        limit_order::execute_limit_order_groups(
             limit_order_execution_bundle,
             configuration,
             pending_transactions_sender,
@@ -117,86 +126,7 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     Ok(())
 }
 
-pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
-    slo_bundles: Vec<SandboxLimitOrderExecutionBundle>,
-    configuration: &config::Config,
-    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-    middleware: Arc<M>,
-) -> Result<(), ExecutorError<M>> {
-    for bundle in slo_bundles {
-        let order_id_bundles = bundle.order_id_bundles.clone();
-
-        let tx = transaction_utils::construct_and_simulate_slo_execution_transaction(
-            configuration,
-            bundle,
-            middleware.clone(),
-        )
-        .await?;
-
-        let pending_tx_hash = transaction_utils::sign_and_send_transaction(
-            tx,
-            &configuration.wallet_key,
-            &configuration.chain,
-            middleware.clone(),
-        )
-        .await?;
-
-        tracing::info!("Pending limit order execution tx: {:?}", pending_tx_hash);
-
-        for order_ids in order_id_bundles {
-            pending_transactions_sender
-                .send((pending_tx_hash, order_ids))
-                .await?;
-        }
-    }
-
-    Ok(())
-}
-
-pub async fn execute_limit_order_groups<M: Middleware>(
-    limit_order_execution_bundle: LimitOrderExecutionBundle,
-    configuration: &config::Config,
-    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-    middleware: Arc<M>,
-) -> Result<(), ExecutorError<M>> {
-    // execute limit orders
-    for order_group in limit_order_execution_bundle.order_groups {
-        if !order_group.order_ids.is_empty() {
-            let tx = transaction_utils::construct_and_simulate_lo_execution_transaction(
-                configuration,
-                order_group.order_ids.clone(),
-                middleware.clone(),
-            )
-            .await?;
-
-            let pending_tx_hash = transaction_utils::sign_and_send_transaction(
-                tx,
-                &configuration.wallet_key,
-                &configuration.chain,
-                middleware.clone(),
-            )
-            .await?;
-
-            tracing::info!("Pending limit order execution tx: {:?}", pending_tx_hash);
-
-            let order_ids = order_group
-                .order_ids
-                .iter()
-                .map(|f| H256::from_slice(f.as_slice()))
-                .collect::<Vec<H256>>();
-
-            pending_transactions_sender
-                .send((pending_tx_hash, order_ids))
-                .await?;
-        }
-    }
-
-    Ok(())
-}
-
-pub fn filter_orders_at_execution_price() {}
-
-pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
+pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
     affected_markets: HashSet<U256>,
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
@@ -259,37 +189,50 @@ pub async fn evaluate_and_execute_orders<M: 'static + Middleware>(
             }
         }
     }
-
-    //:: Simulate sandbox limit orders and generate execution transaction calldata
-    //simulate and batch sandbox limit orders
-    // simulate::simulate_and_batch_sandbox_limit_orders(
-    //     slo_at_execution_price,
-    //     simulated_markets,
-    //     v3_quoter_address,
-    //     middleware,
-    // )
-    // .await?;
-
-    //simulate and batch limit orders
-
-    //:: Simulate sandbox limit orders and generate execution transaction calldata
-    let limit_order_execution_bundle = simulate::simulate_and_batch_limit_orders(
-        lo_at_execution_price,
+    //Simulate sandbox limit orders and generate execution transaction calldata
+    let sandbox_execution_bundles = simulate::simulate_and_batch_sandbox_limit_orders(
+        slo_at_execution_price,
         &mut simulated_markets,
         configuration.weth_address,
+        configuration.executor_address,
+        configuration.wallet_address,
         middleware.clone(),
     )
     .await?;
 
-    //execute sandbox limit orders
+    //Execute orders if there are any order groups
+    if !sandbox_execution_bundles.is_empty() {
+        execute_sandbox_limit_order_bundles(
+            sandbox_execution_bundles,
+            configuration,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await?;
+    }
 
-    //execute  limit orders
-    execute_limit_order_groups(
-        limit_order_execution_bundle,
-        configuration,
-        pending_transactions_sender,
-        middleware,
-    )
-    .await?;
+    //simulate and batch limit orders
+    //:: Simulate sandbox limit orders and generate execution transaction calldata
+    let limit_order_execution_bundle: LimitOrderExecutionBundle =
+        simulate::simulate_and_batch_limit_orders(
+            lo_at_execution_price,
+            &mut simulated_markets,
+            configuration.weth_address,
+            middleware.clone(),
+        )
+        .await?;
+
+    //TODO: rename the limit order execution bundle order groiups to just be execution bundles and return a vec of bundle
+    //Execute orders if there are any order groups
+    if !limit_order_execution_bundle.order_groups.is_empty() {
+        //execute sandbox limit orders
+        limit_order::execute_limit_order_groups(
+            limit_order_execution_bundle,
+            configuration,
+            pending_transactions_sender,
+            middleware.clone(),
+        )
+        .await?;
+    }
     Ok(())
 }

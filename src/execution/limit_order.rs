@@ -1,6 +1,12 @@
+use std::sync::Arc;
+
+use crate::error::ExecutorError;
+use crate::{config, transaction_utils};
+
 use super::ExecutionCalldata;
 use ethers::abi::ethabi::Bytes;
 use ethers::abi::Token;
+use ethers::providers::Middleware;
 use ethers::types::H256;
 
 #[derive(Default, Debug)]
@@ -73,4 +79,45 @@ impl ExecutionCalldata for LimitOrderExecutionOrderIds {
                 .collect::<Vec<Token>>(),
         )
     }
+}
+
+pub async fn execute_limit_order_groups<M: Middleware>(
+    limit_order_execution_bundle: LimitOrderExecutionBundle,
+    configuration: &config::Config,
+    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
+    // execute limit orders
+    for order_group in limit_order_execution_bundle.order_groups {
+        if !order_group.order_ids.is_empty() {
+            let tx = transaction_utils::construct_and_simulate_lo_execution_transaction(
+                configuration,
+                order_group.order_ids.clone(),
+                middleware.clone(),
+            )
+            .await?;
+
+            let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+                tx,
+                &configuration.wallet_key,
+                &configuration.chain,
+                middleware.clone(),
+            )
+            .await?;
+
+            tracing::info!("Pending limit order execution tx: {:?}", pending_tx_hash);
+
+            let order_ids = order_group
+                .order_ids
+                .iter()
+                .map(|f| H256::from_slice(f.as_slice()))
+                .collect::<Vec<H256>>();
+
+            pending_transactions_sender
+                .send((pending_tx_hash, order_ids))
+                .await?;
+        }
+    }
+
+    Ok(())
 }
