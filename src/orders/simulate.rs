@@ -34,7 +34,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     executor_address: H160,
     wallet_address: H160,
     middleware: Arc<M>,
-) -> Result<(), ExecutorError<M>> {
+) -> Result<Vec<SandboxLimitOrderExecutionBundle>, ExecutorError<M>> {
     //TODO: sort these by usd value in the future
 
     //TODO: update this comment later, but we add order ids to this hashset so that we dont recalc orders for execution viability if they are already in an order group
@@ -43,6 +43,8 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
     //TODO: add equivalent
     // let mut execution_calldata = LimitOrderExecutionBundle::new();
+
+    let mut sandbox_execution_bundles = vec![];
 
     //For each order that can execute, add it to the execution calldata, including partial fills
 
@@ -157,6 +159,8 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                                 ])
                                 .expect("Could not encode Weth transfer inputs"),
                         ));
+
+                        sandbox_execution_bundles.push(execution_bundle);
                     }
                 } else {
                     let (weth_amount_out, weth_exit_pool) =
@@ -234,8 +238,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
     //When the market is tapped out for the orders, move onto the next market
 
-    //TODO: Return the calldata
-    Ok(())
+    Ok(sandbox_execution_bundles)
 }
 
 fn group_sandbox_limit_orders(

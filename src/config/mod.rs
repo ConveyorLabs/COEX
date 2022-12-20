@@ -28,6 +28,7 @@ pub struct Config {
     pub ws_endpoint: String,
     pub limit_order_book: H160,
     pub sandbox_limit_order_book: H160,
+    pub sandbox_limit_order_router: H160,
     pub dexes: Vec<Dex>,
     pub executor_address: H160,
     pub protocol_creation_block: BlockNumber,
@@ -46,6 +47,7 @@ impl Default for Config {
             ws_endpoint: "".into(),
             limit_order_book: H160::zero(),
             sandbox_limit_order_book: H160::zero(),
+            sandbox_limit_order_router: H160::zero(),
             dexes: vec![],
             executor_address: H160::zero(),
             protocol_creation_block: BlockNumber::Latest,
@@ -148,6 +150,8 @@ impl Config {
                     H160::from_str("0x41c36f504BE664982e7519480409Caf36EE4f008").unwrap();
                 config.sandbox_limit_order_book =
                     H160::from_str("0x98F3f46A0Cf8b2276513d36d527965C4C36dc733").unwrap();
+                config.sandbox_limit_order_router =
+                    H160::from_str("0x0754B57C546116961B9ba811F353F45678D9623d").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(35984674.into());
 
                 config.dexes = vec![

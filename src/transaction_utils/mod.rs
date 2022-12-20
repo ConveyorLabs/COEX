@@ -12,12 +12,14 @@ use ethers::{
         TransactionRequest, H160, H256,
     },
 };
+use sha3::digest::KeyInit;
 use tokio::time::sleep;
 
 use crate::{
-    abi,
+    abi::{self, SandboxMulticall},
     config::{self, Chain},
     error::ExecutorError,
+    orders::execution::SandboxLimitOrderExecutionBundle,
 };
 
 //TODO: pass in sleep time for checking transactions
@@ -148,6 +150,17 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
 
         Ok(tx)
     }
+}
+
+//TODO: change this to construct execution transaction, pass in calldata and execution address,
+//TODO: this way we can simulate the tx with the same contract instance that made the calldata
+//Construct a limit order execution transaction
+pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
+    configuration: &config::Config,
+    slo_bundle: SandboxLimitOrderExecutionBundle,
+    middleware: Arc<M>,
+) -> Result<TypedTransaction, ExecutorError<M>> {
+    panic!("stopping here TODO: remove this")
 }
 
 //Signs and sends transaction, bumps gas if necessary

@@ -15,7 +15,7 @@ use ethers::{
 };
 
 use crate::{
-    abi,
+    abi::{self, SandboxMulticall},
     config::{self, Chain},
     error::ExecutorError,
     markets::market::Market,
@@ -37,6 +37,37 @@ pub struct SandboxLimitOrderExecutionBundle {
     pub fill_amounts: Vec<u128>,          // uint128[] fillAmounts
     pub transfer_addresses: Vec<H160>,    // address[] transferAddresses
     pub calls: Vec<Call>,                 // Call[] calls
+}
+
+impl SandboxLimitOrderExecutionBundle {
+    fn to_sandbox_multicall(self) -> SandboxMulticall {
+        let order_id_bundles: Vec<Vec<[u8; 32]>> = self
+            .order_id_bundles
+            .iter()
+            .map(|bundle| {
+                bundle
+                    .iter()
+                    .map(|order_id| order_id.as_fixed_bytes().to_owned())
+                    .collect()
+            })
+            .collect();
+
+        let calls: Vec<abi::Call> = self
+            .calls
+            .iter()
+            .map(|call| abi::Call {
+                target: call.target,
+                call_data: ethers::types::Bytes::from(call.call_data.to_owned()),
+            })
+            .collect();
+
+        SandboxMulticall {
+            order_id_bundles,
+            fill_amounts: self.fill_amounts,
+            transfer_addresses: self.transfer_addresses,
+            calls: calls,
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -76,7 +107,7 @@ impl SandboxLimitOrderExecutionBundle {
 }
 
 impl Call {
-    pub fn new(target: H160, call_data: Vec<u8>) -> Call {
+    pub fn new(target: H160, call_data: Bytes) -> Call {
         Call { target, call_data }
     }
 }
@@ -200,8 +231,8 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
         }
     }
 
-    //::TODO: Simulate sandbox limit orders and generate execution transaction calldata
-    simulate::simulate_and_batch_sandbox_limit_orders(
+    //Simulate sandbox limit orders and generate execution transaction calldata
+    let sandbox_execution_bundles = simulate::simulate_and_batch_sandbox_limit_orders(
         slo_at_execution_price,
         &mut simulated_markets,
         configuration.weth_address,
@@ -210,6 +241,9 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
         middleware.clone(),
     )
     .await?;
+
+    //Execute orders if there are any order groups
+    if !sandbox_execution_bundles.is_empty() {}
 
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
@@ -221,7 +255,8 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
     )
     .await?;
 
-    //Execute orders if there are any order groups for execution
+    //TODO: rename the limit order execution bundle order groiups to just be execution bundles and return a vec of bundle
+    //Execute orders if there are any order groups
     if !limit_order_execution_bundle.order_groups.is_empty() {
         //execute sandbox limit orders
         execute_limit_order_groups(
@@ -232,6 +267,45 @@ pub async fn fill_orders_at_execution_price<M: Middleware>(
         )
         .await?;
     }
+    Ok(())
+}
+
+pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
+    slo_bundles: Vec<SandboxLimitOrderExecutionBundle>,
+    configuration: &config::Config,
+    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
+    // // execute limit orders
+    for bundle in slo_bundles {
+        let tx = transaction_utils::construct_and_simulate_slo_execution_transaction(
+            configuration,
+            bundle,
+            middleware.clone(),
+        )
+        .await?;
+
+        //     let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+        //         tx,
+        //         &configuration.wallet_key,
+        //         &configuration.chain,
+        //         middleware.clone(),
+        //     )
+        //     .await?;
+
+        //     tracing::info!("Pending limit order execution tx: {:?}", pending_tx_hash);
+
+        //     let order_ids = order_group
+        //         .order_ids
+        //         .iter()
+        //         .map(|f| H256::from_slice(f.as_slice()))
+        //         .collect::<Vec<H256>>();
+
+        //     pending_transactions_sender
+        //         .send((pending_tx_hash, order_ids))
+        //         .await?;
+    }
+
     Ok(())
 }
 

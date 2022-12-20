@@ -1,6 +1,11 @@
 use ethers::prelude::abigen;
 
 abigen!(
+    ISandboxLimitOrderRouter,
+    "./src/abi/sandbox_limit_order_router_abi.json"
+);
+
+abigen!(
 
     ISandboxLimitOrderBook,
     r#"[
@@ -14,10 +19,8 @@ abigen!(
         function getOrderById(bytes32 orderId) external view returns (uint32, uint32, uint128, uint128, uint128, uint128, uint128, address, address, address, bytes32) 
     ]"#;
 
-    ISandboxLimitOrderRouter,
-    r#"[
-        function executeSandboxMulticall(bytes[] calldata sandboxMultiCall)
-    ]"#;
+
+
 
     ILimitOrderBook,
     r#"[
