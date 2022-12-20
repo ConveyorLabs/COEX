@@ -161,10 +161,13 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 
     //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
     for market_id in affected_markets {
+        //TODO: FIXME: sanity check that the a -> b and a -> weth and weth -> markets are all covered when they need to be.
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
             for order_id in affected_orders {
                 if let Some(order) = active_orders.get(order_id) {
                     if order.can_execute(&markets, configuration.weth_address) {
+                        //TODO: FIXME: make sure that we are checking if the order owner has the balance somewhere
+
                         //Add the market to the simulation markets structure
                         simulated_markets.insert(
                             market_id,
@@ -196,6 +199,10 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
             }
         }
     }
+
+    //::Now we have all of the orders that are at execution price, and the markets that are affected
+    //:: Next we will simulate and batch sandbox limit orders and then sim and batch limit orders, then execute slo, afterwards executing lo
+
     //Simulate sandbox limit orders and generate execution transaction calldata
     let sandbox_execution_bundles = simulate::simulate_and_batch_sandbox_limit_orders(
         slo_at_execution_price,
@@ -207,17 +214,6 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
     )
     .await?;
 
-    //Execute orders if there are any order groups
-    if !sandbox_execution_bundles.is_empty() {
-        execute_sandbox_limit_order_bundles(
-            sandbox_execution_bundles,
-            configuration,
-            pending_transactions_sender.clone(),
-            middleware.clone(),
-        )
-        .await?;
-    }
-
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
     let limit_order_execution_bundle: LimitOrderExecutionBundle =
@@ -228,6 +224,17 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
             middleware.clone(),
         )
         .await?;
+
+    //Execute orders if there are any order groups
+    if !sandbox_execution_bundles.is_empty() {
+        execute_sandbox_limit_order_bundles(
+            sandbox_execution_bundles,
+            configuration,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await?;
+    }
 
     //TODO: rename the limit order execution bundle order groiups to just be execution bundles and return a vec of bundle
     //Execute orders if there are any order groups
