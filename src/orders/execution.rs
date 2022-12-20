@@ -278,6 +278,8 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
 ) -> Result<(), ExecutorError<M>> {
     // // execute limit orders
     for bundle in slo_bundles {
+        let order_id_bundles = bundle.order_id_bundles.clone();
+
         let tx = transaction_utils::construct_and_simulate_slo_execution_transaction(
             configuration,
             bundle,
@@ -285,25 +287,21 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
         )
         .await?;
 
-        //     let pending_tx_hash = transaction_utils::sign_and_send_transaction(
-        //         tx,
-        //         &configuration.wallet_key,
-        //         &configuration.chain,
-        //         middleware.clone(),
-        //     )
-        //     .await?;
+        let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+            tx,
+            &configuration.wallet_key,
+            &configuration.chain,
+            middleware.clone(),
+        )
+        .await?;
 
-        //     tracing::info!("Pending limit order execution tx: {:?}", pending_tx_hash);
+        tracing::info!("Pending limit order execution tx: {:?}", pending_tx_hash);
 
-        //     let order_ids = order_group
-        //         .order_ids
-        //         .iter()
-        //         .map(|f| H256::from_slice(f.as_slice()))
-        //         .collect::<Vec<H256>>();
-
-        //     pending_transactions_sender
-        //         .send((pending_tx_hash, order_ids))
-        //         .await?;
+        for order_ids in order_id_bundles {
+            pending_transactions_sender
+                .send((pending_tx_hash, order_ids))
+                .await?;
+        }
     }
 
     Ok(())
