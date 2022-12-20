@@ -156,7 +156,7 @@ pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
     if configuration.chain.is_eip1559() {
         let tx = fill_and_simulate_transaction(
             calldata,
-            configuration.limit_order_book,
+            configuration.sandbox_limit_order_router,
             configuration.wallet_address,
             configuration.chain.chain_id(),
             middleware.clone(),
@@ -244,6 +244,9 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .max_fee_per_gas(max_fee_per_gas)
         .into();
 
+    println!("");
+    println!("Getting right here: {:#?}", tx);
+
     //TODO: handle legacy transactions
     middleware
         .fill_transaction(&mut tx, None)
@@ -252,6 +255,8 @@ async fn fill_and_simulate_transaction<M: Middleware>(
 
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
 
+    println!("");
+    println!("Getting right here: {:#?}", tx);
     //Simulate the tx
     middleware
         .call(&tx, None)

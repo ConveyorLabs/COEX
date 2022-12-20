@@ -142,103 +142,103 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         sandbox_execution_bundles.push(execution_bundle);
                     }
                 } else {
-                    let (weth_exit_amount_out, weth_exit_pool) =
-                        routing::find_best_weth_exit_from_route(
-                            order.token_in,
-                            U256::from(order.amount_in_remaining),
-                            route.clone(),
-                            U256::from(order.amount_out_remaining),
-                            simulated_markets,
-                            weth,
-                            middleware.clone(),
-                        )
-                        .await?;
+                    // let (weth_exit_amount_out, weth_exit_pool) =
+                    //     routing::find_best_weth_exit_from_route(
+                    //         order.token_in,
+                    //         U256::from(order.amount_in_remaining),
+                    //         route.clone(),
+                    //         U256::from(order.amount_out_remaining),
+                    //         simulated_markets,
+                    //         weth,
+                    //         middleware.clone(),
+                    //     )
+                    //     .await?;
 
-                    if weth_exit_amount_out.as_u128() > order.fee_remaining {
-                        routing::update_pools_along_route_with_weth_exit(
-                            order.token_in,
-                            U256::from(order.amount_in_remaining),
-                            simulated_markets,
-                            route.clone(),
-                            U256::from(order.amount_out_remaining),
-                            weth,
-                            weth_exit_pool.address(),
-                            middleware,
-                        )
-                        .await?;
+                    // if weth_exit_amount_out.as_u128() > order.fee_remaining {
+                    //     routing::update_pools_along_route_with_weth_exit(
+                    //         order.token_in,
+                    //         U256::from(order.amount_in_remaining),
+                    //         simulated_markets,
+                    //         route.clone(),
+                    //         U256::from(order.amount_out_remaining),
+                    //         weth,
+                    //         weth_exit_pool.address(),
+                    //         middleware,
+                    //     )
+                    //     .await?;
 
-                        //Construct call for execution
-                        let mut execution_bundle =
-                            execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle::new();
-                        execution_bundle.add_order_id_to_current_bundle(order.order_id);
-                        execution_bundle.add_fill_amount(order.amount_in_remaining);
+                    //     //Construct call for execution
+                    //     let mut execution_bundle =
+                    //         execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle::new();
+                    //     execution_bundle.add_order_id_to_current_bundle(order.order_id);
+                    //     execution_bundle.add_fill_amount(order.amount_in_remaining);
 
-                        //If the pool is v2, add the pool address as the first transfer address
-                        match route[0] {
-                            Pool::UniswapV2(uniswap_v2_pool) => {
-                                execution_bundle.add_transfer_address(uniswap_v2_pool.address);
-                            }
-                            _ => {}
-                        }
+                    //     //If the pool is v2, add the pool address as the first transfer address
+                    //     match route[0] {
+                    //         Pool::UniswapV2(uniswap_v2_pool) => {
+                    //             execution_bundle.add_transfer_address(uniswap_v2_pool.address);
+                    //         }
+                    //         _ => {}
+                    //     }
 
-                        execution_bundle.add_route_to_calls(
-                            route,
-                            amounts_out,
-                            order,
-                            sandbox_limit_order_router,
-                        );
+                    //     execution_bundle.add_route_to_calls(
+                    //         route,
+                    //         amounts_out,
+                    //         order,
+                    //         sandbox_limit_order_router,
+                    //     );
 
-                        //Add a call to send the exact amount to the order owner
-                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
-                            order.token_out,
-                            abi::IERC20_ABI
-                                .function("transfer")
-                                .unwrap()
-                                .encode_input(&vec![
-                                    Token::Address(order.owner),
-                                    Token::Uint(U256::from(order.amount_out_remaining)),
-                                ])
-                                .expect("Could not encode Weth transfer inputs"),
-                        ));
+                    //     //Add a call to send the exact amount to the order owner
+                    //     execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
+                    //         order.token_out,
+                    //         abi::IERC20_ABI
+                    //             .function("transfer")
+                    //             .unwrap()
+                    //             .encode_input(&vec![
+                    //                 Token::Address(order.owner),
+                    //                 Token::Uint(U256::from(order.amount_out_remaining)),
+                    //             ])
+                    //             .expect("Could not encode Weth transfer inputs"),
+                    //     ));
 
-                        //swap to weth exit
-                        execution_bundle.add_swap_to_calls(
-                            order.token_out,
-                            weth_exit_amount_out,
-                            sandbox_limit_order_router,
-                            &weth_exit_pool,
-                        );
+                    //     //swap to weth exit
+                    //     execution_bundle.add_swap_to_calls(
+                    //         order.token_out,
+                    //         weth_exit_amount_out,
+                    //         sandbox_limit_order_router,
+                    //         &weth_exit_pool,
+                    //     );
 
-                        //pay protocol fee
-                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
-                            weth,
-                            abi::IERC20_ABI
-                                .function("transfer")
-                                .unwrap()
-                                .encode_input(&vec![
-                                    Token::Address(executor_address),
-                                    Token::Uint(U256::from(order.fee_remaining)),
-                                ])
-                                .expect("Could not encode Weth transfer inputs"),
-                        ));
+                    //     //pay protocol fee
+                    //     execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
+                    //         weth,
+                    //         abi::IERC20_ABI
+                    //             .function("transfer")
+                    //             .unwrap()
+                    //             .encode_input(&vec![
+                    //                 Token::Address(executor_address),
+                    //                 Token::Uint(U256::from(order.fee_remaining)),
+                    //             ])
+                    //             .expect("Could not encode Weth transfer inputs"),
+                    //     ));
 
-                        //Send remainder to coex
-                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
-                            weth,
-                            abi::IERC20_ABI
-                                .function("transfer")
-                                .unwrap()
-                                .encode_input(&vec![
-                                    Token::Address(wallet_address),
-                                    Token::Uint(U256::from(
-                                        weth_exit_amount_out - order.fee_remaining,
-                                    )),
-                                ])
-                                .expect("Could not encode Weth transfer inputs"),
-                        ));
+                    //     //Send remainder to coex
+                    //     execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
+                    //         weth,
+                    //         abi::IERC20_ABI
+                    //             .function("transfer")
+                    //             .unwrap()
+                    //             .encode_input(&vec![
+                    //                 Token::Address(wallet_address),
+                    //                 Token::Uint(U256::from(
+                    //                     weth_exit_amount_out - order.fee_remaining,
+                    //                 )),
+                    //             ])
+                    //             .expect("Could not encode Weth transfer inputs"),
+                    //     ));
 
-                        sandbox_execution_bundles.push(execution_bundle);
-                    }
+                    //     sandbox_execution_bundles.push(execution_bundle);
+                    // }
                 }
             }
         }

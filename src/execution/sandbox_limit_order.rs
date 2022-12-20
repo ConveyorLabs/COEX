@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use cfmms::pool::Pool;
 use ethers::abi::ethabi::Bytes;
+use ethers::abi::AbiEncode;
 use ethers::providers::Middleware;
 use ethers::types::{H160, H256, U256};
 
@@ -107,6 +108,15 @@ impl SandboxLimitOrderExecutionBundle {
 
             let amount_out = amounts_out[i];
 
+            println!(
+                "token in {:?}, amountout {:?}, to {:?}, pool{:?}",
+                token_in,
+                amount_out,
+                to,
+                pool.address()
+            );
+
+            //TODO: FIXME: amount out is causing this to fail
             self.add_swap_to_calls(order.token_in, amount_out, to, pool);
 
             //Update the token in
@@ -142,6 +152,11 @@ impl SandboxLimitOrderExecutionBundle {
                 } else {
                     (amount_out, U256::zero())
                 };
+
+                println!(
+                    "swap calldata: {:?}",
+                    uniswap_v2_pool.swap_calldata(amount_0_out, amount_1_out, to, vec![])
+                );
 
                 self.add_call(Call::new(
                     uniswap_v2_pool.address,

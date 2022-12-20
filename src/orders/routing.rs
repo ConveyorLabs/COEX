@@ -29,20 +29,31 @@ pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
     middleware: Arc<M>,
 ) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
-    // Simulate order along route for token_a -> weth -> token_b
-    let a_to_weth_market = simulated_markets
-        .get(&market::get_market_id(token_in, weth))
-        .expect("Could not get token_a to weth market");
-
-    let weth_to_b_market = simulated_markets
-        .get(&market::get_market_id(token_out, weth))
-        .expect("Could not get weth to token_b market");
+    //TODO: check if there is a better way than to unwrap, some markets might not have the pairing
 
     let markets_in_route = if token_out == weth {
+        // Simulate order along route for token_a -> weth -> token_b
+        let a_to_weth_market = simulated_markets
+            .get(&market::get_market_id(token_in, weth))
+            .expect("Could not get token_a to weth market");
+
         vec![a_to_weth_market]
     } else if token_in == weth {
+        let weth_to_b_market = simulated_markets
+            .get(&market::get_market_id(token_out, weth))
+            .expect("Could not get weth to token_b market");
+
         vec![weth_to_b_market]
     } else {
+        // Simulate order along route for token_a -> weth -> token_b
+        let a_to_weth_market = simulated_markets
+            .get(&market::get_market_id(token_in, weth))
+            .expect("Could not get token_a to weth market");
+
+        let weth_to_b_market = simulated_markets
+            .get(&market::get_market_id(token_out, weth))
+            .expect("Could not get weth to token_b market");
+
         vec![a_to_weth_market, weth_to_b_market]
     };
 

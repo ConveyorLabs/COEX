@@ -5,6 +5,8 @@ abigen!(
     "./src/abi/sandbox_limit_order_router_abi.json"
 );
 
+abigen!(ConveyorErrors, "./src/abi/conveyor_errors_abi.json");
+
 abigen!(
 
     ISandboxLimitOrderBook,
@@ -18,9 +20,6 @@ abigen!(
         event OrderPartialFilled(bytes32 indexed orderId, uint128 indexed amountInRemaining, uint128 indexed amountOutRemaining, uint128 executionCreditRemaining, uint128 feeRemaining)
         function getOrderById(bytes32 orderId) external view returns (uint32, uint32, uint128, uint128, uint128, uint128, uint128, address, address, address, bytes32) 
     ]"#;
-
-
-
 
     ILimitOrderBook,
     r#"[

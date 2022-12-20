@@ -113,7 +113,7 @@ impl SandboxLimitOrder {
         ))
     }
     pub fn can_execute(&self, markets: &HashMap<U256, HashMap<H160, Pool>>, weth: H160) -> bool {
-        self.price >= self.get_best_market_price(markets, weth)
+        self.price <= self.get_best_market_price(markets, weth)
     }
 
     pub fn get_best_market_price(
