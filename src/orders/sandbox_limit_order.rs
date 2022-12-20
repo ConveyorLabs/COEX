@@ -74,25 +74,27 @@ impl SandboxLimitOrder {
         ),
         middleware: Arc<M>,
     ) -> Result<SandboxLimitOrder, ExecutorError<M>> {
-        let token_in_decimals = abi::IErc20::new(return_data.8, middleware.clone())
-            .decimals()
-            .call()
-            .await?;
-
-        let token_out_decimals = abi::IErc20::new(return_data.9, middleware.clone())
-            .decimals()
-            .call()
-            .await?;
-
-        let (amount_in, amount_out, _) = cfmms::pool::convert_to_common_decimals(
-            U256::from(return_data.4),
-            token_in_decimals,
-            U256::from(return_data.5),
-            token_out_decimals,
-        );
-
-        let price = BigFloat::from_u128(amount_in.as_u128())
-            .div(&BigFloat::from_u128(amount_out.as_u128()))
+        //Price is derived by taking the amount_out_remaining / amount_in_remaining
+        //In order to normalize the values, we fetch the token decimals and calculate the amount / 10**token_decimals
+        let price = BigFloat::from(return_data.5)
+            .div(&BigFloat::from(
+                10_f64.powf(
+                    abi::IErc20::new(return_data.9, middleware.clone())
+                        .decimals()
+                        .call()
+                        .await? as f64,
+                ),
+            ))
+            .div(
+                &BigFloat::from(return_data.4).div(&BigFloat::from(
+                    10_f64.powf(
+                        abi::IErc20::new(return_data.8, middleware.clone())
+                            .decimals()
+                            .call()
+                            .await? as f64,
+                    ),
+                )),
+            )
             .to_f64();
 
         Ok(SandboxLimitOrder::new(
