@@ -87,10 +87,13 @@ impl SandboxLimitOrderExecutionBundle {
     pub fn add_route_to_calls(
         &mut self,
         route: Vec<Pool>,
+        amounts_out: Vec<U256>,
         order: &SandboxLimitOrder,
         wallet_address: H160,
     ) {
         //Add calls for each swap throughout the route
+
+        let mut token_in = order.token_in;
         for (i, pool) in route.iter().enumerate() {
             let to = if i == route.len() - 1 {
                 wallet_address
@@ -98,25 +101,54 @@ impl SandboxLimitOrderExecutionBundle {
                 route[i + 1].address()
             };
 
-            match pool {
-                Pool::UniswapV2(uniswap_v2_pool) => {
-                    let (amount_0_out, amount_1_out) = if uniswap_v2_pool.token_a == order.token_in
-                    {
-                        (U256::zero(), amount_out)
-                    } else {
-                        (amount_out, U256::zero())
-                    };
+            let amount_out = amounts_out[i];
 
-                    self.add_call(Call::new(
-                        uniswap_v2_pool.address,
-                        uniswap_v2_pool.swap_calldata(amount_0_out, amount_1_out, to, vec![]),
-                    ));
-                }
+            self.add_swap_to_calls(order.token_in, amount_out, to, pool);
 
-                Pool::UniswapV3(uniswap_v3_pool) => {
-                    //     execution_calldata
-                    // .add_call(Call::new(pool.address(), pool.swap_calldata()));
+            //Update the token in
+            token_in = self.get_next_token_in(token_in, pool);
+        }
+    }
+
+    fn get_next_token_in(&self, prev_token_in: H160, pool: &Pool) -> H160 {
+        match pool {
+            Pool::UniswapV2(uniswap_v2_pool) => {
+                if prev_token_in == uniswap_v2_pool.token_a {
+                    uniswap_v2_pool.token_b
+                } else {
+                    uniswap_v2_pool.token_a
                 }
+            }
+
+            Pool::UniswapV3(uniswap_v3_pool) => {
+                if prev_token_in == uniswap_v3_pool.token_a {
+                    uniswap_v3_pool.token_b
+                } else {
+                    uniswap_v3_pool.token_a
+                }
+            }
+        }
+    }
+
+    pub fn add_swap_to_calls(&mut self, token_in: H160, amount_out: U256, to: H160, pool: &Pool) {
+        match pool {
+            Pool::UniswapV2(uniswap_v2_pool) => {
+                let (amount_0_out, amount_1_out) = if uniswap_v2_pool.token_a == token_in {
+                    (U256::zero(), amount_out)
+                } else {
+                    (amount_out, U256::zero())
+                };
+
+                self.add_call(Call::new(
+                    uniswap_v2_pool.address,
+                    uniswap_v2_pool.swap_calldata(amount_0_out, amount_1_out, to, vec![]),
+                ));
+            }
+
+            Pool::UniswapV3(uniswap_v3_pool) => {
+                //TODO:
+                //     execution_calldata
+                // .add_call(Call::new(pool.address(), pool.swap_calldata()));
             }
         }
     }

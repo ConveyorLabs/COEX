@@ -27,7 +27,7 @@ pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
     weth: H160,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     middleware: Arc<M>,
-) -> Result<(U256, Vec<Pool>), ExecutorError<M>> {
+) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     // Simulate order along route for token_a -> weth -> token_b
     let a_to_weth_market = simulated_markets
@@ -61,7 +61,7 @@ pub async fn find_best_a_to_b_route<M: Middleware>(
     amount_in: U256,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     middleware: Arc<M>,
-) -> Result<(U256, Vec<Pool>), ExecutorError<M>> {
+) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     // Simulate order along route for token_a -> weth -> token_b
     let a_to_b_market = simulated_markets
@@ -83,8 +83,10 @@ pub async fn find_best_route_across_markets<M: Middleware>(
     mut token_in: H160,
     markets: Vec<&Market>,
     middleware: Arc<M>,
-) -> Result<(U256, Vec<Pool>), ExecutorError<M>> {
+    //TODO: needs to return Vec<U256> for amounts out
+) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     let mut amount_in = amount_in;
+    let mut amounts_out: Vec<U256> = vec![];
     let mut route: Vec<Pool> = vec![];
 
     for market in markets {
@@ -104,6 +106,7 @@ pub async fn find_best_route_across_markets<M: Middleware>(
         }
 
         amount_in = best_amount_out;
+        amounts_out.push(best_amount_out);
         route.push(best_pool);
 
         //update token in
@@ -125,7 +128,7 @@ pub async fn find_best_route_across_markets<M: Middleware>(
         };
     }
 
-    Ok((amount_in, route))
+    Ok((amounts_out, route))
 }
 
 pub async fn find_best_weth_exit_from_route<M: Middleware>(
@@ -136,7 +139,7 @@ pub async fn find_best_weth_exit_from_route<M: Middleware>(
     markets: &mut HashMap<U256, Market>,
     weth: H160,
     middleware: Arc<M>,
-) -> Result<(U256, Pool), ExecutorError<M>> {
+) -> Result<(Vec<U256>, Pool), ExecutorError<M>> {
     let mut amount_in = amount_in;
 
     for pool_in_route in route {
