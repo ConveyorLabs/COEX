@@ -252,23 +252,16 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .fill_transaction(&mut tx, None)
         .await
         .map_err(ExecutorError::MiddlewareError)?;
-
-    tx.set_gas(tx.gas().unwrap() * 150 / 100);
-
     println!("");
-    // println!("Getting right here: {:#?}", tx);
     println!("Getting right here2");
-    //Simulate the tx
-    // middleware
-    //     .trace_call(tx.clone(), vec![TraceType::VmTrace], None)
-    //     .await
-    //     .map_err(ExecutorError::MiddlewareError)?;
-    println!("Getting right here3");
 
+    //TODO: need to match error and handle if the call fails
     middleware
         .call(&tx, None)
         .await
         .map_err(ExecutorError::MiddlewareError)?;
+
+    tx.set_gas(tx.gas().unwrap() * 150 / 100);
 
     Ok(tx)
 }

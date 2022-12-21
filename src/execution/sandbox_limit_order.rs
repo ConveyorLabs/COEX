@@ -109,11 +109,13 @@ impl SandboxLimitOrderExecutionBundle {
             let amount_out = amounts_out[i];
 
             println!(
-                "token in {:?}, amountout {:?}, to {:?}, pool{:?}",
+                "token in {:?}, amountout {:?}, to {:?}, pool{:?} {:?} {:?}",
                 token_in,
                 amount_out,
                 to,
-                pool.address()
+                pool.address(),
+                order.order_id,
+                order.owner
             );
 
             //TODO: FIXME: amount out is causing this to fail
