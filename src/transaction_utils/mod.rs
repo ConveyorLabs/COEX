@@ -248,18 +248,14 @@ async fn fill_and_simulate_transaction<M: Middleware>(
 
     //   Simulate the tx
     //TODO: handle legacy transactions
+
+    //match fill transaction, it will fail if the calldata fails
     middleware
         .fill_transaction(&mut tx, None)
         .await
         .map_err(ExecutorError::MiddlewareError)?;
     println!("");
     println!("Getting right here2");
-
-    //TODO: need to match error and handle if the call fails
-    middleware
-        .call(&tx, None)
-        .await
-        .map_err(ExecutorError::MiddlewareError)?;
 
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
 

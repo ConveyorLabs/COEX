@@ -114,7 +114,18 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             sandbox_limit_order_router,
                         );
 
-                        //Add a call to send the exact amount to the user
+                        // FIXME: we are using the mul_64_u function to calc the amount sent to the user, but in the future the contract will change
+                        // Where we will only calc this value on partial fills
+                        // Add a call to send the exact amount to the user
+                        let amount_due_to_owner = mul_64_u(
+                            div_uu(
+                                U256::from(order.amount_out_remaining),
+                                U256::from(order.amount_in_remaining),
+                            ),
+                            U256::from(order.amount_in_remaining),
+                        );
+
+                        //FIXME: corresponds with order above
                         execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
                             order.token_out,
                             abi::IERC20_ABI
@@ -122,7 +133,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                                 .unwrap()
                                 .encode_input(&vec![
                                     Token::Address(order.owner),
-                                    Token::Uint(U256::from(order.amount_out_remaining)),
+                                    Token::Uint(amount_due_to_owner),
                                 ])
                                 .expect("Could not encode Weth transfer inputs"),
                         ));
@@ -360,7 +371,7 @@ fn _div_uu(x: U256, y: U256) -> u128 {
         panic!("assert(xh == hi >> 128);")
     }
 
-    answer.add_assign(xl / y);
+    answer += xl / y;
 
     if answer > U256::from_str("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap() {
         //TODO: handle error

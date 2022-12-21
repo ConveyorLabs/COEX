@@ -108,16 +108,6 @@ impl SandboxLimitOrderExecutionBundle {
 
             let amount_out = amounts_out[i];
 
-            println!(
-                "token in {:?}, amountout {:?}, to {:?}, pool{:?} {:?} {:?}",
-                token_in,
-                amount_out,
-                to,
-                pool.address(),
-                order.order_id,
-                order.owner
-            );
-
             //TODO: FIXME: amount out is causing this to fail
             // self.add_swap_to_calls(order.token_in, amount_out, to, pool);
             self.add_swap_to_calls(order.token_in, amount_out, to, pool);
@@ -201,7 +191,10 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
         )
         .await?;
 
-        tracing::info!("Pending limit order execution tx: {:?}", pending_tx_hash);
+        tracing::info!(
+            "Pending sandbox limit order execution tx: {:?}",
+            pending_tx_hash
+        );
 
         for order_ids in order_id_bundles {
             pending_transactions_sender

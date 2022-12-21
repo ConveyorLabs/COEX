@@ -155,7 +155,7 @@ impl Config {
                 config.protocol_creation_block = BlockNumber::Number(35984674.into());
 
                 config.dexes = vec![
-                    //Sushiswap
+                    // Sushiswap
                     Dex::new(
                         H160::from_str("0xc35DADB65012eC5796536bD9864eD8773aBc74C4").unwrap(),
                         DexVariant::UniswapV2,
