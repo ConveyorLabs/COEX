@@ -5,8 +5,6 @@ abigen!(
     "./src/abi/sandbox_limit_order_router_abi.json"
 );
 
-abigen!(ConveyorErrors, "./src/abi/conveyor_errors_abi.json");
-
 abigen!(
 
     ISandboxLimitOrderBook,

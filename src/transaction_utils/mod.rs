@@ -8,7 +8,7 @@ use ethers::{
     providers::{Middleware, PendingTransaction},
     signers::LocalWallet,
     types::{
-        transaction::eip2718::TypedTransaction, Bytes, Eip1559TransactionRequest,
+        transaction::eip2718::TypedTransaction, Bytes, Eip1559TransactionRequest, TraceType,
         TransactionRequest, H160, H256,
     },
 };
@@ -244,9 +244,9 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .max_fee_per_gas(max_fee_per_gas)
         .into();
 
-    println!("");
-    println!("Getting right here: {:#?}", tx);
+    println!("Getting right here");
 
+    //   Simulate the tx
     //TODO: handle legacy transactions
     middleware
         .fill_transaction(&mut tx, None)
@@ -256,8 +256,15 @@ async fn fill_and_simulate_transaction<M: Middleware>(
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
 
     println!("");
-    println!("Getting right here: {:#?}", tx);
+    // println!("Getting right here: {:#?}", tx);
+    println!("Getting right here2");
     //Simulate the tx
+    // middleware
+    //     .trace_call(tx.clone(), vec![TraceType::VmTrace], None)
+    //     .await
+    //     .map_err(ExecutorError::MiddlewareError)?;
+    println!("Getting right here3");
+
     middleware
         .call(&tx, None)
         .await
