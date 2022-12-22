@@ -93,15 +93,12 @@ async fn run_loop<M: 'static + Middleware>(
             )
             .await?;
 
-        println!("here");
-
         //Update markets
         let markets_updated = state.handle_market_updates(&pool_events);
 
         //TODO: add logic to check order cancellation and refresh orders
         // execution::cancel_orders()
         // execution::refresh_orders()
-        println!("here1");
 
         //Evaluate orders for execution
         if !markets_updated.is_empty() {
@@ -116,7 +113,6 @@ async fn run_loop<M: 'static + Middleware>(
             )
             .await?;
         }
-        println!("here2");
     }
 
     Ok(())

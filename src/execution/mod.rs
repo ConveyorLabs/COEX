@@ -186,21 +186,21 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
                                     a_to_b_market_id,
                                     markets
                                         .get(&a_to_b_market_id)
-                                        .expect("Could not get market from markets")
+                                        .expect("Could not get a_to_b_market from markets")
                                         .clone(),
                                 );
                                 simulated_markets.insert(
                                     a_to_weth_market_id,
                                     markets
                                         .get(&a_to_weth_market_id)
-                                        .expect("Could not get market from markets")
+                                        .expect("Could not get a_to_weth_market from markets")
                                         .clone(),
                                 );
                                 simulated_markets.insert(
                                     weth_to_b_market_id,
                                     markets
                                         .get(&weth_to_b_market_id)
-                                        .expect("Could not get market from markets")
+                                        .expect("Could not get weth_to_b_market from markets")
                                         .clone(),
                                 );
 
