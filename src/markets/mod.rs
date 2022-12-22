@@ -27,11 +27,11 @@ pub fn get_market_id(token_a: H160, token_b: H160) -> U256 {
     }
 }
 
-async fn get_market<M: 'static + Middleware>(
+pub async fn get_market<M: 'static + Middleware>(
     token_a: H160,
     token_b: H160,
-    middleware: Arc<M>,
     dexes: &[Dex],
+    middleware: Arc<M>,
 ) -> Result<Option<HashMap<H160, Pool>>, ExecutorError<M>> {
     let mut market = HashMap::new();
 

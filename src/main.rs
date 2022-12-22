@@ -95,7 +95,6 @@ async fn run_loop<M: 'static + Middleware>(
 
         //TODO: pass in pool address to market it
         //Update markets
-
         let markets_updated = state.handle_market_updates(&pool_events);
 
         //TODO: add logic to check order cancellation and refresh orders

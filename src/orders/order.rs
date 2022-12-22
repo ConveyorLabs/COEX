@@ -68,6 +68,13 @@ impl Order {
         }
     }
 
+    pub fn order_id(&self) -> H256 {
+        match self {
+            Order::SandboxLimitOrder(sandbox_limit_order) => sandbox_limit_order.order_id,
+            Order::LimitOrder(limit_order) => limit_order.order_id,
+        }
+    }
+
     pub async fn has_sufficient_balance<M: Middleware>(
         &self,
         middleware: Arc<M>,

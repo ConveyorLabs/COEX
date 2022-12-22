@@ -26,15 +26,15 @@ use crate::{
     events::BeltEvent,
     execution,
     markets::Market,
-    orders::order::{Order, OrderVariant},
+    orders::order::OrderVariant,
     transaction_utils,
 };
 
 pub struct State {
-    pub active_orders: Arc<Mutex<HashMap<H256, Order>>>, //active orders
-    pub pending_order_ids: Arc<Mutex<HashSet<H256>>>,    //pending_order_ids
-    pub pool_address_to_market_id: HashMap<H160, U256>,  //pool_address_to_market_id
-    pub markets: Arc<Mutex<HashMap<U256, Market>>>,      //markets
+    pub active_orders: Arc<Mutex<HashMap<H256, crate::orders::order::Order>>>, //active orders
+    pub pending_order_ids: Arc<Mutex<HashSet<H256>>>,                          //pending_order_ids
+    pub pool_address_to_market_id: HashMap<H160, U256>, //pool_address_to_market_id
+    pub markets: Arc<Mutex<HashMap<U256, Market>>>,     //markets
     pub market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
 }
 
@@ -54,11 +54,13 @@ impl State {
         }
     }
 
-    pub async fn handle_order_updates<M: Middleware>(
-        &self,
+    pub async fn handle_order_updates<M: 'static + Middleware>(
+        &mut self,
         order_events: Vec<(BeltEvent, Log)>,
         sandbox_limit_order_book_address: H160,
         limit_order_book_address: H160,
+        weth: H160,
+        dexes: &[Dex],
         middleware: Arc<M>,
     ) -> Result<(), ExecutorError<M>> {
         //Handle order updates
@@ -89,7 +91,8 @@ impl State {
                             H256::from(order_id)
                         );
 
-                        self.place_order(
+                        //Get order from remote
+                        let order = crate::orders::order::get_remote_order(
                             order_id.into(),
                             event_log.address,
                             order_variant,
@@ -97,9 +100,12 @@ impl State {
                         )
                         .await?;
 
-                        //TODO:Add markets for order
-
-                        //TODO:Add order to affected markets
+                        //Add markets for order
+                        self.add_markets_for_order(&order, weth, dexes, middleware.clone());
+                        //Add order to market to affected orders
+                        self.add_order_to_market_to_affected_orders(&order, weth);
+                        //Add the order to active orders
+                        self.place_order(order);
                     }
                 }
                 BeltEvent::OrderCanceled => {
