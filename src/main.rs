@@ -97,8 +97,8 @@ async fn run_loop<M: 'static + Middleware>(
         //Update markets
         let markets_updated = market::handle_market_updates(
             &pool_events,
-            &pool_address_to_market_id,
-            markets.clone(),
+            &state.pool_address_to_market_id,
+            state.markets.clone(),
         );
 
         //TODO: add logic to check order cancellation and refresh orders
@@ -107,9 +107,9 @@ async fn run_loop<M: 'static + Middleware>(
         if !markets_updated.is_empty() {
             execution::fill_orders_at_execution_price(
                 markets_updated,
-                market_to_affected_orders.clone(),
-                active_orders.clone(),
-                markets.clone(),
+                state.market_to_affected_orders.clone(),
+                state.active_orders.clone(),
+                state.markets.clone(),
                 &configuration,
                 middleware.clone(),
                 pending_transactions_sender.clone(),

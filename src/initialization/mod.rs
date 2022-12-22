@@ -19,7 +19,7 @@ use crate::{
     config,
     error::ExecutorError,
     execution,
-    markets::market::{self, Market},
+    markets::{self, Market},
     orders::{
         self,
         order::{Order, OrderVariant},
@@ -172,7 +172,7 @@ pub async fn initialize_market_structures<M: 'static + Middleware>(
                 .await?;
 
                 //Update for token a -> weth market
-                market::update_market_structures(
+                markets::update_market_structures(
                     sandbox_limit_order.order_id,
                     sandbox_limit_order.token_in,
                     weth,

@@ -18,7 +18,7 @@ use crate::{
     abi,
     error::ExecutorError,
     execution::{self},
-    markets::market::{get_market_id, Market},
+    markets::{get_market_id, Market},
     orders::{order::Order, routing},
 };
 

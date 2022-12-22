@@ -4,7 +4,7 @@ use cfmms::pool::Pool;
 use ethers::types::{H160, H256, U256};
 use num_bigfloat::BigFloat;
 
-use crate::markets::market::get_best_market_price;
+use crate::markets::get_best_market_price;
 
 //TODO: FIXME: remove the clone copy, this is not needed, only used in ~ one place, need to update to not use clone or copy
 //TODO: regarding clone note, Update when refactoring the codebase

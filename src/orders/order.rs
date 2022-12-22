@@ -22,6 +22,7 @@ use crate::{
     error::ExecutorError,
     events::BeltEvent,
     initialization::State,
+    markets,
 };
 
 use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
@@ -140,7 +141,7 @@ pub async fn handle_order_updates<M: Middleware>(
                     .await?;
 
                     //Add markets for order
-                    markets::add_markets_for_order();
+                    markets::market::add
 
                     //Add order to affected markets
                 }

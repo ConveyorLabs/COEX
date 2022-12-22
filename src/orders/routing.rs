@@ -14,10 +14,7 @@ use ethers::{
 
 use crate::{
     error::ExecutorError,
-    markets::{
-        self,
-        market::{self, Market},
-    },
+    markets::{self, Market},
 };
 
 pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
@@ -33,24 +30,24 @@ pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
     let markets_in_route = if token_out == weth {
         // Simulate order along route for token_a -> weth -> token_b
         let a_to_weth_market = simulated_markets
-            .get(&market::get_market_id(token_in, weth))
+            .get(&markets::get_market_id(token_in, weth))
             .expect("Could not get token_a to weth market");
 
         vec![a_to_weth_market]
     } else if token_in == weth {
         let weth_to_b_market = simulated_markets
-            .get(&market::get_market_id(token_out, weth))
+            .get(&markets::get_market_id(token_out, weth))
             .expect("Could not get weth to token_b market");
 
         vec![weth_to_b_market]
     } else {
         // Simulate order along route for token_a -> weth -> token_b
         let a_to_weth_market = simulated_markets
-            .get(&market::get_market_id(token_in, weth))
+            .get(&markets::get_market_id(token_in, weth))
             .expect("Could not get token_a to weth market");
 
         let weth_to_b_market = simulated_markets
-            .get(&market::get_market_id(token_out, weth))
+            .get(&markets::get_market_id(token_out, weth))
             .expect("Could not get weth to token_b market");
 
         vec![a_to_weth_market, weth_to_b_market]
@@ -76,7 +73,7 @@ pub async fn find_best_a_to_b_route<M: Middleware>(
     // Simulate order along route for token_a -> weth -> token_b
 
     let a_to_b_market = simulated_markets
-        .get(&market::get_market_id(token_in, token_out))
+        .get(&markets::get_market_id(token_in, token_out))
         .expect("Could not get a to b market");
 
     Ok(find_best_route_across_markets(
@@ -160,7 +157,7 @@ pub async fn find_best_weth_exit_from_route<M: Middleware>(
             Pool::UniswapV3(uniswap_v3_pool) => (uniswap_v3_pool.token_a, uniswap_v3_pool.token_b),
         };
 
-        let market_id = markets::market::get_market_id(pool_token_in, pool_token_out);
+        let market_id = markets::get_market_id(pool_token_in, pool_token_out);
         let pool_in_market = markets
             .get_mut(&market_id)
             .unwrap()
@@ -219,7 +216,7 @@ pub async fn update_pools_along_route<M: Middleware>(
             Pool::UniswapV3(uniswap_v3_pool) => (uniswap_v3_pool.token_a, uniswap_v3_pool.token_b),
         };
 
-        let market_id = markets::market::get_market_id(pool_token_in, pool_token_out);
+        let market_id = markets::get_market_id(pool_token_in, pool_token_out);
         let pool_in_market = markets
             .get_mut(&market_id)
             .unwrap()
@@ -271,7 +268,7 @@ pub async fn update_pools_along_route_with_weth_exit<M: Middleware>(
             Pool::UniswapV3(uniswap_v3_pool) => (uniswap_v3_pool.token_a, uniswap_v3_pool.token_b),
         };
 
-        let market_id = markets::market::get_market_id(pool_token_in, pool_token_out);
+        let market_id = markets::get_market_id(pool_token_in, pool_token_out);
         let pool_in_market = markets
             .get_mut(&market_id)
             .unwrap()
@@ -301,7 +298,7 @@ pub async fn update_pools_along_route_with_weth_exit<M: Middleware>(
         };
     }
 
-    let token_out_to_weth_market_id = markets::market::get_market_id(token_in, weth);
+    let token_out_to_weth_market_id = markets::get_market_id(token_in, weth);
     let token_out_to_weth_pool = markets
         .get_mut(&token_out_to_weth_market_id)
         .unwrap()
