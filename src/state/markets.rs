@@ -3,7 +3,7 @@ use std::{collections::HashSet, sync::Arc};
 use cfmms::dex::Dex;
 use ethers::{
     providers::Middleware,
-    types::{H160, U256},
+    types::{H160, H256, U256},
 };
 
 use crate::{error::ExecutorError, markets, orders::order::Order};
@@ -98,6 +98,45 @@ impl State {
                     .insert(order.order_id());
             }
             _ => {}
+        }
+    }
+
+    pub fn remove_order_from_market_to_affected_orders(&mut self, order_id: &H256, weth: H160) {
+        if let Some(order) = self
+            .active_orders
+            .lock()
+            .expect("Could not acquire lock on active_orders")
+            .get(order_id)
+        {
+            let mut market_to_affected_orders = self
+                .market_to_affected_orders
+                .lock()
+                .expect("Could not acquire lock on market_to_affected_orders");
+
+            let token_in = order.token_in();
+            let token_out = order.token_out();
+
+            let a_to_weth_market_id = markets::get_market_id(token_in, weth);
+            if let Some(affected_orders) = market_to_affected_orders.get(&a_to_weth_market_id) {
+                affected_orders.remove(&order.order_id());
+            }
+
+            let weth_to_b_market_id = markets::get_market_id(weth, token_out);
+            if let Some(affected_orders) = market_to_affected_orders.get(&weth_to_b_market_id) {
+                affected_orders.remove(&order.order_id());
+            }
+
+            //Remove order as affected by a to b market if the order is a sandbox order
+            match order {
+                Order::SandboxLimitOrder(sandbox_limit_order) => {
+                    let a_to_b_market_id = markets::get_market_id(token_in, token_out);
+                    if let Some(affected_orders) = market_to_affected_orders.get(&a_to_b_market_id)
+                    {
+                        affected_orders.remove(&order.order_id());
+                    }
+                }
+                _ => {}
+            }
         }
     }
 }

@@ -54,7 +54,7 @@ async fn run_loop<M: 'static + Middleware>(
     configuration: config::Config,
     middleware: Arc<M>,
     stream_provider: Provider<Ws>,
-    state: state::State,
+    mut state: state::State,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
 ) -> Result<(), ExecutorError<M>> {
     let mut block_stream = stream_provider.subscribe_blocks().await?;
@@ -80,20 +80,17 @@ async fn run_loop<M: 'static + Middleware>(
         );
 
         //Handle order updates
-
-        //TODO: on place order,
-        //TODO: need to add  order to market to affected orders,
-        //TODO: check if need to add markets for order, if so add markets
         state
             .handle_order_updates(
                 order_events,
                 configuration.sandbox_limit_order_book,
                 configuration.limit_order_book,
+                configuration.weth_address,
+                &configuration.dexes,
                 middleware.clone(),
             )
             .await?;
 
-        //TODO: pass in pool address to market it
         //Update markets
         let markets_updated = state.handle_market_updates(&pool_events);
 

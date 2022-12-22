@@ -21,7 +21,6 @@ use crate::{
         self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFufilledFilter,
         OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
     },
-    config,
     error::ExecutorError,
     events::BeltEvent,
     execution,
@@ -123,7 +122,8 @@ impl State {
                             H256::from(order_id)
                         );
 
-                        self.cancel_order(order_id.into());
+                        self.remove_order_from_market_to_affected_orders(&order_id.into(), weth);
+                        self.remove_order(order_id.into());
                     }
                 }
 
@@ -141,15 +141,20 @@ impl State {
                             H256::from(order_id)
                         );
 
-                        self.update_order(
+                        //Get order from remote
+                        let order = crate::orders::order::get_remote_order(
                             order_id.into(),
                             event_log.address,
                             order_variant,
                             middleware.clone(),
                         )
                         .await?;
+
+                        self.update_order(order);
                     }
                 }
+
+                //TODO: combine this and cancel order
                 BeltEvent::OrderFilled => {
                     let order_fufilled_log: OrderFufilledFilter =
                         EthLogDecode::decode_log(&RawLog {
@@ -164,7 +169,8 @@ impl State {
                             H256::from(order_id)
                         );
 
-                        self.fill_order(order_id.into())
+                        self.remove_order_from_market_to_affected_orders(&order_id.into(), weth);
+                        self.remove_order(order_id.into());
                     }
                 }
                 BeltEvent::OrderPartialFilled => {
@@ -189,6 +195,7 @@ impl State {
                         order_partial_filled_log.fee_remaining,
                     )
                 }
+
                 BeltEvent::OrderRefreshed => {
                     let order_refreshed_log: OrderRefreshedFilter =
                         EthLogDecode::decode_log(&RawLog {
@@ -209,6 +216,7 @@ impl State {
                         order_refreshed_log.expiration_timestamp,
                     )
                 }
+
                 BeltEvent::OrderExecutionCreditUpdated => {
                     let order_execution_credit_updated_log: OrderExecutionCreditUpdatedFilter =
                         EthLogDecode::decode_log(&RawLog {

@@ -28,36 +28,21 @@ use crate::{
 use super::State;
 
 impl State {
-    pub async fn place_order(&self, order: orders::order::Order) {
+    pub fn place_order(&self, order: orders::order::Order) {
         self.active_orders
             .lock()
             .expect("Could not acquire mutex lock.")
             .insert(order.order_id(), order);
     }
 
-    pub async fn update_order<M: Middleware>(
-        &self,
-        order_id: H256,
-        order_book_address: H160,
-        order_variant: OrderVariant,
-        middleware: Arc<M>,
-    ) -> Result<(), ExecutorError<M>> {
-        let order = orders::order::get_remote_order(
-            order_id,
-            order_book_address,
-            order_variant,
-            middleware.clone(),
-        )
-        .await?;
-
+    pub async fn update_order(&self, order: orders::order::Order) {
         self.active_orders
             .lock()
             .expect("Could not acquire mutex lock.")
-            .insert(order_id, order);
-        Ok(())
+            .insert(order.order_id(), order);
     }
 
-    pub fn cancel_order(&self, order_id: H256) {
+    pub fn remove_order(&self, order_id: H256) {
         self.active_orders
             .lock()
             .expect("Error when unlocking active orders mutex")
