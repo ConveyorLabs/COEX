@@ -30,7 +30,6 @@ pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
 ) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     //TODO: check if there is a better way than to unwrap, some markets might not have the pairing
-
     let markets_in_route = if token_out == weth {
         // Simulate order along route for token_a -> weth -> token_b
         let a_to_weth_market = simulated_markets
@@ -75,9 +74,10 @@ pub async fn find_best_a_to_b_route<M: Middleware>(
 ) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     // Simulate order along route for token_a -> weth -> token_b
+
     let a_to_b_market = simulated_markets
         .get(&market::get_market_id(token_in, token_out))
-        .expect("Could not get token_a to weth market");
+        .expect("Could not get a to b market");
 
     Ok(find_best_route_across_markets(
         U256::from(amount_in),

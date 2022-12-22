@@ -19,7 +19,7 @@ use crate::{
     abi::{self, SandboxMulticall},
     config::{self, Chain},
     error::ExecutorError,
-    execution,
+    execution, traces,
 };
 
 //TODO: pass in sleep time for checking transactions
@@ -197,7 +197,7 @@ pub async fn sign_and_send_transaction<M: Middleware>(
             Err(err) => {
                 let error_string = err.to_string();
                 if error_string.contains("transaction underpriced") {
-                    println!("Bumping gas");
+                    tracing::debug!("Bumping gas for tx: {:?}", tx);
                     if chain.is_eip1559() {
                         let eip1559_tx = tx.as_eip1559_mut().unwrap();
                         eip1559_tx.max_priority_fee_per_gas =
@@ -244,8 +244,6 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .max_fee_per_gas(max_fee_per_gas)
         .into();
 
-    println!("Getting right here");
-
     //   Simulate the tx
     //TODO: handle legacy transactions
 
@@ -254,8 +252,6 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .fill_transaction(&mut tx, None)
         .await
         .map_err(ExecutorError::MiddlewareError)?;
-    println!("");
-    println!("Getting right here2");
 
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
 

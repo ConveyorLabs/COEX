@@ -11,7 +11,7 @@ use ethers::{
     utils::keccak256,
 };
 
-use crate::{error::ExecutorError, orders::order::Order};
+use crate::{error::ExecutorError, initialization::State, orders::order::Order};
 
 pub type Market = HashMap<H160, Pool>;
 
@@ -27,29 +27,46 @@ pub fn get_market_id(token_a: H160, token_b: H160) -> U256 {
     }
 }
 
-pub async fn update_market_structures<M: 'static + Middleware>(
+pub async fn add_order_to_markets_to_affected_orders<M: 'static + Middleware>(
     order_id: H256,
-    token_a: H160,
-    token_b: H160,
-    pool_address_to_market_id: &mut HashMap<H160, U256>,
-    market_initialized: &mut HashSet<U256>,
-    markets: &mut HashMap<U256, HashMap<H160, Pool>>,
-    market_to_affected_orders: &mut HashMap<U256, HashSet<H256>>,
+    state: &mut State,
     dexes: &[Dex],
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
+    let active_orders = state
+        .active_orders
+        .lock()
+        .expect("Could not acquire lock on active orders");
+    let mut markets = state
+        .markets
+        .lock()
+        .expect("Could not acquire lock on markets");
+    let mut market_to_affected_orders = state
+        .market_to_affected_orders
+        .lock()
+        .expect("Could not acquire lock on market_to_affected_orders");
+
+    let order = active_orders.get(&order_id).unwrap();
+
     //Initialize a to b market
-    let market_id = get_market_id(token_a, token_b);
-    if market_initialized.get(&market_id).is_some() {
+    let market_id = get_market_id(order.token_in(), order.token_out());
+    if markets.get(&market_id).is_some() {
         if let Some(order_ids) = market_to_affected_orders.get_mut(&market_id) {
             order_ids.insert(order_id);
         }
     } else {
-        market_initialized.insert(market_id);
-
-        if let Some(market) = get_market(token_a, token_b, middleware.clone(), dexes).await? {
+        if let Some(market) = get_market(
+            order.token_in(),
+            order.token_out(),
+            middleware.clone(),
+            dexes,
+        )
+        .await?
+        {
             for (pool_address, _) in &market {
-                pool_address_to_market_id.insert(pool_address.to_owned(), market_id);
+                state
+                    .pool_address_to_market_id
+                    .insert(pool_address.to_owned(), market_id);
             }
 
             markets.insert(market_id, market);
@@ -59,6 +76,21 @@ pub async fn update_market_structures<M: 'static + Middleware>(
             market_to_affected_orders.insert(market_id, order_ids);
         }
     }
+
+    Ok(())
+}
+
+//TODO: add helper function to add market to markets
+
+pub async fn add_markets_for_order() {}
+
+pub async fn add_order_to_market_state<M: 'static + Middleware>(
+    order_id: H256,
+    state: &mut State,
+    dexes: &[Dex],
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
+    add_order_to_markets_to_affected_orders(order_id, state, dexes, middleware);
 
     Ok(())
 }
@@ -93,7 +125,7 @@ async fn get_market<M: 'static + Middleware>(
 pub fn handle_market_updates(
     pool_events: &[Log],
     pool_address_to_market_id: &HashMap<H160, U256>,
-    markets: Arc<Mutex<HashMap<U256, HashMap<H160, Pool>>>>,
+    markets: Arc<Mutex<HashMap<U256, Market>>>,
 ) -> HashSet<U256> {
     let mut markets_updated: HashSet<U256> = HashSet::new();
 

@@ -21,6 +21,7 @@ use crate::{
     },
     error::ExecutorError,
     events::BeltEvent,
+    initialization::State,
 };
 
 use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
@@ -49,6 +50,21 @@ impl Order {
             Order::LimitOrder(limit_order) => {
                 limit_order.can_execute(limit_order.buy, markets, weth)
             }
+        }
+    }
+
+    pub fn token_in(&self) -> H160 {
+        match self {
+            Order::SandboxLimitOrder(sandbox_limit_order) => sandbox_limit_order.token_in,
+
+            Order::LimitOrder(limit_order) => limit_order.token_in,
+        }
+    }
+
+    pub fn token_out(&self) -> H160 {
+        match self {
+            Order::SandboxLimitOrder(sandbox_limit_order) => sandbox_limit_order.token_out,
+            Order::LimitOrder(limit_order) => limit_order.token_out,
         }
     }
 
@@ -81,9 +97,9 @@ impl Order {
 
 pub async fn handle_order_updates<M: Middleware>(
     order_events: Vec<(BeltEvent, Log)>,
-    active_orders: Arc<Mutex<HashMap<H256, Order>>>,
     sandbox_limit_order_book_address: H160,
     limit_order_book_address: H160,
+    state: &State,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     //Handle order updates
@@ -117,11 +133,16 @@ pub async fn handle_order_updates<M: Middleware>(
                     place_order(
                         order_id.into(),
                         event_log.address,
-                        active_orders.clone(),
+                        state.active_orders.clone(),
                         order_variant,
                         middleware.clone(),
                     )
                     .await?;
+
+                    //Add markets for order
+                    markets::add_markets_for_order();
+
+                    //Add order to affected markets
                 }
             }
             BeltEvent::OrderCanceled => {

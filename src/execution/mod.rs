@@ -16,7 +16,7 @@ use ethers::{
 use crate::{
     config::{self},
     error::ExecutorError,
-    markets::market::Market,
+    markets::market::{get_market_id, Market},
     orders::{
         limit_order::LimitOrder, order::Order, sandbox_limit_order::SandboxLimitOrder, simulate,
     },
@@ -166,17 +166,40 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
                     if order.can_execute(&markets, configuration.weth_address) {
                         //TODO: make sure that we are checking if the order owner has the balance somewhere
 
-                        //Add the market to the simulation markets structure
-                        simulated_markets.insert(
-                            market_id,
-                            markets
-                                .get(&market_id)
-                                .expect("Could not get market from markets")
-                                .clone(),
-                        );
+                        //TODO: refactor this into a more readable fashion
 
                         match order {
                             Order::SandboxLimitOrder(sandbox_limit_order) => {
+                                let a_to_b_market_id =
+                                    get_market_id(order.token_in(), order.token_out());
+                                let a_to_weth_market_id =
+                                    get_market_id(order.token_in(), configuration.weth_address);
+                                let weth_to_b_market_id =
+                                    get_market_id(configuration.weth_address, order.token_out());
+
+                                //Add the market to the simulation markets structure
+                                simulated_markets.insert(
+                                    a_to_b_market_id,
+                                    markets
+                                        .get(&a_to_b_market_id)
+                                        .expect("Could not get market from markets")
+                                        .clone(),
+                                );
+                                simulated_markets.insert(
+                                    a_to_weth_market_id,
+                                    markets
+                                        .get(&a_to_weth_market_id)
+                                        .expect("Could not get market from markets")
+                                        .clone(),
+                                );
+                                simulated_markets.insert(
+                                    weth_to_b_market_id,
+                                    markets
+                                        .get(&weth_to_b_market_id)
+                                        .expect("Could not get market from markets")
+                                        .clone(),
+                                );
+
                                 if slo_at_execution_price
                                     .get(&sandbox_limit_order.order_id)
                                     .is_none()
@@ -185,8 +208,27 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
                                         .insert(sandbox_limit_order.order_id, sandbox_limit_order);
                                 }
                             }
-
                             Order::LimitOrder(limit_order) => {
+                                let a_to_weth_market_id =
+                                    get_market_id(order.token_in(), configuration.weth_address);
+                                let weth_to_b_market_id =
+                                    get_market_id(configuration.weth_address, order.token_out());
+
+                                simulated_markets.insert(
+                                    a_to_weth_market_id,
+                                    markets
+                                        .get(&a_to_weth_market_id)
+                                        .expect("Could not get market from markets")
+                                        .clone(),
+                                );
+                                simulated_markets.insert(
+                                    weth_to_b_market_id,
+                                    markets
+                                        .get(&weth_to_b_market_id)
+                                        .expect("Could not get market from markets")
+                                        .clone(),
+                                );
+
                                 if lo_at_execution_price.get(&limit_order.order_id).is_none() {
                                     lo_at_execution_price.insert(limit_order.order_id, limit_order);
                                 }

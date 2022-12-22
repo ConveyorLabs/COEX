@@ -2,7 +2,7 @@ use ::tracing::info;
 use error::ExecutorError;
 use ethers::prelude::NonceManagerMiddleware;
 use ethers::providers::{Http, Provider, Ws};
-use initialization::initialize_coex;
+use initialization::{initialize_coex, State};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -42,10 +42,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         configuration,
         middleware,
         stream_provider,
-        state.active_orders,
-        state.pool_address_to_market_id,
-        state.markets,
-        state.market_to_affected_orders,
+        state,
         pending_transactions_sender,
     )
     .await?;
@@ -57,10 +54,7 @@ async fn run_loop<M: 'static + Middleware>(
     configuration: config::Config,
     middleware: Arc<M>,
     stream_provider: Provider<Ws>,
-    active_orders: Arc<Mutex<HashMap<H256, Order>>>,
-    pool_address_to_market_id: HashMap<H160, U256>,
-    markets: Arc<Mutex<HashMap<U256, Market>>>,
-    market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
+    state: State,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
 ) -> Result<(), ExecutorError<M>> {
     let mut block_stream = stream_provider.subscribe_blocks().await?;
@@ -86,15 +80,20 @@ async fn run_loop<M: 'static + Middleware>(
         );
 
         //Handle order updates
+
+        //TODO: on place order,
+        //TODO: need to add  order to market to affected orders,
+        //TODO: check if need to add markets for order, if so add markets
         order::handle_order_updates(
             order_events,
-            active_orders.clone(),
             configuration.sandbox_limit_order_book,
             configuration.limit_order_book,
+            &state,
             middleware.clone(),
         )
         .await?;
 
+        //TODO: pass in pool address to market it
         //Update markets
         let markets_updated = market::handle_market_updates(
             &pool_events,
