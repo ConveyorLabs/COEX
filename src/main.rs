@@ -2,7 +2,7 @@ use ::tracing::info;
 use error::ExecutorError;
 use ethers::prelude::NonceManagerMiddleware;
 use ethers::providers::{Http, Provider, Ws};
-use initialization::{initialize_coex, State};
+use initialization::initialize_coex;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -16,13 +16,13 @@ pub mod execution;
 pub mod initialization;
 pub mod markets;
 pub mod orders;
+pub mod state;
 pub mod traces;
 pub mod transaction_utils;
 
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
 use ethers::types::{H160, H256, U256};
-use markets::market::{self, Market};
 
 use orders::order::{self, Order};
 
@@ -54,7 +54,7 @@ async fn run_loop<M: 'static + Middleware>(
     configuration: config::Config,
     middleware: Arc<M>,
     stream_provider: Provider<Ws>,
-    state: State,
+    state: state::State,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
 ) -> Result<(), ExecutorError<M>> {
     let mut block_stream = stream_provider.subscribe_blocks().await?;
@@ -84,22 +84,19 @@ async fn run_loop<M: 'static + Middleware>(
         //TODO: on place order,
         //TODO: need to add  order to market to affected orders,
         //TODO: check if need to add markets for order, if so add markets
-        order::handle_order_updates(
-            order_events,
-            configuration.sandbox_limit_order_book,
-            configuration.limit_order_book,
-            &state,
-            middleware.clone(),
-        )
-        .await?;
+        state
+            .handle_order_updates(
+                order_events,
+                configuration.sandbox_limit_order_book,
+                configuration.limit_order_book,
+                middleware.clone(),
+            )
+            .await?;
 
         //TODO: pass in pool address to market it
         //Update markets
-        let markets_updated = market::handle_market_updates(
-            &pool_events,
-            &state.pool_address_to_market_id,
-            state.markets.clone(),
-        );
+
+        let markets_updated = state.handle_market_updates(&pool_events);
 
         //TODO: add logic to check order cancellation and refresh orders
 

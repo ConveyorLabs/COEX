@@ -24,13 +24,13 @@ use crate::{
         self,
         order::{Order, OrderVariant},
     },
-    transaction_utils,
+    state, transaction_utils,
 };
 
 pub async fn initialize_coex<M: Middleware>() -> Result<
     (
         config::Config,
-        State,
+        state::State,
         Arc<Sender<(H256, Vec<H256>)>>,
         Provider<Ws>,
         Arc<NonceManagerMiddleware<ethers::providers::Provider<Http>>>,
@@ -83,68 +83,6 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         stream_provider,
         middleware,
     ))
-}
-
-pub struct State {
-    pub active_orders: Arc<Mutex<HashMap<H256, Order>>>, //active orders
-    pub pending_order_ids: Arc<Mutex<HashSet<H256>>>,    //pending_order_ids
-    pub pool_address_to_market_id: HashMap<H160, U256>,  //pool_address_to_market_id
-    pub markets: Arc<Mutex<HashMap<U256, Market>>>,      //markets
-    pub market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
-}
-
-impl State {
-    fn new() -> State {
-        let mut pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
-        let mut market_initialized: HashSet<U256> = HashSet::new();
-        let mut markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
-        let mut market_to_affected_orders: HashMap<U256, HashSet<H256>> = HashMap::new();
-
-        State {
-            active_orders: Arc::new(Mutex::new(HashMap::new())),
-            pending_order_ids: Arc::new(Mutex::new(HashSet::new())),
-            pool_address_to_market_id: HashMap::new(),
-            markets: Arc::new(Mutex::new(HashMap::new())),
-            market_to_affected_orders: Arc::new(Mutex::new(HashMap::new())),
-        }
-    }
-}
-
-async fn initialize_state<M: 'static + Middleware>(
-    configuration: &config::Config,
-    middleware: Arc<M>,
-) -> Result<State, ExecutorError<M>> {
-    info!("Initializing active orders...");
-
-    let mut state = State::new();
-    //Initialize active orders
-    state.active_orders = initialize_active_orders(
-        configuration.sandbox_limit_order_book,
-        configuration.limit_order_book,
-        configuration.protocol_creation_block,
-        middleware.clone(),
-    )
-    .await?;
-
-    info!("Active orders initialized");
-
-    info!("Initializing markets...");
-    //initialize markets
-    (
-        state.pool_address_to_market_id,
-        state.markets,
-        state.market_to_affected_orders,
-    ) = initialize_market_structures(
-        state.active_orders.clone(),
-        &configuration.dexes,
-        configuration.weth_address,
-        middleware.clone(),
-    )
-    .await?;
-
-    info!("Markets initialized");
-
-    Ok(state)
 }
 
 //Returns pool addr to market id, markets, market to affected orders,
@@ -252,6 +190,43 @@ pub async fn initialize_market_structures<M: 'static + Middleware>(
         Arc::new(Mutex::new(markets)),
         Arc::new(Mutex::new(market_to_affected_orders)),
     ))
+}
+
+async fn initialize_state<M: 'static + Middleware>(
+    configuration: &config::Config,
+    middleware: Arc<M>,
+) -> Result<state::State, ExecutorError<M>> {
+    info!("Initializing active orders...");
+
+    let mut state = state::State::new();
+    //Initialize active orders
+    state.active_orders = initialize_active_orders(
+        configuration.sandbox_limit_order_book,
+        configuration.limit_order_book,
+        configuration.protocol_creation_block,
+        middleware.clone(),
+    )
+    .await?;
+
+    info!("Active orders initialized");
+
+    info!("Initializing markets...");
+    //initialize markets
+    (
+        state.pool_address_to_market_id,
+        state.markets,
+        state.market_to_affected_orders,
+    ) = initialize_market_structures(
+        state.active_orders.clone(),
+        &configuration.dexes,
+        configuration.weth_address,
+        middleware.clone(),
+    )
+    .await?;
+
+    info!("Markets initialized");
+
+    Ok(state)
 }
 
 pub async fn initialize_active_orders<M: Middleware>(
