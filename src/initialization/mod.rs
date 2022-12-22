@@ -93,13 +93,32 @@ pub struct State {
     pub market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
 }
 
+impl State {
+    fn new() -> State {
+        let mut pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
+        let mut market_initialized: HashSet<U256> = HashSet::new();
+        let mut markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
+        let mut market_to_affected_orders: HashMap<U256, HashSet<H256>> = HashMap::new();
+
+        State {
+            active_orders: Arc::new(Mutex::new(HashMap::new())),
+            pending_order_ids: Arc::new(Mutex::new(HashSet::new())),
+            pool_address_to_market_id: HashMap::new(),
+            markets: Arc::new(Mutex::new(HashMap::new())),
+            market_to_affected_orders: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
 async fn initialize_state<M: 'static + Middleware>(
     configuration: &config::Config,
     middleware: Arc<M>,
 ) -> Result<State, ExecutorError<M>> {
     info!("Initializing active orders...");
+
+    let mut state = State::new();
     //Initialize active orders
-    let active_orders = initialize_active_orders(
+    state.active_orders = initialize_active_orders(
         configuration.sandbox_limit_order_book,
         configuration.limit_order_book,
         configuration.protocol_creation_block,
@@ -111,24 +130,21 @@ async fn initialize_state<M: 'static + Middleware>(
 
     info!("Initializing markets...");
     //initialize markets
-    let (pool_address_to_market_id, markets, market_to_affected_orders) =
-        initialize_market_structures(
-            active_orders.clone(),
-            &configuration.dexes,
-            configuration.weth_address,
-            middleware.clone(),
-        )
-        .await?;
+    (
+        state.pool_address_to_market_id,
+        state.markets,
+        state.market_to_affected_orders,
+    ) = initialize_market_structures(
+        state.active_orders.clone(),
+        &configuration.dexes,
+        configuration.weth_address,
+        middleware.clone(),
+    )
+    .await?;
 
     info!("Markets initialized");
 
-    Ok(State {
-        active_orders,
-        pending_order_ids: Arc::new(Mutex::new(HashSet::new())),
-        pool_address_to_market_id,
-        markets,
-        market_to_affected_orders,
-    })
+    Ok(state)
 }
 
 //Returns pool addr to market id, markets, market to affected orders,
@@ -158,7 +174,7 @@ pub async fn initialize_market_structures<M: 'static + Middleware>(
         match order {
             Order::SandboxLimitOrder(sandbox_limit_order) => {
                 //Update for token a -> token b market
-                market::update_market_structures(
+                markets::update_market_structures(
                     sandbox_limit_order.order_id,
                     sandbox_limit_order.token_in,
                     sandbox_limit_order.token_out,

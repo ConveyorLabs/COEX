@@ -27,16 +27,12 @@ pub fn get_market_id(token_a: H160, token_b: H160) -> U256 {
     }
 }
 
-pub async fn add_order_to_markets_to_affected_orders<M: 'static + Middleware>(
-    order_id: H256,
+async fn update_markets_to_affected_orders<M: 'static + Middleware>(
+    order: &Order,
     state: &mut State,
     dexes: &[Dex],
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
-    let active_orders = state
-        .active_orders
-        .lock()
-        .expect("Could not acquire lock on active orders");
     let mut markets = state
         .markets
         .lock()
@@ -45,8 +41,6 @@ pub async fn add_order_to_markets_to_affected_orders<M: 'static + Middleware>(
         .market_to_affected_orders
         .lock()
         .expect("Could not acquire lock on market_to_affected_orders");
-
-    let order = active_orders.get(&order_id).unwrap();
 
     //Initialize a to b market
     let market_id = get_market_id(order.token_in(), order.token_out());
@@ -84,13 +78,15 @@ pub async fn add_order_to_markets_to_affected_orders<M: 'static + Middleware>(
 
 pub async fn add_markets_for_order() {}
 
-pub async fn add_order_to_market_state<M: 'static + Middleware>(
+pub async fn add_order_to_markets_state<M: 'static + Middleware>(
     order_id: H256,
     state: &mut State,
     dexes: &[Dex],
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
-    add_order_to_markets_to_affected_orders(order_id, state, dexes, middleware);
+    //TODO: get order and add to active orders
+
+    update_markets_to_affected_orders(order_id, state, dexes, middleware);
 
     Ok(())
 }
@@ -122,16 +118,13 @@ async fn get_market<M: 'static + Middleware>(
 }
 
 //Returns markets affected
-pub fn handle_market_updates(
-    pool_events: &[Log],
-    pool_address_to_market_id: &HashMap<H160, U256>,
-    markets: Arc<Mutex<HashMap<U256, Market>>>,
-) -> HashSet<U256> {
+pub fn handle_market_updates(pool_events: &[Log], state: &State) -> HashSet<U256> {
     let mut markets_updated: HashSet<U256> = HashSet::new();
 
     for event_log in pool_events {
-        if let Some(market_id) = pool_address_to_market_id.get(&event_log.address) {
-            if let Some(market) = markets
+        if let Some(market_id) = state.pool_address_to_market_id.get(&event_log.address) {
+            if let Some(market) = state
+                .markets
                 .lock()
                 .expect("Could not acquire mutex lock")
                 .get(market_id)
