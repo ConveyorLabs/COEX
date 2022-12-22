@@ -29,6 +29,7 @@ use crate::{
     transaction_utils,
 };
 
+#[derive(Debug)]
 pub struct State {
     pub active_orders: Arc<Mutex<HashMap<H256, crate::orders::order::Order>>>, //active orders
     pub pending_order_ids: Arc<Mutex<HashSet<H256>>>,                          //pending_order_ids
@@ -39,10 +40,10 @@ pub struct State {
 
 impl State {
     pub fn new() -> State {
-        let mut pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
-        let mut market_initialized: HashSet<U256> = HashSet::new();
-        let mut markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
-        let mut market_to_affected_orders: HashMap<U256, HashSet<H256>> = HashMap::new();
+        let pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
+        let market_initialized: HashSet<U256> = HashSet::new();
+        let markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
+        let market_to_affected_orders: HashMap<U256, HashSet<H256>> = HashMap::new();
 
         State {
             active_orders: Arc::new(Mutex::new(HashMap::new())),

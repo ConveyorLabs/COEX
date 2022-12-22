@@ -93,14 +93,14 @@ async fn initialize_state<M: 'static + Middleware>(
 
     let mut state = state::State::new();
     //Initialize active orders
-    let active_orders = initialize_active_orders(
+    let (active_orders, number_of_orders) = initialize_active_orders(
         configuration.sandbox_limit_order_book,
         configuration.limit_order_book,
         configuration.protocol_creation_block,
         middleware.clone(),
     )
     .await?;
-    info!("Active orders initialized");
+    info!("Active orders initialized ({:?} orders)", number_of_orders);
 
     info!("Initializing markets...");
     for (_, order) in active_orders
@@ -134,7 +134,7 @@ pub async fn initialize_active_orders<M: Middleware>(
     limit_order_book_address: H160,
     protocol_creation_block: BlockNumber,
     middleware: Arc<M>,
-) -> Result<Arc<Mutex<HashMap<H256, Order>>>, ExecutorError<M>> {
+) -> Result<(Arc<Mutex<HashMap<H256, Order>>>, usize), ExecutorError<M>> {
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
@@ -223,5 +223,6 @@ pub async fn initialize_active_orders<M: Middleware>(
         }
     }
 
-    Ok(Arc::new(Mutex::new(active_orders)))
+    let number_of_orders = active_orders.len();
+    Ok((Arc::new(Mutex::new(active_orders)), number_of_orders))
 }
