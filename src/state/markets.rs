@@ -22,36 +22,54 @@ impl State {
         let token_out = order.token_out();
 
         let a_to_weth_market_id = markets::get_market_id(token_in, weth);
-        let a_to_weth_market =
-            markets::get_market(token_in, weth, dexes, middleware.clone()).await?;
+        if !self.market_id_exists_in_markets(a_to_weth_market_id) {
+            let a_to_weth_market =
+                markets::get_market(token_in, weth, dexes, middleware.clone()).await?;
 
-        if a_to_weth_market.is_some() {
-            self.add_market_to_state(a_to_weth_market_id, a_to_weth_market.unwrap());
+            if a_to_weth_market.is_some() {
+                self.add_market_to_state(a_to_weth_market_id, a_to_weth_market.unwrap());
+            }
         }
 
         let weth_to_b_market_id = markets::get_market_id(weth, token_out);
-        let weth_to_b_market =
-            markets::get_market(weth, token_out, dexes, middleware.clone()).await?;
+        if !self.market_id_exists_in_markets(weth_to_b_market_id) {
+            let weth_to_b_market =
+                markets::get_market(weth, token_out, dexes, middleware.clone()).await?;
 
-        if weth_to_b_market.is_some() {
-            self.add_market_to_state(weth_to_b_market_id, weth_to_b_market.unwrap());
+            if weth_to_b_market.is_some() {
+                self.add_market_to_state(weth_to_b_market_id, weth_to_b_market.unwrap());
+            }
         }
 
         //Add a to b market if the order is a sandbox order
         match order {
-            Order::SandboxLimitOrder(sandbox_limit_order) => {
+            Order::SandboxLimitOrder(_) => {
                 let a_to_b_market_id = markets::get_market_id(token_in, token_out);
-                let a_to_b_market =
-                    markets::get_market(token_in, token_out, dexes, middleware.clone()).await?;
+                if !self.market_id_exists_in_markets(a_to_b_market_id) {
+                    let a_to_b_market =
+                        markets::get_market(token_in, token_out, dexes, middleware.clone()).await?;
 
-                if a_to_b_market.is_some() {
-                    self.add_market_to_state(a_to_b_market_id, a_to_b_market.unwrap());
+                    if a_to_b_market.is_some() {
+                        self.add_market_to_state(a_to_b_market_id, a_to_b_market.unwrap());
+                    }
                 }
             }
             _ => {}
         }
 
         Ok(())
+    }
+
+    fn market_id_exists_in_markets(&self, market_id: U256) -> bool {
+        match self
+            .markets
+            .lock()
+            .expect("Could not acquire lock on markets")
+            .get(&market_id)
+        {
+            Some(_) => true,
+            _ => false,
+        }
     }
 
     fn add_market_to_state(&mut self, market_id: U256, market: markets::Market) {
