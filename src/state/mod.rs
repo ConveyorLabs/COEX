@@ -100,7 +100,8 @@ impl State {
                         .await?;
 
                         //Add markets for order
-                        self.add_markets_for_order(&order, weth, dexes, middleware.clone());
+                        self.add_markets_for_order(&order, weth, dexes, middleware.clone())
+                            .await?;
                         //Add order to market to affected orders
                         self.add_order_to_market_to_affected_orders(&order, weth);
                         //Add the order to active orders

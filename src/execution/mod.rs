@@ -16,7 +16,7 @@ use ethers::{
 use crate::{
     config::{self},
     error::ExecutorError,
-    markets::market::{get_market_id, Market},
+    markets,
     orders::{
         limit_order::LimitOrder, order::Order, sandbox_limit_order::SandboxLimitOrder, simulate,
     },
@@ -34,7 +34,7 @@ pub trait ExecutionCalldata {
 
 pub async fn fill_all_orders_at_execution_price<M: Middleware>(
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
-    markets: Arc<Mutex<HashMap<U256, Market>>>,
+    markets: Arc<Mutex<HashMap<U256, markets::Market>>>,
     configuration: &config::Config,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
@@ -132,7 +132,7 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
     affected_markets: HashSet<U256>,
     market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
     active_orders: Arc<Mutex<HashMap<H256, Order>>>,
-    markets: Arc<Mutex<HashMap<U256, Market>>>,
+    markets: Arc<Mutex<HashMap<U256, markets::Market>>>,
     configuration: &config::Config,
     middleware: Arc<M>,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
@@ -146,7 +146,7 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 
     //:: Initialize a new structure to hold a clone of the current state of the markets.
     //:: This will allow you to simulate order execution and mutate the simluated markets without having to change/unwind the market state.
-    let mut simulated_markets: HashMap<U256, Market> = HashMap::new();
+    let mut simulated_markets: HashMap<U256, markets::Market> = HashMap::new();
 
     //:: group all of the orders that are ready to execute and separate them by sandbox limit orders and limit orders
     //Accumulate sandbox limit orders at execution price
@@ -171,11 +171,15 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
                         match order {
                             Order::SandboxLimitOrder(sandbox_limit_order) => {
                                 let a_to_b_market_id =
-                                    get_market_id(order.token_in(), order.token_out());
-                                let a_to_weth_market_id =
-                                    get_market_id(order.token_in(), configuration.weth_address);
-                                let weth_to_b_market_id =
-                                    get_market_id(configuration.weth_address, order.token_out());
+                                    markets::get_market_id(order.token_in(), order.token_out());
+                                let a_to_weth_market_id = markets::get_market_id(
+                                    order.token_in(),
+                                    configuration.weth_address,
+                                );
+                                let weth_to_b_market_id = markets::get_market_id(
+                                    configuration.weth_address,
+                                    order.token_out(),
+                                );
 
                                 //Add the market to the simulation markets structure
                                 simulated_markets.insert(
@@ -209,10 +213,14 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
                                 }
                             }
                             Order::LimitOrder(limit_order) => {
-                                let a_to_weth_market_id =
-                                    get_market_id(order.token_in(), configuration.weth_address);
-                                let weth_to_b_market_id =
-                                    get_market_id(configuration.weth_address, order.token_out());
+                                let a_to_weth_market_id = markets::get_market_id(
+                                    order.token_in(),
+                                    configuration.weth_address,
+                                );
+                                let weth_to_b_market_id = markets::get_market_id(
+                                    configuration.weth_address,
+                                    order.token_out(),
+                                );
 
                                 simulated_markets.insert(
                                     a_to_weth_market_id,

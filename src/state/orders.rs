@@ -35,7 +35,7 @@ impl State {
             .insert(order.order_id(), order);
     }
 
-    pub async fn update_order(&self, order: orders::order::Order) {
+    pub fn update_order(&self, order: orders::order::Order) {
         self.active_orders
             .lock()
             .expect("Could not acquire mutex lock.")
