@@ -244,9 +244,6 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .max_fee_per_gas(max_fee_per_gas)
         .into();
 
-    //   Simulate the tx
-    //TODO: handle legacy transactions
-
     //match fill transaction, it will fail if the calldata fails
     middleware
         .fill_transaction(&mut tx, None)
@@ -254,6 +251,11 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .map_err(ExecutorError::MiddlewareError)?;
 
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
+
+    middleware
+        .call(&tx, None)
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
 
     Ok(tx)
 }

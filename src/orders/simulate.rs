@@ -154,6 +154,8 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         sandbox_execution_bundles.push(execution_bundle);
                     }
                 } else {
+                    println!("out is not weth");
+
                     let (amount_in_to_weth_exit, weth_exit_amount_out, weth_exit_pool) =
                         routing::find_best_weth_exit_from_route(
                             order.token_in,
@@ -166,7 +168,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         )
                         .await?;
 
-                    if weth_exit_amount_out.as_u128() > order.fee_remaining {
+                    if weth_exit_amount_out.as_u128() >= order.fee_remaining {
                         routing::update_pools_along_route_with_weth_exit(
                             order.token_in,
                             U256::from(order.amount_in_remaining),
