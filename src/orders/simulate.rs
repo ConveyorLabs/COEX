@@ -205,13 +205,9 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         // FIXME: we are using the mul_64_u function to calc the amount sent to the user, but in the future the contract will change
                         // Where we will only calc this value on partial fills
                         // Add a call to send the exact amount to the user
-                        //TODO: make this a function
-                        let amount_due_to_owner = mul_64_u(
-                            div_uu(
-                                U256::from(order.amount_out_remaining),
-                                U256::from(order.amount_in_remaining),
-                            ),
+                        let amount_due_to_owner = calculate_amount_due_to_order_owner(
                             U256::from(order.amount_in_remaining),
+                            U256::from(order.amount_out_remaining),
                         );
 
                         //FIXME: corresponds with order above
@@ -240,6 +236,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                                 .expect("Could not encode Weth transfer inputs"),
                         ));
 
+                        println!("weth_exit_amount_out: {:?}", weth_exit_amount_out);
                         //swap to weth exit
                         execution_bundle.add_swap_to_calls(
                             order.token_out,
@@ -286,6 +283,16 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     //When the market is tapped out for the orders, move onto the next market
 
     Ok(sandbox_execution_bundles)
+}
+
+pub fn calculate_amount_due_to_order_owner(
+    amount_in_remaining: U256,
+    amount_out_remaining: U256,
+) -> U256 {
+    mul_64_u(
+        div_uu(amount_out_remaining, amount_in_remaining),
+        amount_in_remaining,
+    )
 }
 
 //x is a 64.64, y is a uint, returns uint
