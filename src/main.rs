@@ -101,11 +101,9 @@ async fn run_loop<M: 'static + Middleware>(
         //Evaluate orders for execution
         if !markets_updated.is_empty() {
             execution::fill_orders_at_execution_price(
-                markets_updated,
-                state.market_to_affected_orders.clone(),
-                state.active_orders.clone(),
-                state.markets.clone(),
                 &configuration,
+                &state,
+                markets_updated,
                 middleware.clone(),
                 pending_transactions_sender.clone(),
             )

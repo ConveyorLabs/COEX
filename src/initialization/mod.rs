@@ -185,7 +185,7 @@ pub async fn initialize_active_orders<M: Middleware>(
                 for order_id in order_placed_log.order_ids {
                     let order_id = H256::from(order_id);
 
-                    let order = if let Ok(order) = orders::order::get_remote_order(
+                    let order = match orders::order::get_remote_order(
                         order_id,
                         sandbox_limit_order_book_address,
                         OrderVariant::SandboxLimitOrder,
@@ -193,9 +193,12 @@ pub async fn initialize_active_orders<M: Middleware>(
                     )
                     .await
                     {
-                        order
-                    } else {
-                        continue;
+                        Ok(order) => order,
+                        Err(err) => {
+                            //TODO: match contract error, panic on provider error
+                            println!("err: {:?}", err);
+                            continue;
+                        }
                     };
 
                     active_orders.insert(order_id, order);
@@ -204,7 +207,7 @@ pub async fn initialize_active_orders<M: Middleware>(
                 for order_id in order_placed_log.order_ids {
                     let order_id = H256::from(order_id);
 
-                    let order = if let Ok(order) = orders::order::get_remote_order(
+                    let order = match orders::order::get_remote_order(
                         order_id,
                         limit_order_book_address,
                         OrderVariant::LimitOrder,
@@ -212,10 +215,20 @@ pub async fn initialize_active_orders<M: Middleware>(
                     )
                     .await
                     {
-                        order
-                    } else {
-                        continue;
+                        Ok(order) => order,
+                        Err(err) => {
+                            println!("err: {:?}", err);
+                            continue;
+                        }
                     };
+
+                    // {
+                    //     order
+                    // } else {
+                    //     println!("error when getting active order: {:?}", order_id);
+
+                    //     continue;
+                    // };
 
                     active_orders.insert(order_id, order);
                 }

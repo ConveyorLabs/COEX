@@ -20,7 +20,7 @@ use crate::{
     orders::{
         limit_order::LimitOrder, order::Order, sandbox_limit_order::SandboxLimitOrder, simulate,
     },
-    transaction_utils,
+    state, transaction_utils,
 };
 
 use self::{
@@ -149,20 +149,27 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
 }
 
 pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
-    affected_markets: HashSet<U256>,
-    market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>,
-    active_orders: Arc<Mutex<HashMap<H256, Order>>>,
-    markets: Arc<Mutex<HashMap<U256, markets::Market>>>,
     configuration: &config::Config,
+    state: &state::State,
+    affected_markets: HashSet<U256>,
     middleware: Arc<M>,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
 ) -> Result<(), ExecutorError<M>> {
     //:: Acquire the lock on all of the data structures that have a mutex
-    let market_to_affected_orders = market_to_affected_orders
+    let market_to_affected_orders = state
+        .market_to_affected_orders
         .lock()
         .expect("Could not acquire mutex lock");
-    let markets = markets.lock().expect("Could not acquire mutex lock");
-    let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
+    let markets = state.markets.lock().expect("Could not acquire mutex lock");
+    let active_orders = state
+        .active_orders
+        .lock()
+        .expect("Could not acquire mutex lock");
+
+    let pending_order_ids = state
+        .pending_order_ids
+        .lock()
+        .expect("Could not acquire lock on pending_order_ids");
 
     //:: Initialize a new structure to hold a clone of the current state of the markets.
     //:: This will allow you to simulate order execution and mutate the simluated markets without having to change/unwind the market state.
@@ -182,45 +189,54 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
             for order_id in affected_orders {
-                if let Some(order) = active_orders.get(order_id) {
-                    if order.can_execute(&markets, configuration.weth_address) {
-                        //TODO: make sure that we are checking if the order owner has the balance somewhere
+                if pending_order_ids.get(order_id).is_none() {
+                    if let Some(order) = active_orders.get(order_id) {
+                        if order.can_execute(&markets, configuration.weth_address) {
+                            //TODO: make sure that we are checking if the order owner has the balance somewhere
 
-                        let a_to_weth_market_id =
-                            markets::get_market_id(order.token_in(), configuration.weth_address);
+                            let a_to_weth_market_id = markets::get_market_id(
+                                order.token_in(),
+                                configuration.weth_address,
+                            );
 
-                        if let Some(market) = markets.get(&a_to_weth_market_id) {
-                            //Add the market to the simulation markets structure
-                            simulated_markets.insert(a_to_weth_market_id, market.clone());
-                        }
-
-                        let weth_to_b_market_id =
-                            markets::get_market_id(configuration.weth_address, order.token_out());
-                        if let Some(market) = markets.get(&weth_to_b_market_id) {
-                            //Add the market to the simulation markets structure
-                            simulated_markets.insert(weth_to_b_market_id, market.clone());
-                        }
-
-                        match order {
-                            Order::SandboxLimitOrder(sandbox_limit_order) => {
-                                let a_to_b_market_id =
-                                    markets::get_market_id(order.token_in(), order.token_out());
-                                if let Some(market) = markets.get(&a_to_b_market_id) {
-                                    //Add the market to the simulation markets structure
-                                    simulated_markets.insert(a_to_b_market_id, market.clone());
-                                }
-
-                                if slo_at_execution_price
-                                    .get(&sandbox_limit_order.order_id)
-                                    .is_none()
-                                {
-                                    slo_at_execution_price
-                                        .insert(sandbox_limit_order.order_id, sandbox_limit_order);
-                                }
+                            if let Some(market) = markets.get(&a_to_weth_market_id) {
+                                //Add the market to the simulation markets structure
+                                simulated_markets.insert(a_to_weth_market_id, market.clone());
                             }
-                            Order::LimitOrder(limit_order) => {
-                                if lo_at_execution_price.get(&limit_order.order_id).is_none() {
-                                    lo_at_execution_price.insert(limit_order.order_id, limit_order);
+
+                            let weth_to_b_market_id = markets::get_market_id(
+                                configuration.weth_address,
+                                order.token_out(),
+                            );
+                            if let Some(market) = markets.get(&weth_to_b_market_id) {
+                                //Add the market to the simulation markets structure
+                                simulated_markets.insert(weth_to_b_market_id, market.clone());
+                            }
+
+                            match order {
+                                Order::SandboxLimitOrder(sandbox_limit_order) => {
+                                    let a_to_b_market_id =
+                                        markets::get_market_id(order.token_in(), order.token_out());
+                                    if let Some(market) = markets.get(&a_to_b_market_id) {
+                                        //Add the market to the simulation markets structure
+                                        simulated_markets.insert(a_to_b_market_id, market.clone());
+                                    }
+
+                                    if slo_at_execution_price
+                                        .get(&sandbox_limit_order.order_id)
+                                        .is_none()
+                                    {
+                                        slo_at_execution_price.insert(
+                                            sandbox_limit_order.order_id,
+                                            sandbox_limit_order,
+                                        );
+                                    }
+                                }
+                                Order::LimitOrder(limit_order) => {
+                                    if lo_at_execution_price.get(&limit_order.order_id).is_none() {
+                                        lo_at_execution_price
+                                            .insert(limit_order.order_id, limit_order);
+                                    }
                                 }
                             }
                         }

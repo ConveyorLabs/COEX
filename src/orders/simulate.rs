@@ -156,11 +156,18 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                 } else {
                     println!("out is not weth");
 
+                    // FIXME: we are using the mul_64_u function to calc the amount sent to the user, but in the future the contract will change
+                    // Where we will only calc this value on partial fills
+                    // Add a call to send the exact amount to the user
+                    let amount_due_to_owner = calculate_amount_due_to_order_owner(
+                        U256::from(order.amount_in_remaining),
+                        U256::from(order.amount_out_remaining),
+                    );
+
                     let (amount_in_to_weth_exit, weth_exit_amount_out, weth_exit_pool) =
                         routing::find_best_weth_exit_from_route(
-                            order.token_in,
-                            U256::from(order.amount_in_remaining),
-                            U256::from(order.amount_out_remaining),
+                            order,
+                            amount_due_to_owner,
                             route.clone(),
                             simulated_markets,
                             weth,
@@ -170,11 +177,10 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
                     if weth_exit_amount_out.as_u128() >= order.fee_remaining {
                         routing::update_pools_along_route_with_weth_exit(
-                            order.token_in,
-                            U256::from(order.amount_in_remaining),
-                            simulated_markets,
+                            order,
+                            amount_in_to_weth_exit,
                             route.clone(),
-                            U256::from(order.amount_out_remaining),
+                            simulated_markets,
                             weth,
                             weth_exit_pool.address(),
                             middleware,
@@ -200,14 +206,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             amounts_out,
                             order,
                             sandbox_limit_order_router,
-                        );
-
-                        // FIXME: we are using the mul_64_u function to calc the amount sent to the user, but in the future the contract will change
-                        // Where we will only calc this value on partial fills
-                        // Add a call to send the exact amount to the user
-                        let amount_due_to_owner = calculate_amount_due_to_order_owner(
-                            U256::from(order.amount_in_remaining),
-                            U256::from(order.amount_out_remaining),
                         );
 
                         //FIXME: corresponds with order above
