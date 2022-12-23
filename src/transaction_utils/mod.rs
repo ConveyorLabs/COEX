@@ -175,8 +175,6 @@ pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
         )
         .await?;
 
-        // println!("tx: {:#?}", tx);
-
         Ok(tx)
     }
 }

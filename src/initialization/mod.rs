@@ -196,7 +196,6 @@ pub async fn initialize_active_orders<M: Middleware>(
                         Ok(order) => order,
                         Err(err) => {
                             //TODO: match contract error, panic on provider error
-                            println!("err: {:?}", err);
                             continue;
                         }
                     };
@@ -217,18 +216,10 @@ pub async fn initialize_active_orders<M: Middleware>(
                     {
                         Ok(order) => order,
                         Err(err) => {
-                            println!("err: {:?}", err);
+                            //TODO: match contract error, panic on provider error
                             continue;
                         }
                     };
-
-                    // {
-                    //     order
-                    // } else {
-                    //     println!("error when getting active order: {:?}", order_id);
-
-                    //     continue;
-                    // };
 
                     active_orders.insert(order_id, order);
                 }
