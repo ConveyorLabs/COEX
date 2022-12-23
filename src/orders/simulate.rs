@@ -154,11 +154,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         sandbox_execution_bundles.push(execution_bundle);
                     }
                 } else {
-                    println!(
-                        "token out is not weth, token out: {:?}, weth: {:?}",
-                        order.token_out, weth
-                    );
-                    let (weth_exit_amount_out, weth_exit_pool) =
+                    let (amount_in_to_weth_exit, weth_exit_amount_out, weth_exit_pool) =
                         routing::find_best_weth_exit_from_route(
                             order.token_in,
                             U256::from(order.amount_in_remaining),
@@ -171,11 +167,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         .await?;
 
                     if weth_exit_amount_out.as_u128() > order.fee_remaining {
-                        println!(
-                            "wao: {:?}, feereem: {:?} {:?}",
-                            weth_exit_amount_out, order.fee_remaining, order.order_id
-                        );
-
                         routing::update_pools_along_route_with_weth_exit(
                             order.token_in,
                             U256::from(order.amount_in_remaining),
@@ -202,12 +193,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             _ => {}
                         }
 
-                        println!(
-                            "Order Id: {:?}, Route: {:?}, Amounts out: {:?}",
-                            order.order_id, route, amounts_out
-                        );
-                        println!("");
-
                         execution_bundle.add_route_to_calls(
                             route,
                             amounts_out,
@@ -218,6 +203,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         // FIXME: we are using the mul_64_u function to calc the amount sent to the user, but in the future the contract will change
                         // Where we will only calc this value on partial fills
                         // Add a call to send the exact amount to the user
+                        //TODO: make this a function
                         let amount_due_to_owner = mul_64_u(
                             div_uu(
                                 U256::from(order.amount_out_remaining),
@@ -235,6 +221,19 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                                 .encode_input(&vec![
                                     Token::Address(order.owner),
                                     Token::Uint(amount_due_to_owner),
+                                ])
+                                .expect("Could not encode Weth transfer inputs"),
+                        ));
+
+                        //Transfer the amount in to the weth exit pool
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
+                            order.token_out,
+                            abi::IERC20_ABI
+                                .function("transfer")
+                                .unwrap()
+                                .encode_input(&vec![
+                                    Token::Address(weth_exit_pool.address()),
+                                    Token::Uint(amount_in_to_weth_exit),
                                 ])
                                 .expect("Could not encode Weth transfer inputs"),
                         ));
