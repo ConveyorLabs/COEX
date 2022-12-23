@@ -37,8 +37,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await
             .unwrap();
 
-    println!("State: {:?}", state.markets);
-
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
         configuration,

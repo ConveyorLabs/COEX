@@ -80,6 +80,10 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
             //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for execution
             if last_amount_out.as_u128() >= order.amount_out_remaining {
+                println!(
+                    "amount out: {}, aor: {}",
+                    last_amount_out, order.amount_out_remaining
+                );
                 if order.token_out == weth {
                     if last_amount_out.as_u128() - order.amount_out_remaining > order.fee_remaining
                     {
@@ -154,103 +158,118 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         sandbox_execution_bundles.push(execution_bundle);
                     }
                 } else {
-                    // let (weth_exit_amount_out, weth_exit_pool) =
-                    //     routing::find_best_weth_exit_from_route(
-                    //         order.token_in,
-                    //         U256::from(order.amount_in_remaining),
-                    //         route.clone(),
-                    //         U256::from(order.amount_out_remaining),
-                    //         simulated_markets,
-                    //         weth,
-                    //         middleware.clone(),
-                    //     )
-                    //     .await?;
+                    let (weth_exit_amount_out, weth_exit_pool) =
+                        routing::find_best_weth_exit_from_route(
+                            order.token_in,
+                            U256::from(order.amount_in_remaining),
+                            route.clone(),
+                            U256::from(order.amount_out_remaining),
+                            simulated_markets,
+                            weth,
+                            middleware.clone(),
+                        )
+                        .await?;
 
-                    // if weth_exit_amount_out.as_u128() > order.fee_remaining {
-                    //     routing::update_pools_along_route_with_weth_exit(
-                    //         order.token_in,
-                    //         U256::from(order.amount_in_remaining),
-                    //         simulated_markets,
-                    //         route.clone(),
-                    //         U256::from(order.amount_out_remaining),
-                    //         weth,
-                    //         weth_exit_pool.address(),
-                    //         middleware,
-                    //     )
-                    //     .await?;
+                    if weth_exit_amount_out.as_u128() > order.fee_remaining {
+                        println!(
+                            "wao: {:?}, feereem: {:?}",
+                            weth_exit_amount_out, order.fee_remaining
+                        );
+                        routing::update_pools_along_route_with_weth_exit(
+                            order.token_in,
+                            U256::from(order.amount_in_remaining),
+                            simulated_markets,
+                            route.clone(),
+                            U256::from(order.amount_out_remaining),
+                            weth,
+                            weth_exit_pool.address(),
+                            middleware,
+                        )
+                        .await?;
 
-                    //     //Construct call for execution
-                    //     let mut execution_bundle =
-                    //         execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle::new();
-                    //     execution_bundle.add_order_id_to_current_bundle(order.order_id);
-                    //     execution_bundle.add_fill_amount(order.amount_in_remaining);
+                        //Construct call for execution
+                        let mut execution_bundle =
+                            execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle::new();
+                        execution_bundle.add_order_id_to_current_bundle(order.order_id);
+                        execution_bundle.add_fill_amount(order.amount_in_remaining);
 
-                    //     //If the pool is v2, add the pool address as the first transfer address
-                    //     match route[0] {
-                    //         Pool::UniswapV2(uniswap_v2_pool) => {
-                    //             execution_bundle.add_transfer_address(uniswap_v2_pool.address);
-                    //         }
-                    //         _ => {}
-                    //     }
+                        //If the pool is v2, add the pool address as the first transfer address
+                        match route[0] {
+                            Pool::UniswapV2(uniswap_v2_pool) => {
+                                execution_bundle.add_transfer_address(uniswap_v2_pool.address);
+                            }
+                            _ => {}
+                        }
 
-                    //     execution_bundle.add_route_to_calls(
-                    //         route,
-                    //         amounts_out,
-                    //         order,
-                    //         sandbox_limit_order_router,
-                    //     );
+                        execution_bundle.add_route_to_calls(
+                            route,
+                            amounts_out,
+                            order,
+                            sandbox_limit_order_router,
+                        );
 
-                    //     //Add a call to send the exact amount to the order owner
-                    //     execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
-                    //         order.token_out,
-                    //         abi::IERC20_ABI
-                    //             .function("transfer")
-                    //             .unwrap()
-                    //             .encode_input(&vec![
-                    //                 Token::Address(order.owner),
-                    //                 Token::Uint(U256::from(order.amount_out_remaining)),
-                    //             ])
-                    //             .expect("Could not encode Weth transfer inputs"),
-                    //     ));
+                        // FIXME: we are using the mul_64_u function to calc the amount sent to the user, but in the future the contract will change
+                        // Where we will only calc this value on partial fills
+                        // Add a call to send the exact amount to the user
+                        let amount_due_to_owner = mul_64_u(
+                            div_uu(
+                                U256::from(order.amount_out_remaining),
+                                U256::from(order.amount_in_remaining),
+                            ),
+                            U256::from(order.amount_in_remaining),
+                        );
 
-                    //     //swap to weth exit
-                    //     execution_bundle.add_swap_to_calls(
-                    //         order.token_out,
-                    //         weth_exit_amount_out,
-                    //         sandbox_limit_order_router,
-                    //         &weth_exit_pool,
-                    //     );
+                        //FIXME: corresponds with order above
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
+                            order.token_out,
+                            abi::IERC20_ABI
+                                .function("transfer")
+                                .unwrap()
+                                .encode_input(&vec![
+                                    Token::Address(order.owner),
+                                    Token::Uint(amount_due_to_owner),
+                                ])
+                                .expect("Could not encode Weth transfer inputs"),
+                        ));
 
-                    //     //pay protocol fee
-                    //     execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
-                    //         weth,
-                    //         abi::IERC20_ABI
-                    //             .function("transfer")
-                    //             .unwrap()
-                    //             .encode_input(&vec![
-                    //                 Token::Address(executor_address),
-                    //                 Token::Uint(U256::from(order.fee_remaining)),
-                    //             ])
-                    //             .expect("Could not encode Weth transfer inputs"),
-                    //     ));
+                        //swap to weth exit
+                        execution_bundle.add_swap_to_calls(
+                            order.token_out,
+                            weth_exit_amount_out,
+                            sandbox_limit_order_router,
+                            &weth_exit_pool,
+                        );
 
-                    //     //Send remainder to coex
-                    //     execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
-                    //         weth,
-                    //         abi::IERC20_ABI
-                    //             .function("transfer")
-                    //             .unwrap()
-                    //             .encode_input(&vec![
-                    //                 Token::Address(wallet_address),
-                    //                 Token::Uint(U256::from(
-                    //                     weth_exit_amount_out - order.fee_remaining,
-                    //                 )),
-                    //             ])
-                    //             .expect("Could not encode Weth transfer inputs"),
-                    //     ));
+                        //pay protocol fee
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
+                            weth,
+                            abi::IERC20_ABI
+                                .function("transfer")
+                                .unwrap()
+                                .encode_input(&vec![
+                                    Token::Address(executor_address),
+                                    Token::Uint(U256::from(order.fee_remaining)),
+                                ])
+                                .expect("Could not encode Weth transfer inputs"),
+                        ));
 
-                    //     sandbox_execution_bundles.push(execution_bundle);
-                    // }
+                        //Send remainder to coex
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
+                            weth,
+                            abi::IERC20_ABI
+                                .function("transfer")
+                                .unwrap()
+                                .encode_input(&vec![
+                                    Token::Address(wallet_address),
+                                    Token::Uint(U256::from(
+                                        weth_exit_amount_out - order.fee_remaining,
+                                    )),
+                                ])
+                                .expect("Could not encode Weth transfer inputs"),
+                        ));
+
+                        sandbox_execution_bundles.push(execution_bundle);
+                    }
                 }
             }
         }
