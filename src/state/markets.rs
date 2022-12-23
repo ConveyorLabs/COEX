@@ -98,29 +98,39 @@ impl State {
             .lock()
             .expect("Could not acquire lock on market_to_affected_orders");
 
+        let markets = self
+            .markets
+            .lock()
+            .expect("Could not acquire lock on markets");
+
         let token_in = order.token_in();
         let token_out = order.token_out();
 
         let a_to_weth_market_id = markets::get_market_id(token_in, weth);
-        market_to_affected_orders
-            .entry(a_to_weth_market_id)
-            .or_insert(HashSet::new())
-            .insert(order.order_id());
+        if markets.get(&a_to_weth_market_id).is_some() {
+            market_to_affected_orders
+                .entry(a_to_weth_market_id)
+                .or_insert(HashSet::new())
+                .insert(order.order_id());
+        }
 
         let weth_to_b_market_id = markets::get_market_id(weth, token_out);
-        market_to_affected_orders
-            .entry(weth_to_b_market_id)
-            .or_insert(HashSet::new())
-            .insert(order.order_id());
-
+        if markets.get(&weth_to_b_market_id).is_some() {
+            market_to_affected_orders
+                .entry(weth_to_b_market_id)
+                .or_insert(HashSet::new())
+                .insert(order.order_id());
+        }
         //Add order as affected by a to b market if the order is a sandbox order
         match order {
             Order::SandboxLimitOrder(sandbox_limit_order) => {
                 let a_to_b_market_id = markets::get_market_id(token_in, token_out);
-                market_to_affected_orders
-                    .entry(a_to_b_market_id)
-                    .or_insert(HashSet::new())
-                    .insert(order.order_id());
+                if markets.get(&weth_to_b_market_id).is_some() {
+                    market_to_affected_orders
+                        .entry(a_to_b_market_id)
+                        .or_insert(HashSet::new())
+                        .insert(order.order_id());
+                }
             }
             _ => {}
         }

@@ -89,7 +89,7 @@ async fn initialize_state<M: 'static + Middleware>(
     configuration: &config::Config,
     middleware: Arc<M>,
 ) -> Result<state::State, ExecutorError<M>> {
-    info!("Initializing active orders...");
+    tracing::info!("Initializing active orders...");
 
     let mut state = state::State::new();
     //Initialize active orders
@@ -100,9 +100,9 @@ async fn initialize_state<M: 'static + Middleware>(
         middleware.clone(),
     )
     .await?;
-    info!("Active orders initialized ({:?} orders)", number_of_orders);
+    tracing::info!("Active orders initialized ({:?} orders)", number_of_orders);
 
-    info!("Initializing markets...");
+    tracing::info!("Initializing markets...");
     for (_, order) in active_orders
         .lock()
         .expect("Could not acquire lock on active_orders")
@@ -122,7 +122,7 @@ async fn initialize_state<M: 'static + Middleware>(
         state.add_order_to_market_to_affected_orders(&order, configuration.weth_address);
     }
 
-    info!("Markets initialized");
+    tracing::info!("Markets initialized");
 
     state.active_orders = active_orders;
 

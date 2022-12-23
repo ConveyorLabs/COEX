@@ -176,8 +176,6 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
     for bundle in slo_bundles {
         let order_id_bundles = bundle.order_id_bundles.clone();
 
-        println!("bundle: {:?}", order_id_bundles);
-
         if let Ok(tx) = transaction_utils::construct_and_simulate_slo_execution_transaction(
             configuration,
             bundle,

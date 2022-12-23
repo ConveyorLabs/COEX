@@ -87,8 +87,9 @@ pub async fn find_best_a_to_b_route<M: Middleware>(
         )
         .await?)
     } else {
-        Err(ExecutorError::MarketDoesNotExistForPair(
-            token_in, token_out,
+        Ok((
+            vec![U256::zero()],
+            vec![Pool::UniswapV2(UniswapV2Pool::default())],
         ))
     }
 }

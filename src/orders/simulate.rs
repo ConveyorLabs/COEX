@@ -154,8 +154,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         sandbox_execution_bundles.push(execution_bundle);
                     }
                 } else {
-                    println!("out is not weth");
-
                     // FIXME: we are using the mul_64_u function to calc the amount sent to the user, but in the future the contract will change
                     // Where we will only calc this value on partial fills
                     // Add a call to send the exact amount to the user
@@ -234,7 +232,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                                 .expect("Could not encode Weth transfer inputs"),
                         ));
 
-                        println!("weth_exit_amount_out: {:?}", weth_exit_amount_out);
                         //swap to weth exit
                         execution_bundle.add_swap_to_calls(
                             order.token_out,

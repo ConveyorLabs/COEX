@@ -62,9 +62,11 @@ async fn run_loop<M: 'static + Middleware>(
     //Get a mapping of event signature to event for quick lookup
     let event_sig_to_belt_event = events::get_event_signature_to_belt_event();
 
-    info!("Listening for execution conditions...");
+    tracing::info!("Listening for execution conditions...");
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
+        tracing::info!("Checking block {:?}", block.number.unwrap());
+
         let (order_events, pool_events) = events::sort_events(
             &middleware
                 .get_logs(
