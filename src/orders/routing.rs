@@ -17,6 +17,8 @@ use crate::{
     markets::{self, Market},
 };
 
+use super::simulate::{div_uu, mul_64_u};
+
 pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
     token_in: H160,
     token_out: H160,
@@ -27,6 +29,7 @@ pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
 ) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     //TODO: check if there is a better way than to unwrap, some markets might not have the pairing
+
     let markets_in_route = if token_out == weth {
         // Simulate order along route for token_a -> weth -> token_b
         let a_to_weth_market = simulated_markets
@@ -71,18 +74,20 @@ pub async fn find_best_a_to_b_route<M: Middleware>(
 ) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     // Simulate order along route for token_a -> weth -> token_b
-
-    let a_to_b_market = simulated_markets
-        .get(&markets::get_market_id(token_in, token_out))
-        .expect("Could not get a to b market");
-
-    Ok(find_best_route_across_markets(
-        U256::from(amount_in),
-        token_in,
-        vec![a_to_b_market],
-        middleware.clone(),
-    )
-    .await?)
+    if let Some(a_to_b_market) = simulated_markets.get(&markets::get_market_id(token_in, token_out))
+    {
+        Ok(find_best_route_across_markets(
+            U256::from(amount_in),
+            token_in,
+            vec![a_to_b_market],
+            middleware.clone(),
+        )
+        .await?)
+    } else {
+        Err(ExecutorError::MarketDoesNotExistForPair(
+            token_in, token_out,
+        ))
+    }
 }
 
 //Returns the amount out and a reference to the pools that it took through the route
@@ -140,15 +145,15 @@ pub async fn find_best_route_across_markets<M: Middleware>(
 
 pub async fn find_best_weth_exit_from_route<M: Middleware>(
     token_in: H160,
-    amount_in: U256,
-    route: Vec<Pool>,
+    order_amount_in_remaining: U256,
     order_amount_out_remaining: U256,
+    route: Vec<Pool>,
     markets: &mut HashMap<U256, Market>,
     weth: H160,
     middleware: Arc<M>,
 ) -> Result<(U256, Pool), ExecutorError<M>> {
     let mut swap_token = token_in;
-    let mut swap_amount = amount_in;
+    let mut swap_amount = order_amount_in_remaining;
 
     for pool_in_route in route {
         let (pool_token_in, pool_token_out) = match pool_in_route {
@@ -165,7 +170,7 @@ pub async fn find_best_weth_exit_from_route<M: Middleware>(
             .unwrap();
 
         swap_amount = pool_in_market
-            .simulate_swap(token_in, amount_in, middleware.clone())
+            .simulate_swap(swap_token, swap_amount, middleware.clone())
             .await?;
 
         //update token in
@@ -187,11 +192,27 @@ pub async fn find_best_weth_exit_from_route<M: Middleware>(
         };
     }
 
+    // FIXME: we are using the mul_64_u function to calc the amount sent to the user, but in the future the contract will change
+    // Where we will only calc this value on partial fills
+    // Add a call to send the exact amount to the user
+    let amount_due_to_owner = mul_64_u(
+        div_uu(
+            U256::from(order_amount_out_remaining),
+            U256::from(order_amount_in_remaining),
+        ),
+        U256::from(order_amount_in_remaining),
+    );
+
+    println!(
+        "getting here, token in {:?}, swap token {:?}, weth: {:?}",
+        token_in, swap_token, weth
+    );
+
     //Find best token out to weth pool
     let (weth_amount_out, route) = find_best_a_to_b_route(
         swap_token,
         weth,
-        swap_amount - order_amount_out_remaining,
+        swap_amount - amount_due_to_owner,
         markets,
         middleware.clone(),
     )

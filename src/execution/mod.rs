@@ -111,17 +111,6 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
     )
     .await?;
 
-    //Execute orders if there are any order groups
-    if !sandbox_execution_bundles.is_empty() {
-        execute_sandbox_limit_order_bundles(
-            sandbox_execution_bundles,
-            configuration,
-            pending_transactions_sender.clone(),
-            middleware.clone(),
-        )
-        .await?;
-    }
-
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
     let limit_order_execution_bundle: LimitOrderExecutionBundle =
@@ -132,6 +121,17 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
             middleware.clone(),
         )
         .await?;
+
+    //Execute orders if there are any order groups
+    if !sandbox_execution_bundles.is_empty() {
+        execute_sandbox_limit_order_bundles(
+            sandbox_execution_bundles,
+            configuration,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await?;
+    }
 
     //TODO: rename the limit order execution bundle order groups to just be execution bundles and return a vec of bundle
     //Execute orders if there are any order groups

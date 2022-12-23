@@ -2,7 +2,7 @@ use cfmms::error::CFMMError;
 use ethers::{
     prelude::{nonce_manager::NonceManagerError, AbiError, ContractError},
     providers::{Middleware, ProviderError},
-    types::H256,
+    types::{H160, H256},
 };
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -32,4 +32,6 @@ where
     PendingTransactionSendError(#[from] tokio::sync::mpsc::error::SendError<(H256, Vec<H256>)>),
     #[error("Insufficient wallet funds for execution")]
     InsufficientWalletFunds(),
+    #[error("Market does not exist for pair")]
+    MarketDoesNotExistForPair(H160, H160),
 }

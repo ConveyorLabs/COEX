@@ -80,10 +80,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
             //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for execution
             if last_amount_out.as_u128() >= order.amount_out_remaining {
-                println!(
-                    "amount out: {}, aor: {}",
-                    last_amount_out, order.amount_out_remaining
-                );
                 if order.token_out == weth {
                     if last_amount_out.as_u128() - order.amount_out_remaining > order.fee_remaining
                     {
@@ -158,12 +154,16 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         sandbox_execution_bundles.push(execution_bundle);
                     }
                 } else {
+                    println!(
+                        "token out is not weth, token out: {:?}, weth: {:?}",
+                        order.token_out, weth
+                    );
                     let (weth_exit_amount_out, weth_exit_pool) =
                         routing::find_best_weth_exit_from_route(
                             order.token_in,
                             U256::from(order.amount_in_remaining),
-                            route.clone(),
                             U256::from(order.amount_out_remaining),
+                            route.clone(),
                             simulated_markets,
                             weth,
                             middleware.clone(),
@@ -172,9 +172,10 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
                     if weth_exit_amount_out.as_u128() > order.fee_remaining {
                         println!(
-                            "wao: {:?}, feereem: {:?}",
-                            weth_exit_amount_out, order.fee_remaining
+                            "wao: {:?}, feereem: {:?} {:?}",
+                            weth_exit_amount_out, order.fee_remaining, order.order_id
                         );
+
                         routing::update_pools_along_route_with_weth_exit(
                             order.token_in,
                             U256::from(order.amount_in_remaining),
@@ -200,6 +201,12 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             }
                             _ => {}
                         }
+
+                        println!(
+                            "Order Id: {:?}, Route: {:?}, Amounts out: {:?}",
+                            order.order_id, route, amounts_out
+                        );
+                        println!("");
 
                         execution_bundle.add_route_to_calls(
                             route,
@@ -281,7 +288,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 }
 
 //x is a 64.64, y is a uint, returns uint
-fn mul_64_u(x: u128, y: U256) -> U256 {
+pub fn mul_64_u(x: u128, y: U256) -> U256 {
     let x = U256::from(x);
 
     if y.is_zero() || x.is_zero() {
@@ -310,7 +317,7 @@ fn mul_64_u(x: u128, y: U256) -> U256 {
     hi + lo
 }
 
-fn div_uu(x: U256, y: U256) -> u128 {
+pub fn div_uu(x: U256, y: U256) -> u128 {
     if y.is_zero() {
         //TODO: handle this error
         panic!("y == 0")
