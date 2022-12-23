@@ -124,10 +124,9 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
 
     //Execute orders if there are any order groups
     if !sandbox_execution_bundles.is_empty() {
-        println!(
-            "sloexbundles len pre loop: {:?}",
-            sandbox_execution_bundles.len()
-        );
+        for bundle in sandbox_execution_bundles.iter() {
+            println!("Sloex bundle: {:?}", bundle.order_id_bundles);
+        }
 
         execute_sandbox_limit_order_bundles(
             sandbox_execution_bundles,
@@ -280,10 +279,9 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 
     //Execute orders if there are any order groups
     if !sandbox_execution_bundles.is_empty() {
-        println!(
-            "sloexbundles len post loop: {:?}",
-            sandbox_execution_bundles.len()
-        );
+        for bundle in sandbox_execution_bundles.iter() {
+            println!("Sloex bundle: {:?}", bundle.order_id_bundles);
+        }
 
         execute_sandbox_limit_order_bundles(
             sandbox_execution_bundles,
