@@ -124,6 +124,11 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
 
     //Execute orders if there are any order groups
     if !sandbox_execution_bundles.is_empty() {
+        println!(
+            "sloexbundles len pre loop: {:?}",
+            sandbox_execution_bundles.len()
+        );
+
         execute_sandbox_limit_order_bundles(
             sandbox_execution_bundles,
             configuration,
@@ -188,6 +193,7 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
         //TODO: FIXME: For the love of god, do this ^^^^^^^^^^
 
         if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
+            //TODO: this can be more efficient and handle sandbox/limit order separately, then check if the order has already been added to the group
             for order_id in affected_orders {
                 if pending_order_ids.get(order_id).is_none() {
                     if let Some(order) = active_orders.get(order_id) {
@@ -274,6 +280,11 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 
     //Execute orders if there are any order groups
     if !sandbox_execution_bundles.is_empty() {
+        println!(
+            "sloexbundles len post loop: {:?}",
+            sandbox_execution_bundles.len()
+        );
+
         execute_sandbox_limit_order_bundles(
             sandbox_execution_bundles,
             configuration,
