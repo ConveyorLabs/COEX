@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use cfmms::pool::Pool;
 use ethers::abi::ethabi::Bytes;
-use ethers::abi::AbiEncode;
+use ethers::abi::{AbiEncode, Token};
 use ethers::providers::Middleware;
-use ethers::types::{H160, H256, U256};
+use ethers::types::{H160, H256, I256, U256};
 
 use crate::error::ExecutorError;
 use crate::orders::sandbox_limit_order::SandboxLimitOrder;
@@ -110,7 +110,12 @@ impl SandboxLimitOrderExecutionBundle {
 
             match pool {
                 Pool::UniswapV2(uniswap_v2_pool) => {
-                    self.add_uniswap_v2_swap_to_calls(order.token_in, amount_out, to, pool);
+                    self.add_uniswap_v2_swap_to_calls(
+                        order.token_in,
+                        amount_out,
+                        to,
+                        uniswap_v2_pool,
+                    );
                 }
                 Pool::UniswapV3(uniswap_v3_pool) => {}
             }
@@ -139,6 +144,26 @@ impl SandboxLimitOrderExecutionBundle {
         }
     }
 
+    pub fn add_swap_to_calls(
+        &mut self,
+        token_in: H160,
+        amount_in: U256,
+        amount_out: U256,
+        to: H160,
+        from: H160,
+        pool: &cfmms::pool::Pool,
+    ) {
+        match pool {
+            Pool::UniswapV2(uniswap_v2_pool) => {
+                self.add_uniswap_v2_swap_to_calls(token_in, amount_out, to, uniswap_v2_pool);
+            }
+
+            Pool::UniswapV3(uniswap_v3_pool) => {
+                self.add_uniswap_v3_swap_to_calls(token_in, amount_out, to, from, uniswap_v3_pool);
+            }
+        }
+    }
+
     pub fn add_uniswap_v2_swap_to_calls(
         &mut self,
         token_in: H160,
@@ -161,19 +186,38 @@ impl SandboxLimitOrderExecutionBundle {
     pub fn add_uniswap_v3_swap_to_calls(
         &mut self,
         token_in: H160,
-        amount_out: U256,
+        amount_in: U256,
         to: H160,
+        from: H160,
         pool: &cfmms::pool::UniswapV3Pool,
     ) {
-        let (amount_0_out, amount_1_out) = if pool.token_a == token_in {
-            (U256::zero(), amount_out)
+        let zero_for_one = if pool.token_a == token_in {
+            true
         } else {
-            (amount_out, U256::zero())
+            false
         };
+
+        let sqrt_price_limit_x_96 = if zero_for_one {
+            uniswap_v3_math::tick_math::MIN_SQRT_RATIO + 1
+        } else {
+            uniswap_v3_math::tick_math::MAX_SQRT_RATIO - 1
+        };
+
+        let calldata = ethers::abi::encode(&vec![
+            Token::Bool(zero_for_one),
+            Token::Address(token_in),
+            Token::Address(from),
+        ]);
 
         self.add_call(Call::new(
             pool.address,
-            pool.swap_calldata(amount_0_out, amount_1_out, to, vec![]),
+            pool.swap_calldata(
+                to,
+                zero_for_one,
+                I256::from_raw(amount_in),
+                sqrt_price_limit_x_96,
+                calldata,
+            ),
         ));
     }
 }

@@ -161,12 +161,12 @@ impl Config {
                         DexVariant::UniswapV2,
                         11333218,
                     ),
-                    //UniswapV3
-                    Dex::new(
-                        H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
-                        DexVariant::UniswapV3,
-                        22757547,
-                    ),
+                    // //UniswapV3
+                    // Dex::new(
+                    //     H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
+                    //     DexVariant::UniswapV3,
+                    //     22757547,
+                    // ),
                     //Quickswap
                     Dex::new(
                         H160::from_str("0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32").unwrap(),
