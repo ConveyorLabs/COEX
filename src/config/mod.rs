@@ -155,24 +155,24 @@ impl Config {
                 config.protocol_creation_block = BlockNumber::Number(35984674.into());
 
                 config.dexes = vec![
-                    // Sushiswap
-                    Dex::new(
-                        H160::from_str("0xc35DADB65012eC5796536bD9864eD8773aBc74C4").unwrap(),
-                        DexVariant::UniswapV2,
-                        11333218,
-                    ),
-                    // //UniswapV3
+                    // // Sushiswap
                     // Dex::new(
-                    //     H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
-                    //     DexVariant::UniswapV3,
-                    //     22757547,
+                    //     H160::from_str("0xc35DADB65012eC5796536bD9864eD8773aBc74C4").unwrap(),
+                    //     DexVariant::UniswapV2,
+                    //     11333218,
                     // ),
-                    //Quickswap
+                    //UniswapV3
                     Dex::new(
-                        H160::from_str("0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32").unwrap(),
-                        DexVariant::UniswapV2,
-                        4931780,
+                        H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
+                        DexVariant::UniswapV3,
+                        22757547,
                     ),
+                    // //Quickswap
+                    // Dex::new(
+                    //     H160::from_str("0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32").unwrap(),
+                    //     DexVariant::UniswapV2,
+                    //     4931780,
+                    // ),
                 ];
 
                 config.executor_address =

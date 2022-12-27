@@ -170,7 +170,7 @@ impl SandboxLimitOrderExecutionBundle {
             }
 
             Pool::UniswapV3(uniswap_v3_pool) => {
-                self.add_uniswap_v3_swap_to_calls(token_in, amount_out, to, from, uniswap_v3_pool);
+                self.add_uniswap_v3_swap_to_calls(token_in, amount_in, to, from, uniswap_v3_pool);
             }
         }
     }
