@@ -101,14 +101,14 @@ impl SandboxLimitOrderExecutionBundle {
 
         let mut token_in = order.token_in;
         for (i, pool) in route.iter().enumerate() {
-            let to = if i == route.len() - 1 {
-                sandbox_limit_order_router
-            } else {
-                route[i + 1].address()
-            };
-
             match pool {
                 Pool::UniswapV2(uniswap_v2_pool) => {
+                    let to = if i == route.len() - 1 {
+                        sandbox_limit_order_router
+                    } else {
+                        route[i + 1].address()
+                    };
+
                     let amount_out = amounts_out[i];
 
                     self.add_uniswap_v2_swap_to_calls(
@@ -124,7 +124,7 @@ impl SandboxLimitOrderExecutionBundle {
                     self.add_uniswap_v3_swap_to_calls(
                         order.token_in,
                         amount_in,
-                        to,
+                        sandbox_limit_order_router,
                         sandbox_limit_order_router,
                         uniswap_v3_pool,
                     )
