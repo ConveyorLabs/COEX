@@ -90,6 +90,7 @@ impl SandboxLimitOrderExecutionBundle {
     pub fn add_route_to_calls(
         &mut self,
         route: Vec<Pool>,
+        amounts_in: Vec<U256>,
         amounts_out: Vec<U256>,
         order: &SandboxLimitOrder,
         sandbox_limit_order_router: H160,
@@ -106,10 +107,10 @@ impl SandboxLimitOrderExecutionBundle {
                 route[i + 1].address()
             };
 
-            let amount_out = amounts_out[i];
-
             match pool {
                 Pool::UniswapV2(uniswap_v2_pool) => {
+                    let amount_out = amounts_out[i];
+
                     self.add_uniswap_v2_swap_to_calls(
                         order.token_in,
                         amount_out,
@@ -117,7 +118,17 @@ impl SandboxLimitOrderExecutionBundle {
                         uniswap_v2_pool,
                     );
                 }
-                Pool::UniswapV3(uniswap_v3_pool) => {}
+                Pool::UniswapV3(uniswap_v3_pool) => {
+                    let amount_in = amounts_in[i];
+
+                    self.add_uniswap_v3_swap_to_calls(
+                        order.token_in,
+                        amount_in,
+                        to,
+                        sandbox_limit_order_router,
+                        uniswap_v3_pool,
+                    )
+                }
             }
             //Update the token in
             token_in = self.get_next_token_in(token_in, pool);

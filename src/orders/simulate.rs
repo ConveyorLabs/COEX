@@ -50,30 +50,32 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
         //Check if the order can execute within the updated simulated markets
         if order.can_execute(&simulated_markets, weth) {
-            let (a_to_b_amounts_out, a_to_b_route) = routing::find_best_a_to_b_route(
-                order.token_in,
-                order.token_out,
-                U256::from(order.amount_in_remaining),
-                simulated_markets,
-                middleware.clone(),
-            )
-            .await?;
+            let (a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route) =
+                routing::find_best_a_to_b_route(
+                    order.token_in,
+                    order.token_out,
+                    U256::from(order.amount_in_remaining),
+                    simulated_markets,
+                    middleware.clone(),
+                )
+                .await?;
 
-            let (a_weth_b_amount_out, a_weth_b_route) = routing::find_best_a_to_weth_to_b_route(
-                order.token_in,
-                order.token_out,
-                U256::from(order.amount_in_remaining),
-                weth,
-                simulated_markets,
-                middleware.clone(),
-            )
-            .await?;
+            let (a_weth_b_amounts_in, a_weth_b_amounts_out, a_weth_b_route) =
+                routing::find_best_a_to_weth_to_b_route(
+                    order.token_in,
+                    order.token_out,
+                    U256::from(order.amount_in_remaining),
+                    weth,
+                    simulated_markets,
+                    middleware.clone(),
+                )
+                .await?;
 
-            let (amounts_out, route) =
-                if a_to_b_amounts_out.last().unwrap() > a_weth_b_amount_out.last().unwrap() {
-                    (a_to_b_amounts_out, a_to_b_route)
+            let (amounts_in, amounts_out, route) =
+                if a_to_b_amounts_out.last().unwrap() > a_weth_b_amounts_out.last().unwrap() {
+                    (a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route)
                 } else {
-                    (a_weth_b_amount_out, a_weth_b_route)
+                    (a_weth_b_amounts_in, a_weth_b_amounts_out, a_weth_b_route)
                 };
 
             let last_amount_out = amounts_out.last().unwrap();
@@ -109,6 +111,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         //Add the route to the calls
                         execution_bundle.add_route_to_calls(
                             route,
+                            amounts_in,
                             amounts_out,
                             order,
                             sandbox_limit_order_router,
@@ -201,6 +204,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
                         execution_bundle.add_route_to_calls(
                             route,
+                            amounts_in,
                             amounts_out,
                             order,
                             sandbox_limit_order_router,
@@ -235,8 +239,10 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         //swap to weth exit
                         execution_bundle.add_swap_to_calls(
                             order.token_out,
+                            amount_in_to_weth_exit,
                             weth_exit_amount_out,
                             sandbox_limit_order_router,
+                            wallet_address,
                             &weth_exit_pool,
                         );
 
@@ -482,7 +488,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
 
                 //Check if the order can execute within the updated simulated markets
                 if order.can_execute(order.buy, &simulated_markets, weth) {
-                    let (amount_out, route) = routing::find_best_a_to_weth_to_b_route(
+                    let (_, amount_out, route) = routing::find_best_a_to_weth_to_b_route(
                         order.token_in,
                         order.token_out,
                         U256::from(order.quantity),

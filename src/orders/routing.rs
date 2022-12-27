@@ -29,7 +29,7 @@ pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
     weth: H160,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     middleware: Arc<M>,
-) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
+) -> Result<(Vec<U256>, Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     //TODO: check if there is a better way than to unwrap, some markets might not have the pairing
 
@@ -74,7 +74,7 @@ pub async fn find_best_a_to_b_route<M: Middleware>(
     amount_in: U256,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     middleware: Arc<M>,
-) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
+) -> Result<(Vec<U256>, Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     // Simulate order along route for token_a -> weth -> token_b
     if let Some(a_to_b_market) = simulated_markets.get(&markets::get_market_id(token_in, token_out))
@@ -89,19 +89,21 @@ pub async fn find_best_a_to_b_route<M: Middleware>(
     } else {
         Ok((
             vec![U256::zero()],
+            vec![U256::zero()],
             vec![Pool::UniswapV2(UniswapV2Pool::default())],
         ))
     }
 }
 
-//Returns the amount out and a reference to the pools that it took through the route
+//Returns the amounts in, amount out and a reference to the pools that it took through the route
 pub async fn find_best_route_across_markets<M: Middleware>(
     amount_in: U256,
     mut token_in: H160,
     markets: Vec<&Market>,
     middleware: Arc<M>,
-) -> Result<(Vec<U256>, Vec<Pool>), ExecutorError<M>> {
+) -> Result<(Vec<U256>, Vec<U256>, Vec<Pool>), ExecutorError<M>> {
     let mut amount_in = amount_in;
+    let mut amounts_in: Vec<U256> = vec![];
     let mut amounts_out: Vec<U256> = vec![];
     let mut route: Vec<Pool> = vec![];
 
@@ -109,6 +111,8 @@ pub async fn find_best_route_across_markets<M: Middleware>(
         //TODO: apply tax to amount in
         let mut best_amount_out = U256::zero();
         let mut best_pool = Pool::UniswapV2(UniswapV2Pool::default());
+
+        amounts_in.push(amount_in);
 
         for (_, pool) in market {
             let swap_amount_out = pool
@@ -120,7 +124,6 @@ pub async fn find_best_route_across_markets<M: Middleware>(
                 best_pool = pool.clone();
             }
         }
-
         amount_in = best_amount_out;
         amounts_out.push(best_amount_out);
         route.push(best_pool);
@@ -144,7 +147,7 @@ pub async fn find_best_route_across_markets<M: Middleware>(
         };
     }
 
-    Ok((amounts_out, route))
+    Ok((amounts_in, amounts_out, route))
 }
 
 //Returns the weth exit amount in, weth amount out and the weth pool
@@ -196,7 +199,7 @@ pub async fn find_best_weth_exit_from_route<M: Middleware>(
     }
 
     //Find best token out to weth pool
-    let (amounts_out, route) = find_best_a_to_b_route(
+    let (_, amounts_out, route) = find_best_a_to_b_route(
         order.token_out,
         weth,
         swap_amount - amount_due_to_owner,
