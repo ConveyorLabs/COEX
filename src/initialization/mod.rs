@@ -19,8 +19,8 @@ use crate::{
     abi::{self, OrderPlacedFilter},
     config,
     error::ExecutorError,
-    execution,
     markets::{self, Market},
+    order_execution,
     orders::{
         self,
         order::{Order, OrderVariant},
@@ -67,7 +67,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
     );
 
     info!("Checking for orders at execution price...");
-    execution::fill_all_orders_at_execution_price(
+    order_execution::fill_all_orders_at_execution_price(
         state.active_orders.clone(),
         state.markets.clone(),
         &configuration,

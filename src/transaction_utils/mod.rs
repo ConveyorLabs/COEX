@@ -19,7 +19,7 @@ use crate::{
     abi::{self, SandboxMulticall},
     config::{self, Chain},
     error::ExecutorError,
-    execution,
+    order_execution,
     orders::order::OrderVariant,
     traces,
 };
@@ -122,19 +122,7 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
 
         Ok(tx)
     } else {
-        //TODO: legacy transaction
-        let tx = fill_and_simulate_transaction(
-            calldata,
-            configuration.limit_order_book,
-            configuration.wallet_address,
-            configuration.chain.chain_id(),
-            middleware.clone(),
-        )
-        .await?;
-
-        // println!("tx: {:#?}", tx);
-
-        Ok(tx)
+        panic!("need to handle legacy txs");
     }
 }
 
@@ -143,7 +131,7 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
 //Construct a limit order execution transaction
 pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
     configuration: &config::Config,
-    slo_bundle: execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle,
+    slo_bundle: order_execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle,
     middleware: Arc<M>,
 ) -> Result<TypedTransaction, ExecutorError<M>> {
     let sandbox_limit_order_router = abi::ISandboxLimitOrderRouter::new(
@@ -167,17 +155,7 @@ pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
 
         Ok(tx)
     } else {
-        //TODO: legacy transactions
-        let tx = fill_and_simulate_transaction(
-            calldata,
-            configuration.limit_order_book,
-            configuration.wallet_address,
-            configuration.chain.chain_id(),
-            middleware.clone(),
-        )
-        .await?;
-
-        Ok(tx)
+        panic!("need to handle legacy txs");
     }
 }
 
@@ -219,10 +197,40 @@ pub async fn construct_and_simulate_cancel_order_transaction<M: Middleware>(
 
         Ok(tx)
     } else {
-        //TODO: legacy transactions
+        panic!("need to handle legacy txs");
+    }
+}
+
+//TODO: change this to construct execution transaction, pass in calldata and execution address,
+//TODO: this way we can simulate the tx with the same contract instance that made the calldata
+//Construct a limit order execution transaction
+pub async fn construct_and_simulate_refresh_order_transaction<M: Middleware>(
+    configuration: &config::Config,
+    order_ids: &[H256],
+    order_variant: OrderVariant,
+    middleware: Arc<M>,
+) -> Result<TypedTransaction, ExecutorError<M>> {
+    let calldata = match order_variant {
+        OrderVariant::SandboxLimitOrder => abi::ISandboxLimitOrderBook::new(
+            configuration.sandbox_limit_order_book,
+            middleware.clone(),
+        )
+        .refresh_order(order_ids.iter().map(|f| f.0).collect())
+        .calldata()
+        .unwrap(),
+
+        OrderVariant::LimitOrder => {
+            abi::ILimitOrderRouter::new(configuration.limit_order_book, middleware.clone())
+                .refresh_order(order_ids.iter().map(|f| f.0).collect())
+                .calldata()
+                .unwrap()
+        }
+    };
+
+    if configuration.chain.is_eip1559() {
         let tx = fill_and_simulate_transaction(
             calldata,
-            configuration.limit_order_book,
+            configuration.sandbox_limit_order_router,
             configuration.wallet_address,
             configuration.chain.chain_id(),
             middleware.clone(),
@@ -230,6 +238,8 @@ pub async fn construct_and_simulate_cancel_order_transaction<M: Middleware>(
         .await?;
 
         Ok(tx)
+    } else {
+        panic!("need to handle legacy txs");
     }
 }
 

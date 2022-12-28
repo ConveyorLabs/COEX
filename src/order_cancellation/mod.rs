@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use ethers::{providers::Middleware, types::H160};
+use ethers::{
+    providers::Middleware,
+    types::{H160, H256, U256},
+};
 
 use crate::{
     abi::{self, ISandboxLimitOrderBook},
@@ -17,6 +20,8 @@ use crate::{
 pub async fn check_orders_for_cancellation<M: Middleware>(
     configuration: &Config,
     state: &State,
+    block_timestamp: U256,
+    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     let active_orders = state
@@ -31,7 +36,9 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
             .call()
             .await?;
 
-        if order.amount_in() > owner_balance.as_u128() {
+        if order.amount_in() > owner_balance.as_u128()
+            || U256::from(order.expiration_timestamp()) <= block_timestamp
+        {
             let order_variant = match order {
                 Order::LimitOrder(_) => OrderVariant::LimitOrder,
                 Order::SandboxLimitOrder(_) => OrderVariant::SandboxLimitOrder,
@@ -52,6 +59,10 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
                 middleware.clone(),
             )
             .await?;
+
+            pending_transactions_sender
+                .send((pending_tx_hash, vec![*order_id]))
+                .await?;
         }
     }
 

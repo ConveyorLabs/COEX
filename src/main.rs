@@ -9,13 +9,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub mod abi;
-pub mod cancel;
 pub mod config;
 pub mod error;
 pub mod events;
-pub mod execution;
 pub mod initialization;
 pub mod markets;
+pub mod order_cancellation;
+pub mod order_execution;
+pub mod order_refresh;
 pub mod orders;
 pub mod state;
 pub mod traces;
@@ -97,13 +98,31 @@ async fn run_loop<M: 'static + Middleware>(
         //Update markets
         let markets_updated = state.handle_market_updates(&pool_events);
 
-        //TODO: add logic to check order cancellation and refresh orders
-        // execution::cancel_orders()
-        // execution::refresh_orders()
+        //Check orders for cancellation
+        //TODO: make order cancellation and order refresh optional in the config
+        order_cancellation::check_orders_for_cancellation(
+            &configuration,
+            &state,
+            block.timestamp,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await?;
+
+        //Check orders that are ready to be refreshed and send a refresh tx
+        //TODO: make order cancellation and order refresh optional in the config
+        order_refresh::check_orders_for_refresh(
+            &configuration,
+            &state,
+            block.timestamp,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await?;
 
         //Evaluate orders for execution
         if !markets_updated.is_empty() {
-            execution::fill_orders_at_execution_price(
+            order_execution::fill_orders_at_execution_price(
                 &configuration,
                 &state,
                 markets_updated,

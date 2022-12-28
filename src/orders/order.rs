@@ -60,6 +60,24 @@ impl Order {
         }
     }
 
+    pub fn last_refresh_timestamp(&self) -> u32 {
+        match self {
+            Order::SandboxLimitOrder(sandbox_limit_order) => {
+                sandbox_limit_order.last_refresh_timestamp
+            }
+            Order::LimitOrder(limit_order) => limit_order.last_refresh_timestamp,
+        }
+    }
+
+    pub fn expiration_timestamp(&self) -> u32 {
+        match self {
+            Order::SandboxLimitOrder(sandbox_limit_order) => {
+                sandbox_limit_order.expiration_timestamp
+            }
+            Order::LimitOrder(limit_order) => limit_order.expiration_timestamp,
+        }
+    }
+
     pub fn amount_in(&self) -> u128 {
         match self {
             Order::SandboxLimitOrder(sandbox_limit_order) => {
