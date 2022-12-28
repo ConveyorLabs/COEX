@@ -20,7 +20,7 @@ use crate::{
     config,
     error::ExecutorError,
     markets::{self, Market},
-    order_execution,
+    order_cancellation, order_execution, order_refresh,
     orders::{
         self,
         order::{Order, OrderVariant},
@@ -65,6 +65,43 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         )
         .await,
     );
+
+    let block = middleware
+        .get_block(
+            middleware
+                .get_block_number()
+                .await
+                .expect("Could not get most recent block number"),
+        )
+        .await
+        .expect("Could not get most recent block on initialization")
+        .expect("Block fetched on initialization is None");
+
+    //Check orders for cancellation
+    if configuration.order_cancellation {
+        order_cancellation::check_orders_for_cancellation(
+            &configuration,
+            &state,
+            block.timestamp,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await
+        .expect("Could not cancel orders on initialization"); //TODO: bubble up this error, just using expect for fast development
+    }
+
+    //Check orders that are ready to be refreshed and send a refresh tx
+    if configuration.order_refresh {
+        order_refresh::check_orders_for_refresh(
+            &configuration,
+            &state,
+            block.timestamp,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await
+        .expect("Could not refresh orders on initialization"); //TODO: bubble up this error, just using expect for fast development
+    }
 
     info!("Checking for orders at execution price...");
     order_execution::fill_all_orders_at_execution_price(

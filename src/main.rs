@@ -99,26 +99,28 @@ async fn run_loop<M: 'static + Middleware>(
         let markets_updated = state.handle_market_updates(&pool_events);
 
         //Check orders for cancellation
-        //TODO: make order cancellation and order refresh optional in the config
-        order_cancellation::check_orders_for_cancellation(
-            &configuration,
-            &state,
-            block.timestamp,
-            pending_transactions_sender.clone(),
-            middleware.clone(),
-        )
-        .await?;
+        if configuration.order_cancellation {
+            order_cancellation::check_orders_for_cancellation(
+                &configuration,
+                &state,
+                block.timestamp,
+                pending_transactions_sender.clone(),
+                middleware.clone(),
+            )
+            .await?;
+        }
 
         //Check orders that are ready to be refreshed and send a refresh tx
-        //TODO: make order cancellation and order refresh optional in the config
-        order_refresh::check_orders_for_refresh(
-            &configuration,
-            &state,
-            block.timestamp,
-            pending_transactions_sender.clone(),
-            middleware.clone(),
-        )
-        .await?;
+        if configuration.order_refresh {
+            order_refresh::check_orders_for_refresh(
+                &configuration,
+                &state,
+                block.timestamp,
+                pending_transactions_sender.clone(),
+                middleware.clone(),
+            )
+            .await?;
+        }
 
         //Evaluate orders for execution
         if !markets_updated.is_empty() {

@@ -16,7 +16,9 @@ pub struct Toml {
     pub ws_endpoint: String,
     pub wallet_address: String,
     pub private_key: String,
-    pub enable_taxed_tokens: bool,
+    pub taxed_tokens: bool,
+    pub order_cancellation: bool,
+    pub order_refresh: bool,
 }
 
 #[derive(Debug)]
@@ -35,6 +37,9 @@ pub struct Config {
     pub wallet_address: H160,
     pub wallet_key: LocalWallet,
     pub chain: Chain,
+    pub taxed_tokens: bool,
+    pub order_cancellation: bool,
+    pub order_refresh: bool,
 }
 
 impl Default for Config {
@@ -54,6 +59,9 @@ impl Default for Config {
             wallet_address: H160::zero(),
             wallet_key: LocalWallet::new(&mut rand::thread_rng()),
             chain: Chain::Ethereum,
+            taxed_tokens: false,
+            order_cancellation: false,
+            order_refresh: false,
         }
     }
 }
@@ -132,6 +140,10 @@ impl Config {
             .private_key
             .parse()
             .expect("Could not parse private key");
+
+        config.taxed_tokens = belt_toml.taxed_tokens;
+        config.order_refresh = belt_toml.order_refresh;
+        config.order_cancellation = belt_toml.order_cancellation;
 
         let chain = Chain::from_str(&belt_toml.chain_name);
         config.chain = chain;
