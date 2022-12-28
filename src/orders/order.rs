@@ -53,10 +53,24 @@ impl Order {
         }
     }
 
+    pub fn owner(&self) -> H160 {
+        match self {
+            Order::SandboxLimitOrder(sandbox_limit_order) => sandbox_limit_order.owner,
+            Order::LimitOrder(limit_order) => limit_order.owner,
+        }
+    }
+
+    pub fn amount_in(&self) -> u128 {
+        match self {
+            Order::SandboxLimitOrder(sandbox_limit_order) => {
+                sandbox_limit_order.amount_in_remaining
+            }
+            Order::LimitOrder(limit_order) => limit_order.quantity,
+        }
+    }
     pub fn token_in(&self) -> H160 {
         match self {
             Order::SandboxLimitOrder(sandbox_limit_order) => sandbox_limit_order.token_in,
-
             Order::LimitOrder(limit_order) => limit_order.token_in,
         }
     }

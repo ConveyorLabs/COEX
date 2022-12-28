@@ -19,7 +19,9 @@ use crate::{
     abi::{self, SandboxMulticall},
     config::{self, Chain},
     error::ExecutorError,
-    execution, traces,
+    execution,
+    orders::order::OrderVariant,
+    traces,
 };
 
 //TODO: pass in sleep time for checking transactions
@@ -152,6 +154,58 @@ pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
         .execute_sandbox_multicall(slo_bundle.to_sandbox_multicall())
         .calldata()
         .unwrap();
+
+    if configuration.chain.is_eip1559() {
+        let tx = fill_and_simulate_transaction(
+            calldata,
+            configuration.sandbox_limit_order_router,
+            configuration.wallet_address,
+            configuration.chain.chain_id(),
+            middleware.clone(),
+        )
+        .await?;
+
+        Ok(tx)
+    } else {
+        //TODO: legacy transactions
+        let tx = fill_and_simulate_transaction(
+            calldata,
+            configuration.limit_order_book,
+            configuration.wallet_address,
+            configuration.chain.chain_id(),
+            middleware.clone(),
+        )
+        .await?;
+
+        Ok(tx)
+    }
+}
+
+//TODO: change this to construct execution transaction, pass in calldata and execution address,
+//TODO: this way we can simulate the tx with the same contract instance that made the calldata
+//Construct a limit order execution transaction
+pub async fn construct_and_simulate_cancel_order_transaction<M: Middleware>(
+    configuration: &config::Config,
+    order_id: H256,
+    order_variant: OrderVariant,
+    middleware: Arc<M>,
+) -> Result<TypedTransaction, ExecutorError<M>> {
+    let calldata = match order_variant {
+        OrderVariant::SandboxLimitOrder => abi::ISandboxLimitOrderBook::new(
+            configuration.sandbox_limit_order_book,
+            middleware.clone(),
+        )
+        .cancel_order(order_id.into())
+        .calldata()
+        .unwrap(),
+
+        OrderVariant::LimitOrder => {
+            abi::ILimitOrderBook::new(configuration.limit_order_book, middleware.clone())
+                .cancel_order(order_id.into())
+                .calldata()
+                .unwrap()
+        }
+    };
 
     if configuration.chain.is_eip1559() {
         let tx = fill_and_simulate_transaction(

@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub mod abi;
+pub mod cancel;
 pub mod config;
 pub mod error;
 pub mod events;
