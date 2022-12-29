@@ -1,7 +1,9 @@
 use ::tracing::info;
 use error::ExecutorError;
+use ethers::prelude::k256::ecdsa::SigningKey;
 use ethers::prelude::NonceManagerMiddleware;
 use ethers::providers::{Http, Provider, Ws};
+use ethers::signers::{LocalWallet, Wallet};
 use initialization::initialize_coex;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -48,6 +50,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         pending_transactions_sender,
     )
     .await?;
+
+    Wallet::from(SigningKey::from_bytes(&vec![]).unwrap());
 
     Ok(())
 }
@@ -98,29 +102,29 @@ async fn run_loop<M: 'static + Middleware>(
         //Update markets
         let markets_updated = state.handle_market_updates(&pool_events);
 
-        //Check orders for cancellation
-        if configuration.order_cancellation {
-            order_cancellation::check_orders_for_cancellation(
-                &configuration,
-                &state,
-                block.timestamp,
-                pending_transactions_sender.clone(),
-                middleware.clone(),
-            )
-            .await?;
-        }
+        // //Check orders for cancellation
+        // if configuration.order_cancellation {
+        //     order_cancellation::check_orders_for_cancellation(
+        //         &configuration,
+        //         &state,
+        //         block.timestamp,
+        //         pending_transactions_sender.clone(),
+        //         middleware.clone(),
+        //     )
+        //     .await?;
+        // }
 
-        //Check orders that are ready to be refreshed and send a refresh tx
-        if configuration.order_refresh {
-            order_refresh::check_orders_for_refresh(
-                &configuration,
-                &state,
-                block.timestamp,
-                pending_transactions_sender.clone(),
-                middleware.clone(),
-            )
-            .await?;
-        }
+        // //Check orders that are ready to be refreshed and send a refresh tx
+        // if configuration.order_refresh {
+        //     order_refresh::check_orders_for_refresh(
+        //         &configuration,
+        //         &state,
+        //         block.timestamp,
+        //         pending_transactions_sender.clone(),
+        //         middleware.clone(),
+        //     )
+        //     .await?;
+        // }
 
         //Evaluate orders for execution
         if !markets_updated.is_empty() {
