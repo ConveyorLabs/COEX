@@ -355,7 +355,7 @@ pub async fn construct_slo_execution_transaction<M: 'static + Middleware>(
 
             let mut tx: TypedTransaction = tx.into();
             let gas_limit = middleware
-                .estimate_gas(&tx)
+                .estimate_gas(&tx, None)
                 .await
                 .map_err(ExecutorError::MiddlewareError)?;
 
