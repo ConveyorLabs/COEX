@@ -51,8 +51,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )
     .await?;
 
-    Wallet::from(SigningKey::from_bytes(&vec![]).unwrap());
-
     Ok(())
 }
 

@@ -279,10 +279,6 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 
     //Execute orders if there are any order groups
     if !sandbox_execution_bundles.is_empty() {
-        for bundle in sandbox_execution_bundles.iter() {
-            println!("Sloex bundle: {:?}", bundle.order_id_bundles);
-        }
-
         execute_sandbox_limit_order_bundles(
             sandbox_execution_bundles,
             configuration,
@@ -290,6 +286,8 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
             middleware.clone(),
         )
         .await?;
+
+        println!("done");
     }
 
     //TODO: rename the limit order execution bundle order groiups to just be execution bundles and return a vec of bundle

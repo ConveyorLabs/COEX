@@ -8,7 +8,7 @@ use std::{
 use cfmms::{dex::Dex, pool::Pool};
 use ethers::{
     abi::RawLog,
-    prelude::{EthLogDecode, NonceManagerMiddleware},
+    prelude::{gas_escalator::GasEscalatorMiddleware, EthLogDecode, NonceManagerMiddleware},
     providers::{Http, Middleware, Provider, Ws},
     types::{BlockNumber, Filter, ValueOrArray, H160, H256, U256},
 };

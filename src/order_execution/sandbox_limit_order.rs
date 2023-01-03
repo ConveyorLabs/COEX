@@ -90,15 +90,12 @@ impl SandboxLimitOrderExecutionBundle {
     pub fn add_route_to_calls(
         &mut self,
         route: Vec<Pool>,
-        amounts_in: Vec<U256>,
-        amounts_out: Vec<U256>,
+        amounts_in: &[U256],
+        amounts_out: &[U256],
         order: &SandboxLimitOrder,
         sandbox_limit_order_router: H160,
     ) {
         //Add calls for each swap throughout the route
-
-        //TODO: FIXME: implement checks for v3 and make sure it checks out
-
         let mut token_in = order.token_in;
         for (i, pool) in route.iter().enumerate() {
             match pool {
@@ -109,26 +106,21 @@ impl SandboxLimitOrderExecutionBundle {
                         route[i + 1].address()
                     };
 
-                    let amount_out = amounts_out[i];
-
                     self.add_uniswap_v2_swap_to_calls(
-                        order.token_in,
-                        amount_out,
+                        token_in,
+                        amounts_out[i],
                         to,
                         uniswap_v2_pool,
                     );
                 }
-                Pool::UniswapV3(uniswap_v3_pool) => {
-                    let amount_in = amounts_in[i];
 
-                    self.add_uniswap_v3_swap_to_calls(
-                        order.token_in,
-                        amount_in,
-                        sandbox_limit_order_router,
-                        sandbox_limit_order_router,
-                        uniswap_v3_pool,
-                    )
-                }
+                Pool::UniswapV3(uniswap_v3_pool) => self.add_uniswap_v3_swap_to_calls(
+                    token_in,
+                    amounts_in[i],
+                    sandbox_limit_order_router,
+                    sandbox_limit_order_router,
+                    uniswap_v3_pool,
+                ),
             }
             //Update the token in
             token_in = self.get_next_token_in(token_in, pool);
@@ -247,7 +239,6 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
 ) -> Result<(), ExecutorError<M>> {
     for bundle in slo_bundles {
         let order_id_bundles = bundle.order_id_bundles.clone();
-
         // if let Ok(tx) = transaction_utils::construct_and_simulate_slo_execution_transaction(
         //     configuration,
         //     bundle,

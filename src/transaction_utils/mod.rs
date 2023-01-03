@@ -138,6 +138,7 @@ pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
         configuration.sandbox_limit_order_router,
         middleware.clone(),
     );
+
     let calldata = sandbox_limit_order_router
         .execute_sandbox_multicall(slo_bundle.to_sandbox_multicall())
         .calldata()
@@ -266,6 +267,11 @@ pub async fn sign_and_send_transaction<M: Middleware>(
                             Some(eip1559_tx.max_priority_fee_per_gas.unwrap() * 150 / 100);
                         eip1559_tx.max_fee_per_gas =
                             Some(eip1559_tx.max_fee_per_gas.unwrap() * 150 / 100);
+
+                        println!(
+                            "bumped: mpfpg: {:?}, mfpg: {:?}",
+                            eip1559_tx.max_priority_fee_per_gas, eip1559_tx.max_fee_per_gas
+                        );
 
                         //TODO: remove this, just for throttling
                         sleep(Duration::new(1, 0)).await;
