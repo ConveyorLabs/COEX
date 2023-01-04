@@ -10,7 +10,7 @@ use std::{
 use ethers::{
     abi::ethabi::Bytes,
     providers::Middleware,
-    types::{H256, U256},
+    types::{H160, H256, U256},
 };
 
 use crate::{
@@ -149,58 +149,40 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
     Ok(())
 }
 
-pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
-    configuration: &config::Config,
+pub fn group_orders_at_execution_price(
     state: &state::State,
     affected_markets: HashSet<U256>,
-    middleware: Arc<M>,
-    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-) -> Result<(), ExecutorError<M>> {
+    weth_address: H160,
+) -> (
+    HashMap<U256, markets::Market>,
+    HashMap<H256, &SandboxLimitOrder>,
+    HashMap<H256, &LimitOrder>,
+) {
     let pending_order_ids = state
         .pending_order_ids
         .lock()
         .expect("Could not acquire lock on pending_order_ids");
 
-    //:: Initialize a new structure to hold a clone of the current state of the markets.
-    //:: This will allow you to simulate order execution and mutate the simluated markets without having to change/unwind the market state.
     let mut simulated_markets: HashMap<U256, markets::Market> = HashMap::new();
-
-    //:: group all of the orders that are ready to execute and separate them by sandbox limit orders and limit orders
-    //Accumulate sandbox limit orders at execution price
     let mut slo_at_execution_price: HashMap<H256, &SandboxLimitOrder> = HashMap::new();
-    //Accumulate limit orders at execution price
     let mut lo_at_execution_price: HashMap<H256, &LimitOrder> = HashMap::new();
 
-    //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
     for market_id in affected_markets {
-        //TODO: FIXME: sanity check that the a -> b and a -> weth and weth -> markets are all covered when they need to be.
-
-        //TODO: FIXME: For the love of god, do this ^^^^^^^^^^
-
         if let Some(affected_orders) = state.market_to_affected_orders.get(&market_id) {
-            //TODO: this can be more efficient and handle sandbox/limit order separately, then check if the order has already been added to the group
             for order_id in affected_orders {
                 if pending_order_ids.get(order_id).is_none() {
                     if let Some(order) = state.active_orders.get(order_id) {
-                        if order.can_execute(&state.markets, configuration.weth_address) {
-                            //TODO: make sure that we are checking if the order owner has the balance somewhere
-
-                            let a_to_weth_market_id = markets::get_market_id(
-                                order.token_in(),
-                                configuration.weth_address,
-                            );
+                        if order.can_execute(&state.markets, weth_address) {
+                            let a_to_weth_market_id =
+                                markets::get_market_id(order.token_in(), weth_address);
 
                             if let Some(market) = state.markets.get(&a_to_weth_market_id) {
-                                //Add the market to the simulation markets structure
                                 simulated_markets.insert(a_to_weth_market_id, market.clone());
                             }
 
-                            let weth_to_b_market_id = markets::get_market_id(
-                                configuration.weth_address,
-                                order.token_out(),
-                            );
+                            let weth_to_b_market_id =
+                                markets::get_market_id(weth_address, order.token_out());
                             if let Some(market) = state.markets.get(&weth_to_b_market_id) {
-                                //Add the market to the simulation markets structure
                                 simulated_markets.insert(weth_to_b_market_id, market.clone());
                             }
 
@@ -209,7 +191,6 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
                                     let a_to_b_market_id =
                                         markets::get_market_id(order.token_in(), order.token_out());
                                     if let Some(market) = state.markets.get(&a_to_b_market_id) {
-                                        //Add the market to the simulation markets structure
                                         simulated_markets.insert(a_to_b_market_id, market.clone());
                                     }
 
@@ -236,9 +217,22 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
             }
         }
     }
+    (
+        simulated_markets,
+        slo_at_execution_price,
+        lo_at_execution_price,
+    )
+}
 
-    //::Now we have all of the orders that are at execution price, and the markets that are affected
-    //:: Next we will simulate and batch sandbox limit orders and then sim and batch limit orders, then execute slo, afterwards executing lo
+pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
+    configuration: &config::Config,
+    state: &state::State,
+    affected_markets: HashSet<U256>,
+    pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
+    let (mut simulated_markets, slo_at_execution_price, lo_at_execution_price) =
+        group_orders_at_execution_price(state, affected_markets, configuration.weth_address);
 
     //Simulate sandbox limit orders and generate execution transaction calldata
     let sandbox_execution_bundles = simulate::simulate_and_batch_sandbox_limit_orders(
@@ -253,7 +247,6 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
     .await?;
 
     //simulate and batch limit orders
-    //:: Simulate sandbox limit orders and generate execution transaction calldata
     let limit_order_execution_bundle: LimitOrderExecutionBundle =
         simulate::simulate_and_batch_limit_orders(
             lo_at_execution_price,

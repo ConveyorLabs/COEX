@@ -83,29 +83,29 @@ async fn run_loop<M: 'static + Middleware>(
         //Update markets
         let markets_updated = state.handle_market_updates(&pool_events);
 
-        //Check orders for cancellation
-        if configuration.order_cancellation {
-            order_cancellation::check_orders_for_cancellation(
-                &configuration,
-                &state,
-                block.timestamp,
-                pending_transactions_sender.clone(),
-                middleware.clone(),
-            )
-            .await?;
-        }
+        // //Check orders for cancellation
+        // if configuration.order_cancellation {
+        //     order_cancellation::check_orders_for_cancellation(
+        //         &configuration,
+        //         &state,
+        //         block.timestamp,
+        //         pending_transactions_sender.clone(),
+        //         middleware.clone(),
+        //     )
+        //     .await?;
+        // }
 
-        //Check orders that are ready to be refreshed and send a refresh tx
-        if configuration.order_refresh {
-            order_refresh::check_orders_for_refresh(
-                &configuration,
-                &state,
-                block.timestamp,
-                pending_transactions_sender.clone(),
-                middleware.clone(),
-            )
-            .await?;
-        }
+        // //Check orders that are ready to be refreshed and send a refresh tx
+        // if configuration.order_refresh {
+        //     order_refresh::check_orders_for_refresh(
+        //         &configuration,
+        //         &state,
+        //         block.timestamp,
+        //         pending_transactions_sender.clone(),
+        //         middleware.clone(),
+        //     )
+        //     .await?;
+        // }
 
         //Evaluate orders for execution
         if !markets_updated.is_empty() {
@@ -113,8 +113,8 @@ async fn run_loop<M: 'static + Middleware>(
                 &configuration,
                 &state,
                 markets_updated,
-                middleware.clone(),
                 pending_transactions_sender.clone(),
+                middleware.clone(),
             )
             .await?;
         }

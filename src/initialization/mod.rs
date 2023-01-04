@@ -19,7 +19,7 @@ use crate::{
     abi::{self, OrderPlacedFilter},
     config,
     error::ExecutorError,
-    markets::{self, Market},
+    markets::{self, get_market_id, Market},
     order_cancellation, order_execution, order_refresh,
     orders::{
         self,
@@ -67,9 +67,14 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
     );
 
     info!("Checking for orders at execution price...");
-    order_execution::fill_all_orders_at_execution_price(
-        &state,
+    order_execution::fill_orders_at_execution_price(
         &configuration,
+        &state,
+        state
+            .markets
+            .keys()
+            .map(|f| f.to_owned())
+            .collect::<HashSet<U256>>(),
         pending_transactions_sender.clone(),
         middleware.clone(),
     )
