@@ -29,31 +29,19 @@ use super::State;
 
 impl State {
     pub fn place_order(&self, order: orders::order::Order) {
-        self.active_orders
-            .lock()
-            .expect("Could not acquire mutex lock.")
-            .insert(order.order_id(), order);
+        self.active_orders.insert(order.order_id(), order);
     }
 
     pub fn update_order(&self, order: orders::order::Order) {
-        self.active_orders
-            .lock()
-            .expect("Could not acquire mutex lock.")
-            .insert(order.order_id(), order);
+        self.active_orders.insert(order.order_id(), order);
     }
 
     pub fn remove_order(&self, order_id: H256) {
-        self.active_orders
-            .lock()
-            .expect("Error when unlocking active orders mutex")
-            .remove(&order_id);
+        self.active_orders.remove(&order_id);
     }
 
     pub fn fill_order(&self, order_id: H256) {
-        self.active_orders
-            .lock()
-            .expect("Error when unlocking active orders mutex")
-            .remove(&order_id);
+        self.active_orders.remove(&order_id);
     }
 
     //TODO:
@@ -65,12 +53,7 @@ impl State {
         _execution_credit_remaining: u128,
         _fee_remaining: u128,
     ) {
-        let mut active_orders = self
-            .active_orders
-            .lock()
-            .expect("Error when unlocking active orders mutex");
-
-        if let Some(order) = active_orders.get_mut(&order_id) {
+        if let Some(order) = self.active_orders.get_mut(&order_id) {
             match order {
                 orders::order::Order::SandboxLimitOrder(_sandbox_limit_order) => {}
 
@@ -85,12 +68,7 @@ impl State {
         last_refresh_timestamp: u32,
         updated_expiration_timestamp: u32,
     ) {
-        let mut active_orders = self
-            .active_orders
-            .lock()
-            .expect("Error when unlocking active orders mutex");
-
-        if let Some(order) = active_orders.get_mut(&order_id) {
+        if let Some(order) = self.active_orders.get_mut(&order_id) {
             match order {
                 orders::order::Order::SandboxLimitOrder(sandbox_limit_order) => {
                     sandbox_limit_order.last_refresh_timestamp = last_refresh_timestamp;
@@ -106,12 +84,7 @@ impl State {
     }
 
     pub fn update_execution_credit(&self, order_id: H256, updated_execution_credit: u128) {
-        let mut active_orders = self
-            .active_orders
-            .lock()
-            .expect("Error when unlocking active orders mutex");
-
-        if let Some(order) = active_orders.get_mut(&order_id) {
+        if let Some(order) = self.active_orders.get_mut(&order_id) {
             match order {
                 orders::order::Order::SandboxLimitOrder(sandbox_limit_order) => {
                     sandbox_limit_order.execution_credit_remaining = updated_execution_credit;

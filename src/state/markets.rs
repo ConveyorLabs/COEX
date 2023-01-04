@@ -67,12 +67,7 @@ impl State {
     }
 
     fn market_id_exists_in_markets(&self, market_id: U256) -> bool {
-        match self
-            .markets
-            .lock()
-            .expect("Could not acquire lock on markets")
-            .get(&market_id)
-        {
+        match self.markets.get(&market_id) {
             Some(_) => true,
             _ => false,
         }
@@ -80,11 +75,7 @@ impl State {
 
     fn add_market_to_state(&mut self, market_id: U256, market: markets::Market) {
         tracing::debug!("Adding market for {:?}", market_id);
-        self.markets
-            .lock()
-            .expect("Could not acquire lock for markets")
-            .entry(market_id)
-            .or_insert(market.clone());
+        self.markets.entry(market_id).or_insert(market.clone());
 
         for (pool_address, _) in market {
             self.pool_address_to_market_id
@@ -93,30 +84,20 @@ impl State {
     }
 
     pub fn add_order_to_market_to_affected_orders(&mut self, order: &Order, weth: H160) {
-        let mut market_to_affected_orders = self
-            .market_to_affected_orders
-            .lock()
-            .expect("Could not acquire lock on market_to_affected_orders");
-
-        let markets = self
-            .markets
-            .lock()
-            .expect("Could not acquire lock on markets");
-
         let token_in = order.token_in();
         let token_out = order.token_out();
 
         let a_to_weth_market_id = markets::get_market_id(token_in, weth);
-        if markets.get(&a_to_weth_market_id).is_some() {
-            market_to_affected_orders
+        if self.markets.get(&a_to_weth_market_id).is_some() {
+            self.market_to_affected_orders
                 .entry(a_to_weth_market_id)
                 .or_insert(HashSet::new())
                 .insert(order.order_id());
         }
 
         let weth_to_b_market_id = markets::get_market_id(weth, token_out);
-        if markets.get(&weth_to_b_market_id).is_some() {
-            market_to_affected_orders
+        if self.markets.get(&weth_to_b_market_id).is_some() {
+            self.market_to_affected_orders
                 .entry(weth_to_b_market_id)
                 .or_insert(HashSet::new())
                 .insert(order.order_id());
@@ -125,8 +106,8 @@ impl State {
         match order {
             Order::SandboxLimitOrder(sandbox_limit_order) => {
                 let a_to_b_market_id = markets::get_market_id(token_in, token_out);
-                if markets.get(&weth_to_b_market_id).is_some() {
-                    market_to_affected_orders
+                if self.markets.get(&weth_to_b_market_id).is_some() {
+                    self.market_to_affected_orders
                         .entry(a_to_b_market_id)
                         .or_insert(HashSet::new())
                         .insert(order.order_id());
@@ -137,27 +118,21 @@ impl State {
     }
 
     pub fn remove_order_from_market_to_affected_orders(&mut self, order_id: &H256, weth: H160) {
-        if let Some(order) = self
-            .active_orders
-            .lock()
-            .expect("Could not acquire lock on active_orders")
-            .get(order_id)
-        {
-            let mut market_to_affected_orders = self
-                .market_to_affected_orders
-                .lock()
-                .expect("Could not acquire lock on market_to_affected_orders");
-
+        if let Some(order) = self.active_orders.get(order_id) {
             let token_in = order.token_in();
             let token_out = order.token_out();
 
             let a_to_weth_market_id = markets::get_market_id(token_in, weth);
-            if let Some(affected_orders) = market_to_affected_orders.get_mut(&a_to_weth_market_id) {
+            if let Some(affected_orders) =
+                self.market_to_affected_orders.get_mut(&a_to_weth_market_id)
+            {
                 affected_orders.remove(&order.order_id());
             }
 
             let weth_to_b_market_id = markets::get_market_id(weth, token_out);
-            if let Some(affected_orders) = market_to_affected_orders.get_mut(&weth_to_b_market_id) {
+            if let Some(affected_orders) =
+                self.market_to_affected_orders.get_mut(&weth_to_b_market_id)
+            {
                 affected_orders.remove(&order.order_id());
             }
 
@@ -166,7 +141,7 @@ impl State {
                 Order::SandboxLimitOrder(sandbox_limit_order) => {
                     let a_to_b_market_id = markets::get_market_id(token_in, token_out);
                     if let Some(affected_orders) =
-                        market_to_affected_orders.get_mut(&a_to_b_market_id)
+                        self.market_to_affected_orders.get_mut(&a_to_b_market_id)
                     {
                         affected_orders.remove(&order.order_id());
                     }

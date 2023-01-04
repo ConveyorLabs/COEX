@@ -35,7 +35,7 @@ pub struct State {
     pub pending_order_ids: Arc<Mutex<HashSet<H256>>>,              //pending_order_ids
     pub pool_address_to_market_id: HashMap<H160, U256>,            //pool_address_to_market_id
     pub markets: HashMap<U256, Market>,                            //markets
-    pub market_to_affected_orders: Arc<Mutex<HashMap<U256, HashSet<H256>>>>, //market to affected orders
+    pub market_to_affected_orders: HashMap<U256, HashSet<H256>>,   //market to affected orders
 }
 
 impl State {
@@ -46,11 +46,11 @@ impl State {
         let market_to_affected_orders: HashMap<U256, HashSet<H256>> = HashMap::new();
 
         State {
-            active_orders: Arc::new(Mutex::new(HashMap::new())),
+            active_orders: HashMap::new(),
             pending_order_ids: Arc::new(Mutex::new(HashSet::new())),
             pool_address_to_market_id: HashMap::new(),
-            markets: Arc::new(Mutex::new(HashMap::new())),
-            market_to_affected_orders: Arc::new(Mutex::new(HashMap::new())),
+            markets: HashMap::new(),
+            market_to_affected_orders: HashMap::new(),
         }
     }
 
@@ -253,12 +253,7 @@ impl State {
 
         for event_log in pool_events {
             if let Some(market_id) = self.pool_address_to_market_id.get(&event_log.address) {
-                if let Some(market) = self
-                    .markets
-                    .lock()
-                    .expect("Could not acquire mutex lock")
-                    .get(market_id)
-                {
+                if let Some(market) = self.markets.get(market_id) {
                     markets_updated.insert(*market_id);
 
                     if let Some(pool) = market.get(&event_log.address) {
