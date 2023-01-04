@@ -26,13 +26,8 @@ pub async fn check_orders_for_refresh<M: Middleware>(
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
-    let active_orders = state
-        .active_orders
-        .lock()
-        .expect("Could not acquire lock on active orders");
-
     //TODO: make this async
-    for (order_id, order) in active_orders.iter() {
+    for (order_id, order) in state.active_orders.iter() {
         if block_timestamp - U256::from(order.last_refresh_timestamp()) >= THIRTY_DAYS_IN_SECONDS {
             let order_variant = match order {
                 Order::LimitOrder(_) => OrderVariant::LimitOrder,

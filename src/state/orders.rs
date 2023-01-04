@@ -28,25 +28,25 @@ use crate::{
 use super::State;
 
 impl State {
-    pub fn place_order(&self, order: orders::order::Order) {
+    pub fn place_order(&mut self, order: orders::order::Order) {
         self.active_orders.insert(order.order_id(), order);
     }
 
-    pub fn update_order(&self, order: orders::order::Order) {
+    pub fn update_order(&mut self, order: orders::order::Order) {
         self.active_orders.insert(order.order_id(), order);
     }
 
-    pub fn remove_order(&self, order_id: H256) {
+    pub fn remove_order(&mut self, order_id: H256) {
         self.active_orders.remove(&order_id);
     }
 
-    pub fn fill_order(&self, order_id: H256) {
+    pub fn fill_order(&mut self, order_id: H256) {
         self.active_orders.remove(&order_id);
     }
 
     //TODO:
     pub fn partial_fill_order(
-        &self,
+        &mut self,
         order_id: H256,
         _amount_in_remaining: u128,
         _amount_out_remaining: u128,
@@ -63,7 +63,7 @@ impl State {
     }
 
     pub fn refresh_order(
-        &self,
+        &mut self,
         order_id: H256,
         last_refresh_timestamp: u32,
         updated_expiration_timestamp: u32,
@@ -83,7 +83,7 @@ impl State {
         }
     }
 
-    pub fn update_execution_credit(&self, order_id: H256, updated_execution_credit: u128) {
+    pub fn update_execution_credit(&mut self, order_id: H256, updated_execution_credit: u128) {
         if let Some(order) = self.active_orders.get_mut(&order_id) {
             match order {
                 orders::order::Order::SandboxLimitOrder(sandbox_limit_order) => {

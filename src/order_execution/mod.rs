@@ -156,11 +156,6 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
     middleware: Arc<M>,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
 ) -> Result<(), ExecutorError<M>> {
-    let market_to_affected_orders = state
-        .market_to_affected_orders
-        .lock()
-        .expect("Could not acquire mutex lock");
-
     let pending_order_ids = state
         .pending_order_ids
         .lock()
@@ -182,12 +177,12 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 
         //TODO: FIXME: For the love of god, do this ^^^^^^^^^^
 
-        if let Some(affected_orders) = market_to_affected_orders.get(&market_id) {
+        if let Some(affected_orders) = state.market_to_affected_orders.get(&market_id) {
             //TODO: this can be more efficient and handle sandbox/limit order separately, then check if the order has already been added to the group
             for order_id in affected_orders {
                 if pending_order_ids.get(order_id).is_none() {
-                    if let Some(order) = active_orders.get(order_id) {
-                        if order.can_execute(&markets, configuration.weth_address) {
+                    if let Some(order) = state.active_orders.get(order_id) {
+                        if order.can_execute(&state.markets, configuration.weth_address) {
                             //TODO: make sure that we are checking if the order owner has the balance somewhere
 
                             let a_to_weth_market_id = markets::get_market_id(
@@ -195,7 +190,7 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
                                 configuration.weth_address,
                             );
 
-                            if let Some(market) = markets.get(&a_to_weth_market_id) {
+                            if let Some(market) = state.markets.get(&a_to_weth_market_id) {
                                 //Add the market to the simulation markets structure
                                 simulated_markets.insert(a_to_weth_market_id, market.clone());
                             }
@@ -204,7 +199,7 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
                                 configuration.weth_address,
                                 order.token_out(),
                             );
-                            if let Some(market) = markets.get(&weth_to_b_market_id) {
+                            if let Some(market) = state.markets.get(&weth_to_b_market_id) {
                                 //Add the market to the simulation markets structure
                                 simulated_markets.insert(weth_to_b_market_id, market.clone());
                             }
@@ -213,7 +208,7 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
                                 Order::SandboxLimitOrder(sandbox_limit_order) => {
                                     let a_to_b_market_id =
                                         markets::get_market_id(order.token_in(), order.token_out());
-                                    if let Some(market) = markets.get(&a_to_b_market_id) {
+                                    if let Some(market) = state.markets.get(&a_to_b_market_id) {
                                         //Add the market to the simulation markets structure
                                         simulated_markets.insert(a_to_b_market_id, market.clone());
                                     }

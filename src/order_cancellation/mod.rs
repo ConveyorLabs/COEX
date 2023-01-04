@@ -24,13 +24,8 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
-    let active_orders = state
-        .active_orders
-        .lock()
-        .expect("Could not acquire lock on active orders");
-
     //TODO: make this async
-    for (order_id, order) in active_orders.iter() {
+    for (order_id, order) in state.active_orders.iter() {
         let owner_balance = abi::IErc20::new(order.token_in(), middleware.clone())
             .balance_of(order.owner())
             .call()
