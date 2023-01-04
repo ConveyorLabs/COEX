@@ -33,18 +33,15 @@ pub trait ExecutionCalldata {
 }
 
 pub async fn fill_all_orders_at_execution_price<M: Middleware>(
-    active_orders: Arc<Mutex<HashMap<H256, Order>>>,
-    markets: Arc<Mutex<HashMap<U256, markets::Market>>>,
+    state: &state::State,
     configuration: &config::Config,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     //:: Get to each order in the affected orders, check if they are ready for execution and then add them to the data structures mentioned above, which will then be used to simulate orders and generate execution calldata.
-    let markets = markets.lock().expect("Could not acquire mutex lock");
-    let active_orders = active_orders.lock().expect("Could not acquire mutex lock");
     //NOTE: remove this note with a better comment
     //Clone the markets to simulate all active orders, only do this on initialization, this would be heavy on every time checking order execution, select simulated markets instead
-    let mut simulated_markets = markets.clone();
+    let mut simulated_markets = state.markets.clone();
 
     //TODO: package this in a function
 
@@ -54,20 +51,20 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
     //Accumulate limit orders at execution price
     let mut lo_at_execution_price: HashMap<H256, &LimitOrder> = HashMap::new();
 
-    for order in active_orders.values() {
-        if order.can_execute(&markets, configuration.weth_address) {
+    for order in state.active_orders.values() {
+        if order.can_execute(&state.markets, configuration.weth_address) {
             if order.has_sufficient_balance(middleware.clone()).await? {
                 let a_to_weth_market_id =
                     markets::get_market_id(order.token_in(), configuration.weth_address);
 
-                if let Some(market) = markets.get(&a_to_weth_market_id) {
+                if let Some(market) = state.markets.get(&a_to_weth_market_id) {
                     //Add the market to the simulation markets structure
                     simulated_markets.insert(a_to_weth_market_id, market.clone());
                 }
 
                 let weth_to_b_market_id =
                     markets::get_market_id(configuration.weth_address, order.token_out());
-                if let Some(market) = markets.get(&weth_to_b_market_id) {
+                if let Some(market) = state.markets.get(&weth_to_b_market_id) {
                     //Add the market to the simulation markets structure
                     simulated_markets.insert(weth_to_b_market_id, market.clone());
                 }
@@ -76,7 +73,7 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
                     Order::SandboxLimitOrder(sandbox_limit_order) => {
                         let a_to_b_market_id =
                             markets::get_market_id(order.token_in(), order.token_out());
-                        if let Some(market) = markets.get(&a_to_b_market_id) {
+                        if let Some(market) = state.markets.get(&a_to_b_market_id) {
                             //Add the market to the simulation markets structure
                             simulated_markets.insert(a_to_b_market_id, market.clone());
                         }
@@ -159,14 +156,8 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
     middleware: Arc<M>,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
 ) -> Result<(), ExecutorError<M>> {
-    //:: Acquire the lock on all of the data structures that have a mutex
     let market_to_affected_orders = state
         .market_to_affected_orders
-        .lock()
-        .expect("Could not acquire mutex lock");
-    let markets = state.markets.lock().expect("Could not acquire mutex lock");
-    let active_orders = state
-        .active_orders
         .lock()
         .expect("Could not acquire mutex lock");
 

@@ -68,8 +68,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
 
     info!("Checking for orders at execution price...");
     order_execution::fill_all_orders_at_execution_price(
-        state.active_orders.clone(),
-        state.markets.clone(),
+        &state,
         &configuration,
         pending_transactions_sender.clone(),
         middleware.clone(),
@@ -104,15 +103,11 @@ async fn initialize_state<M: 'static + Middleware>(
     tracing::info!("Active orders initialized ({:?} orders)", number_of_orders);
 
     tracing::info!("Initializing markets...");
-    for (_, order) in active_orders
-        .lock()
-        .expect("Could not acquire lock on active_orders")
-        .iter()
-    {
+    for (_, order) in active_orders.iter() {
         //Add markets for order
         state
             .add_markets_for_order(
-                &order,
+                order,
                 configuration.weth_address,
                 &configuration.dexes,
                 middleware.clone(),
@@ -135,7 +130,7 @@ pub async fn initialize_active_orders<M: Middleware>(
     limit_order_book_address: H160,
     protocol_creation_block: BlockNumber,
     middleware: Arc<M>,
-) -> Result<(Arc<Mutex<HashMap<H256, Order>>>, usize), ExecutorError<M>> {
+) -> Result<(HashMap<H256, Order>, usize), ExecutorError<M>> {
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
@@ -229,5 +224,5 @@ pub async fn initialize_active_orders<M: Middleware>(
     }
 
     let number_of_orders = active_orders.len();
-    Ok((Arc::new(Mutex::new(active_orders)), number_of_orders))
+    Ok((active_orders, number_of_orders))
 }
