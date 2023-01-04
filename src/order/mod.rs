@@ -1,3 +1,6 @@
+pub mod limit_order;
+pub mod sandbox_limit_order;
+
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -20,11 +23,8 @@ use crate::{
         OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
     },
     error::ExecutorError,
-    events::BeltEvent,
-    markets,
+    order::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder},
 };
-
-use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
 
 #[derive(Debug)]
 pub enum Order {

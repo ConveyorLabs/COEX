@@ -7,7 +7,7 @@ use ethers::providers::Middleware;
 use ethers::types::{H160, H256, I256, U256};
 
 use crate::error::ExecutorError;
-use crate::orders::sandbox_limit_order::SandboxLimitOrder;
+use crate::order::sandbox_limit_order::SandboxLimitOrder;
 use crate::{abi, config, transaction_utils};
 
 #[derive(Debug, Default)]

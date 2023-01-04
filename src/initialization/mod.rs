@@ -17,15 +17,12 @@ use tracing::info;
 
 use crate::{
     abi::{self, OrderPlacedFilter},
-    config,
+    cancellation, config,
     error::ExecutorError,
+    execution,
     markets::{self, get_market_id, Market},
-    order_cancellation, order_execution, order_refresh,
-    orders::{
-        self,
-        order::{Order, OrderVariant},
-    },
-    state, transaction_utils,
+    order::{self},
+    refresh, state, transaction_utils,
 };
 
 pub async fn initialize_coex<M: Middleware>() -> Result<
@@ -67,7 +64,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
     );
 
     info!("Checking for orders at execution price...");
-    order_execution::fill_orders_at_execution_price(
+    execution::fill_orders_at_execution_price(
         &configuration,
         &state,
         state
@@ -135,7 +132,7 @@ pub async fn initialize_active_orders<M: Middleware>(
     limit_order_book_address: H160,
     protocol_creation_block: BlockNumber,
     middleware: Arc<M>,
-) -> Result<(HashMap<H256, Order>, usize), ExecutorError<M>> {
+) -> Result<(HashMap<H256, order::Order>, usize), ExecutorError<M>> {
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
@@ -186,10 +183,10 @@ pub async fn initialize_active_orders<M: Middleware>(
                 for order_id in order_placed_log.order_ids {
                     let order_id = H256::from(order_id);
 
-                    let order = match orders::order::get_remote_order(
+                    let order = match order::get_remote_order(
                         order_id,
                         sandbox_limit_order_book_address,
-                        OrderVariant::SandboxLimitOrder,
+                        order::OrderVariant::SandboxLimitOrder,
                         middleware.clone(),
                     )
                     .await
@@ -207,10 +204,10 @@ pub async fn initialize_active_orders<M: Middleware>(
                 for order_id in order_placed_log.order_ids {
                     let order_id = H256::from(order_id);
 
-                    let order = match orders::order::get_remote_order(
+                    let order = match order::get_remote_order(
                         order_id,
                         limit_order_book_address,
-                        OrderVariant::LimitOrder,
+                        order::OrderVariant::LimitOrder,
                         middleware.clone(),
                     )
                     .await

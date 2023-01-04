@@ -9,10 +9,7 @@ use crate::{
     abi::{self, ISandboxLimitOrderBook},
     config::Config,
     error::ExecutorError,
-    orders::{
-        self,
-        order::{Order, OrderVariant},
-    },
+    order::{Order, OrderVariant},
     state::State,
     transaction_utils,
 };

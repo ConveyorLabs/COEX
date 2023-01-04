@@ -23,19 +23,19 @@ use crate::{
     },
     error::ExecutorError,
     events::BeltEvent,
+    execution,
     markets::Market,
-    order_execution,
-    orders::order::OrderVariant,
+    order::OrderVariant,
     transaction_utils,
 };
 
 #[derive(Debug)]
 pub struct State {
-    pub active_orders: HashMap<H256, crate::orders::order::Order>, //active orders
-    pub pending_order_ids: Arc<Mutex<HashSet<H256>>>,              //pending_order_ids
-    pub pool_address_to_market_id: HashMap<H160, U256>,            //pool_address_to_market_id
-    pub markets: HashMap<U256, Market>,                            //markets
-    pub market_to_affected_orders: HashMap<U256, HashSet<H256>>,   //market to affected orders
+    pub active_orders: HashMap<H256, crate::order::Order>, //active orders
+    pub pending_order_ids: Arc<Mutex<HashSet<H256>>>,      //pending_order_ids
+    pub pool_address_to_market_id: HashMap<H160, U256>,    //pool_address_to_market_id
+    pub markets: HashMap<U256, Market>,                    //markets
+    pub market_to_affected_orders: HashMap<U256, HashSet<H256>>, //market to affected orders
 }
 
 impl State {
@@ -92,7 +92,7 @@ impl State {
                         );
 
                         //Get order from remote
-                        let order = crate::orders::order::get_remote_order(
+                        let order = crate::order::get_remote_order(
                             order_id.into(),
                             event_log.address,
                             order_variant,
@@ -144,7 +144,7 @@ impl State {
                         );
 
                         //Get order from remote
-                        let order = crate::orders::order::get_remote_order(
+                        let order = crate::order::get_remote_order(
                             order_id.into(),
                             event_log.address,
                             order_variant,

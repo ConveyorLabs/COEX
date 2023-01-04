@@ -1,8 +1,8 @@
 use ::tracing::info;
 use coex::error::ExecutorError;
 use coex::initialization::initialize_coex;
-use coex::{config, events, order_execution, order_refresh, traces};
-use coex::{order_cancellation, state};
+use coex::{cancellation, state};
+use coex::{config, events, execution, refresh, traces};
 use ethers::prelude::k256::ecdsa::SigningKey;
 use ethers::prelude::NonceManagerMiddleware;
 use ethers::providers::{Http, Provider, Ws};
@@ -109,7 +109,7 @@ async fn run_loop<M: 'static + Middleware>(
 
         //Evaluate orders for execution
         if !markets_updated.is_empty() {
-            order_execution::fill_orders_at_execution_price(
+            execution::fill_orders_at_execution_price(
                 &configuration,
                 &state,
                 markets_updated,

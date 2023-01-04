@@ -17,12 +17,10 @@ use ethers::{
 use crate::{
     abi,
     error::ExecutorError,
-    markets::{get_market_id, Market},
-    order_execution::{self},
-    orders::{order::Order, routing},
+    execution::{self},
+    order::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, Order},
+    routing,
 };
-
-use super::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder};
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
 pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
@@ -33,10 +31,8 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     sandbox_limit_order_router: H160,
     wallet_address: H160,
     middleware: Arc<M>,
-) -> Result<
-    Vec<order_execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle>,
-    ExecutorError<M>,
-> {
+) -> Result<Vec<execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle>, ExecutorError<M>>
+{
     //TODO: sort these by usd value in the future
 
     //TODO: update this comment later, but we add order ids to this hashset so that we dont recalc orders for execution viability if they are already in an order group
@@ -101,7 +97,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
                         //Construct call for execution
                         let mut execution_bundle =
-                            order_execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle::new();
+                            execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle::new();
                         execution_bundle.add_order_id_to_current_bundle(order.order_id);
                         execution_bundle.add_fill_amount(order.amount_in_remaining);
 
@@ -132,7 +128,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         );
 
                         //FIXME: corresponds with order above
-                        execution_bundle.add_call(order_execution::sandbox_limit_order::Call::new(
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
                             order.token_out,
                             abi::IERC20_ABI
                                 .function("transfer")
@@ -145,7 +141,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         ));
 
                         //pay protocol fee
-                        execution_bundle.add_call(order_execution::sandbox_limit_order::Call::new(
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
                             weth,
                             abi::IERC20_ABI
                                 .function("transfer")
@@ -160,23 +156,21 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         if *last_amount_out > U256::from(order.fee_remaining) + amount_due_to_owner
                         {
                             //pay coex the remainder
-                            execution_bundle.add_call(
-                                order_execution::sandbox_limit_order::Call::new(
-                                    weth,
-                                    abi::IERC20_ABI
-                                        .function("transfer")
-                                        .unwrap()
-                                        .encode_input(&vec![
-                                            Token::Address(wallet_address),
-                                            Token::Uint(U256::from(
-                                                last_amount_out
-                                                    - (U256::from(order.fee_remaining)
-                                                        + amount_due_to_owner),
-                                            )),
-                                        ])
-                                        .expect("Could not encode Weth transfer inputs"),
-                                ),
-                            );
+                            execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
+                                weth,
+                                abi::IERC20_ABI
+                                    .function("transfer")
+                                    .unwrap()
+                                    .encode_input(&vec![
+                                        Token::Address(wallet_address),
+                                        Token::Uint(U256::from(
+                                            last_amount_out
+                                                - (U256::from(order.fee_remaining)
+                                                    + amount_due_to_owner),
+                                        )),
+                                    ])
+                                    .expect("Could not encode Weth transfer inputs"),
+                            ));
 
                             sandbox_execution_bundles.push(execution_bundle);
                         }
@@ -215,7 +209,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
                         //Construct call for execution
                         let mut execution_bundle =
-                            order_execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle::new();
+                            execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle::new();
                         execution_bundle.add_order_id_to_current_bundle(order.order_id);
                         execution_bundle.add_fill_amount(order.amount_in_remaining);
 
@@ -236,7 +230,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         );
 
                         //FIXME: corresponds with order above
-                        execution_bundle.add_call(order_execution::sandbox_limit_order::Call::new(
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
                             order.token_out,
                             abi::IERC20_ABI
                                 .function("transfer")
@@ -250,19 +244,17 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
                         if let Pool::UniswapV2(_) = weth_exit_pool {
                             //Transfer the amount in to the weth exit pool
-                            execution_bundle.add_call(
-                                order_execution::sandbox_limit_order::Call::new(
-                                    order.token_out,
-                                    abi::IERC20_ABI
-                                        .function("transfer")
-                                        .unwrap()
-                                        .encode_input(&vec![
-                                            Token::Address(weth_exit_pool.address()),
-                                            Token::Uint(amount_in_to_weth_exit),
-                                        ])
-                                        .expect("Could not encode Weth transfer inputs"),
-                                ),
-                            );
+                            execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
+                                order.token_out,
+                                abi::IERC20_ABI
+                                    .function("transfer")
+                                    .unwrap()
+                                    .encode_input(&vec![
+                                        Token::Address(weth_exit_pool.address()),
+                                        Token::Uint(amount_in_to_weth_exit),
+                                    ])
+                                    .expect("Could not encode Weth transfer inputs"),
+                            ));
                         }
 
                         //swap to weth exit
@@ -276,7 +268,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         );
 
                         //pay protocol fee
-                        execution_bundle.add_call(order_execution::sandbox_limit_order::Call::new(
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
                             weth,
                             abi::IERC20_ABI
                                 .function("transfer")
@@ -289,7 +281,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                         ));
 
                         //Send remainder to coex
-                        execution_bundle.add_call(order_execution::sandbox_limit_order::Call::new(
+                        execution_bundle.add_call(execution::sandbox_limit_order::Call::new(
                             weth,
                             abi::IERC20_ABI
                                 .function("transfer")
@@ -485,7 +477,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
     middleware: Arc<M>,
-) -> Result<order_execution::limit_order::LimitOrderExecutionBundle, ExecutorError<M>> {
+) -> Result<execution::limit_order::LimitOrderExecutionBundle, ExecutorError<M>> {
     //:: First group the orders by market and sort each of the orders by the amount in (ie quantity)
     //Go through the slice of sandbox limit orders and group the orders
 
@@ -501,7 +493,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
     let mut order_ids_in_calldata: HashSet<H256> = HashSet::new();
 
     //:: This is a vec of order groups, ie vec of vec of bytes32
-    let mut execution_calldata = order_execution::limit_order::LimitOrderExecutionBundle::new();
+    let mut execution_calldata = execution::limit_order::LimitOrderExecutionBundle::new();
     //:: Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
 
     for (_, orders) in sorted_orders_grouped_by_market {

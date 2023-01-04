@@ -9,10 +9,7 @@ use crate::{
     abi::{self, ISandboxLimitOrderBook},
     config::Config,
     error::ExecutorError,
-    orders::{
-        self,
-        order::{Order, OrderVariant},
-    },
+    order::{Order, OrderVariant},
     state::State,
     transaction_utils,
 };
@@ -28,6 +25,8 @@ pub async fn check_orders_for_refresh<M: Middleware>(
 ) -> Result<(), ExecutorError<M>> {
     //TODO: make this async
     for (order_id, order) in state.active_orders.iter() {
+        //TODO: check order for refresh
+
         if block_timestamp - U256::from(order.last_refresh_timestamp()) >= THIRTY_DAYS_IN_SECONDS {
             let order_variant = match order {
                 Order::LimitOrder(_) => OrderVariant::LimitOrder,

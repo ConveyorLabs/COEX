@@ -19,8 +19,8 @@ use crate::{
     abi::{self, SandboxMulticall},
     config::{self, Chain},
     error::ExecutorError,
-    order_execution,
-    orders::order::OrderVariant,
+    execution,
+    order::OrderVariant,
     traces,
 };
 
@@ -131,7 +131,7 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
 //Construct a limit order execution transaction
 pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
     configuration: &config::Config,
-    slo_bundle: order_execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle,
+    slo_bundle: execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle,
     middleware: Arc<M>,
 ) -> Result<TypedTransaction, ExecutorError<M>> {
     let sandbox_limit_order_router = abi::ISandboxLimitOrderRouter::new(

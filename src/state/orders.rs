@@ -22,17 +22,17 @@ use crate::{
     error::ExecutorError,
     events::BeltEvent,
     markets,
-    orders::{self, order::OrderVariant},
+    order::{self},
 };
 
 use super::State;
 
 impl State {
-    pub fn place_order(&mut self, order: orders::order::Order) {
+    pub fn place_order(&mut self, order: order::Order) {
         self.active_orders.insert(order.order_id(), order);
     }
 
-    pub fn update_order(&mut self, order: orders::order::Order) {
+    pub fn update_order(&mut self, order: order::Order) {
         self.active_orders.insert(order.order_id(), order);
     }
 
@@ -55,9 +55,9 @@ impl State {
     ) {
         if let Some(order) = self.active_orders.get_mut(&order_id) {
             match order {
-                orders::order::Order::SandboxLimitOrder(_sandbox_limit_order) => {}
+                order::Order::SandboxLimitOrder(_sandbox_limit_order) => {}
 
-                orders::order::Order::LimitOrder(_limit_order) => {}
+                order::Order::LimitOrder(_limit_order) => {}
             }
         }
     }
@@ -70,12 +70,12 @@ impl State {
     ) {
         if let Some(order) = self.active_orders.get_mut(&order_id) {
             match order {
-                orders::order::Order::SandboxLimitOrder(sandbox_limit_order) => {
+                order::Order::SandboxLimitOrder(sandbox_limit_order) => {
                     sandbox_limit_order.last_refresh_timestamp = last_refresh_timestamp;
                     sandbox_limit_order.expiration_timestamp = updated_expiration_timestamp;
                 }
 
-                orders::order::Order::LimitOrder(limit_order) => {
+                order::Order::LimitOrder(limit_order) => {
                     limit_order.last_refresh_timestamp = last_refresh_timestamp;
                     limit_order.expiration_timestamp = updated_expiration_timestamp;
                 }
@@ -86,11 +86,11 @@ impl State {
     pub fn update_execution_credit(&mut self, order_id: H256, updated_execution_credit: u128) {
         if let Some(order) = self.active_orders.get_mut(&order_id) {
             match order {
-                orders::order::Order::SandboxLimitOrder(sandbox_limit_order) => {
+                order::Order::SandboxLimitOrder(sandbox_limit_order) => {
                     sandbox_limit_order.execution_credit_remaining = updated_execution_credit;
                 }
 
-                orders::order::Order::LimitOrder(limit_order) => {
+                order::Order::LimitOrder(limit_order) => {
                     limit_order.execution_credit = updated_execution_credit;
                 }
             }

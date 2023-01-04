@@ -17,10 +17,8 @@ use crate::{
     config::{self},
     error::ExecutorError,
     markets,
-    orders::{
-        limit_order::LimitOrder, order::Order, sandbox_limit_order::SandboxLimitOrder, simulate,
-    },
-    state, transaction_utils,
+    order::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, Order},
+    simulation, state, transaction_utils,
 };
 
 use self::{
@@ -97,7 +95,7 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
     }
 
     //Simulate sandbox limit orders and generate execution transaction calldata
-    let sandbox_execution_bundles = simulate::simulate_and_batch_sandbox_limit_orders(
+    let sandbox_execution_bundles = simulation::simulate_and_batch_sandbox_limit_orders(
         slo_at_execution_price,
         &mut simulated_markets,
         configuration.weth_address,
@@ -111,7 +109,7 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
     //simulate and batch limit orders
     //:: Simulate sandbox limit orders and generate execution transaction calldata
     let limit_order_execution_bundle: LimitOrderExecutionBundle =
-        simulate::simulate_and_batch_limit_orders(
+        simulation::simulate_and_batch_limit_orders(
             lo_at_execution_price,
             &mut simulated_markets,
             configuration.weth_address,
@@ -235,7 +233,7 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
         group_orders_at_execution_price(state, affected_markets, configuration.weth_address);
 
     //Simulate sandbox limit orders and generate execution transaction calldata
-    let sandbox_execution_bundles = simulate::simulate_and_batch_sandbox_limit_orders(
+    let sandbox_execution_bundles = simulation::simulate_and_batch_sandbox_limit_orders(
         slo_at_execution_price,
         &mut simulated_markets,
         configuration.weth_address,
@@ -248,7 +246,7 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 
     //simulate and batch limit orders
     let limit_order_execution_bundle: LimitOrderExecutionBundle =
-        simulate::simulate_and_batch_limit_orders(
+        simulation::simulate_and_batch_limit_orders(
             lo_at_execution_price,
             &mut simulated_markets,
             configuration.weth_address,
@@ -265,8 +263,6 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
             middleware.clone(),
         )
         .await?;
-
-        println!("done");
     }
 
     //TODO: rename the limit order execution bundle order groiups to just be execution bundles and return a vec of bundle

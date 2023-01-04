@@ -6,7 +6,7 @@ use ethers::{
     types::{H160, H256, U256},
 };
 
-use crate::{error::ExecutorError, markets, orders::order::Order};
+use crate::{error::ExecutorError, markets, order::Order};
 
 use super::State;
 
