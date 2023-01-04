@@ -1,34 +1,17 @@
 use ::tracing::info;
-use error::ExecutorError;
+use coex::error::ExecutorError;
+use coex::initialization::initialize_coex;
+use coex::{config, events, order_execution, order_refresh, traces};
+use coex::{order_cancellation, state};
 use ethers::prelude::k256::ecdsa::SigningKey;
 use ethers::prelude::NonceManagerMiddleware;
 use ethers::providers::{Http, Provider, Ws};
-use ethers::signers::{LocalWallet, Wallet};
-use initialization::initialize_coex;
-use std::collections::{HashMap, HashSet};
 use std::error::Error;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
-
-pub mod abi;
-pub mod config;
-pub mod error;
-pub mod events;
-pub mod initialization;
-pub mod markets;
-pub mod order_cancellation;
-pub mod order_execution;
-pub mod order_refresh;
-pub mod orders;
-pub mod state;
-pub mod traces;
-pub mod transaction_utils;
+use std::sync::Arc;
 
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
-use ethers::types::{H160, H256, U256};
-
-use orders::order::{self, Order};
+use ethers::types::H256;
 
 //TODO: move this to bin
 
