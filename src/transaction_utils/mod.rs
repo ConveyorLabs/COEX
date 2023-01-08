@@ -269,7 +269,7 @@ pub async fn sign_and_send_transaction<M: Middleware>(
                             Some(eip1559_tx.max_fee_per_gas.unwrap() * 150 / 100);
 
                         //TODO: remove this, just for throttling
-                        sleep(Duration::new(0, 100000000)).await;
+                        sleep(Duration::new(0, 500000000)).await; //.5 sec
 
                         tx = eip1559_tx.to_owned().into();
 
