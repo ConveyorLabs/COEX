@@ -268,13 +268,8 @@ pub async fn sign_and_send_transaction<M: Middleware>(
                         eip1559_tx.max_fee_per_gas =
                             Some(eip1559_tx.max_fee_per_gas.unwrap() * 150 / 100);
 
-                        println!(
-                            "bumped: mpfpg: {:?}, mfpg: {:?}",
-                            eip1559_tx.max_priority_fee_per_gas, eip1559_tx.max_fee_per_gas
-                        );
-
                         //TODO: remove this, just for throttling
-                        sleep(Duration::new(1, 0)).await;
+                        sleep(Duration::new(0, 100000000)).await;
 
                         tx = eip1559_tx.to_owned().into();
 

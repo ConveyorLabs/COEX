@@ -494,16 +494,16 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
 
     //:: This is a vec of order groups, ie vec of vec of bytes32
     let mut execution_calldata = execution::limit_order::LimitOrderExecutionBundle::new();
-    //:: Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
+    // Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
 
     for (_, orders) in sorted_orders_grouped_by_market {
-        //:: Create a new order group which will hold all the order IDs
+        // Create a new order group which will hold all the order IDs
         execution_calldata.add_empty_order_group();
 
         for order in orders {
             let middleware = middleware.clone();
 
-            //:: If the order is not already added to calldata, continue simulating and checking for execution
+            // If the order is not already added to calldata, continue simulating and checking for execution
             if order_ids_in_calldata.get(&order.order_id).is_none() {
                 order_ids_in_calldata.insert(order.order_id);
 
@@ -519,7 +519,7 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
                     )
                     .await?;
 
-                    //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
+                    // If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for exectuion
                     if amount_out.last().unwrap().as_u128() >= order.amount_out_min {
                         routing::update_pools_along_route(
                             order.token_in,

@@ -128,7 +128,7 @@ impl Config {
         //TODO: Update so that path to toml is an arg
 
         let belt_toml: Toml =
-            toml::from_str(&read_to_string("./belt.toml").expect("Could not read toml from path"))
+            toml::from_str(&read_to_string("./coex.toml").expect("Could not read toml from path"))
                 .expect("Could not convert str to Config");
 
         let mut config = Config::default();
