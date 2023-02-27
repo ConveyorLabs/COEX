@@ -127,7 +127,7 @@ impl Config {
     pub fn new() -> Config {
         //TODO: Update so that path to toml is an arg
 
-        let belt_toml: Toml =
+        let coex_toml: Toml =
             toml::from_str(&read_to_string("./coex.toml").expect("Could not read toml from path"))
                 .expect("Could not convert str to Config");
 
@@ -141,19 +141,19 @@ impl Config {
             .parse()
             .expect("Could not parse private key");
 
-        config.taxed_tokens = belt_toml.taxed_tokens;
-        config.order_refresh = belt_toml.order_refresh;
-        config.order_cancellation = belt_toml.order_cancellation;
+        config.taxed_tokens = coex_toml.taxed_tokens;
+        config.order_refresh = coex_toml.order_refresh;
+        config.order_cancellation = coex_toml.order_cancellation;
 
-        let chain = Chain::from_str(&belt_toml.chain_name);
+        let chain = Chain::from_str(&coex_toml.chain_name);
         config.chain = chain;
 
         match config.chain {
             Chain::Ethereum => {}
 
             Chain::Polygon => {
-                config.http_endpoint = belt_toml.http_endpoint;
-                config.ws_endpoint = belt_toml.ws_endpoint;
+                config.http_endpoint = coex_toml.http_endpoint;
+                config.ws_endpoint = coex_toml.ws_endpoint;
                 config.native_token = NativeToken::MATIC;
                 config.weth_address =
                     H160::from_str("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270").unwrap();
@@ -191,8 +191,47 @@ impl Config {
                     H160::from_str("0x6d53e6b2c079a98fC0F736dFdE348278FDc91629").unwrap();
             }
 
-            Chain::Optimism => {}
-            Chain::Arbitrum => {}
+            Chain::Optimism => {
+                config.http_endpoint = coex_toml.http_endpoint;
+                config.ws_endpoint = coex_toml.ws_endpoint;
+                config.native_token = NativeToken::ETH;
+                config.weth_address =
+                    H160::from_str("0x4200000000000000000000000000000000000006").unwrap();
+                config.weth_decimals = 18;
+
+                todo!("Optimism configuration not yet implemented");
+
+                // config.limit_order_book = H160::from_str("").unwrap();
+                // config.sandbox_limit_order_book = H160::from_str("").unwrap();
+                // config.sandbox_limit_order_router = H160::from_str("").unwrap();
+                // config.protocol_creation_block = BlockNumber::Number(35984674.into());
+
+                // config.dexes = vec![];
+
+                // config.executor_address = H160::from_str("").unwrap();
+            }
+
+            Chain::Arbitrum => {
+                config.http_endpoint = coex_toml.http_endpoint;
+                config.ws_endpoint = coex_toml.ws_endpoint;
+                config.native_token = NativeToken::ETH;
+                config.weth_address =
+                    H160::from_str("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1").unwrap();
+                config.weth_decimals = 18;
+                config.limit_order_book =
+                    H160::from_str("0xf88F7Ebba40674Ce4364a048f6A72367979B7274").unwrap();
+                config.sandbox_limit_order_book =
+                    H160::from_str("0xAAb2e639AaacE78047990B621aD939d4D73680De").unwrap();
+                config.sandbox_limit_order_router =
+                    H160::from_str("0xb463F64b4C9cff579b9C2935b702536764F7F8c6").unwrap();
+
+                config.protocol_creation_block = BlockNumber::Number(71267.into());
+
+                config.dexes = vec![];
+
+                config.executor_address =
+                    H160::from_str("0x3c37AFb914721bcb1D8eEFF45fB91A99A3ef65DF").unwrap();
+            }
             Chain::BSC => {}
             Chain::Cronos => {}
         }
