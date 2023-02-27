@@ -159,11 +159,11 @@ impl Config {
                     H160::from_str("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270").unwrap();
                 config.weth_decimals = 18;
                 config.limit_order_book =
-                    H160::from_str("0x41c36f504BE664982e7519480409Caf36EE4f008").unwrap();
+                    H160::from_str("0xDe160A8fb9eB7bd2309E5470D9F0dB3Fc6C99E78").unwrap();
                 config.sandbox_limit_order_book =
-                    H160::from_str("0x98F3f46A0Cf8b2276513d36d527965C4C36dc733").unwrap();
+                    H160::from_str("0x87b6Ba07aAB69AF8f91cc7372bBF589e28F5219d").unwrap();
                 config.sandbox_limit_order_router =
-                    H160::from_str("0x0754B57C546116961B9ba811F353F45678D9623d").unwrap();
+                    H160::from_str("0xe56B8CF0aB1865Dd0C9A1c81C076D2843Eb90B97").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(35984674.into());
 
                 config.dexes = vec![
@@ -188,7 +188,7 @@ impl Config {
                 ];
 
                 config.executor_address =
-                    H160::from_str("0x6143D81c9c2D11bdD7a3B0Dc9328e6a0E6d0E0C5").unwrap();
+                    H160::from_str("0x6d53e6b2c079a98fC0F736dFdE348278FDc91629").unwrap();
             }
 
             Chain::Optimism => {}
