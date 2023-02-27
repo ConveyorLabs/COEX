@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use cfmms::pool::Pool;
+use cfmms::{errors::ArithmeticError, pool::Pool};
 use ethers::types::{H160, H256, U256};
 use num_bigfloat::BigFloat;
 

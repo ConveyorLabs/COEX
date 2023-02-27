@@ -89,8 +89,8 @@ impl BeltEvent {
             BeltEvent::OrderExecutionCreditUpdated => {
                 abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderExecutionCreditUpdated"][0].signature()
             }
-            BeltEvent::UniswapV2PoolUpdate => DexVariant::UniswapV2.sync_event_signature(),
-            BeltEvent::UniswapV3PoolUpdate => DexVariant::UniswapV3.sync_event_signature(),
+            BeltEvent::UniswapV2PoolUpdate => cfmms::pool::uniswap_v2::SYNC_EVENT_SIGNATURE,
+            BeltEvent::UniswapV3PoolUpdate => cfmms::pool::uniswap_v3::SWAP_EVENT_SIGNATURE,
         }
     }
 }
@@ -141,7 +141,11 @@ pub fn initialize_block_filter(dexes: &[Dex]) -> Filter {
 
     //Add the swap/sync event signature for each dex variant
     for dex in dexes {
-        let sync_event_signature = dex.sync_event_signature();
+        let sync_event_signature = match dex {
+            Dex::UniswapV2(_) => cfmms::dex::uniswap_v2::PAIR_CREATED_EVENT_SIGNATURE,
+            Dex::UniswapV3(_) => cfmms::dex::uniswap_v3::POOL_CREATED_EVENT_SIGNATURE,
+        };
+
         if !event_signatures.contains(&sync_event_signature) {
             event_signatures.push(sync_event_signature);
         }

@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use cfmms::{dex::Dex, pool::Pool};
+use cfmms::{dex::Dex, errors::ArithmeticError, pool::Pool};
 use ethers::{
     abi::{decode, ParamType},
     providers::Middleware,
@@ -64,7 +64,10 @@ pub fn get_best_market_price(
     let market_id = get_market_id(base_token, quote_token);
     if let Some(market) = markets.get(&market_id) {
         for (_, pool) in market {
-            let price = pool.calculate_price(base_token);
+            let price = match pool.calculate_price(base_token) {
+                Ok(price) => price,
+                Err(_) => 0.0,
+            };
 
             if buy {
                 if price < best_price {

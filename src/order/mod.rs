@@ -8,7 +8,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use cfmms::pool::Pool;
+use cfmms::{errors::ArithmeticError, pool::Pool};
 use ethers::{
     abi::RawLog,
     prelude::EthLogDecode,
