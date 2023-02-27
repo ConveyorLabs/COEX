@@ -134,9 +134,9 @@ impl Config {
         let mut config = Config::default();
 
         config.wallet_address =
-            H160::from_str(&belt_toml.wallet_address).expect("Could not parse wallet address");
+            H160::from_str(&coex_toml.wallet_address).expect("Could not parse wallet address");
 
-        config.wallet_key = belt_toml
+        config.wallet_key = coex_toml
             .private_key
             .parse()
             .expect("Could not parse private key");
@@ -149,7 +149,26 @@ impl Config {
         config.chain = chain;
 
         match config.chain {
-            Chain::Ethereum => {}
+            Chain::Ethereum => {
+                config.http_endpoint = coex_toml.http_endpoint;
+                config.ws_endpoint = coex_toml.ws_endpoint;
+                config.native_token = NativeToken::ETH;
+                config.weth_address =
+                    H160::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap();
+                config.weth_decimals = 18;
+                config.limit_order_book =
+                    H160::from_str("0xCd1BA99aF51CcFcffdEa7F466D6A8D5AF81c5e6E").unwrap();
+                config.sandbox_limit_order_book =
+                    H160::from_str("0x0c9C4CC14E0C487ef44fA23630A69A06b8b75A91").unwrap();
+                config.sandbox_limit_order_router =
+                    H160::from_str("0x6d53e6b2c079a98fC0F736dFdE348278FDc91629").unwrap();
+                config.protocol_creation_block = BlockNumber::Number(16616601.into());
+
+                config.dexes = vec![];
+
+                config.executor_address =
+                    H160::from_str("0x91AE75251Bc0c6654EF0B327D190877B49b21A2E").unwrap();
+            }
 
             Chain::Polygon => {
                 config.http_endpoint = coex_toml.http_endpoint;
@@ -164,7 +183,7 @@ impl Config {
                     H160::from_str("0x87b6Ba07aAB69AF8f91cc7372bBF589e28F5219d").unwrap();
                 config.sandbox_limit_order_router =
                     H160::from_str("0xe56B8CF0aB1865Dd0C9A1c81C076D2843Eb90B97").unwrap();
-                config.protocol_creation_block = BlockNumber::Number(35984674.into());
+                config.protocol_creation_block = BlockNumber::Number(39229433.into());
 
                 config.dexes = vec![
                     // Sushiswap
@@ -192,23 +211,7 @@ impl Config {
             }
 
             Chain::Optimism => {
-                config.http_endpoint = coex_toml.http_endpoint;
-                config.ws_endpoint = coex_toml.ws_endpoint;
-                config.native_token = NativeToken::ETH;
-                config.weth_address =
-                    H160::from_str("0x4200000000000000000000000000000000000006").unwrap();
-                config.weth_decimals = 18;
-
                 todo!("Optimism configuration not yet implemented");
-
-                // config.limit_order_book = H160::from_str("").unwrap();
-                // config.sandbox_limit_order_book = H160::from_str("").unwrap();
-                // config.sandbox_limit_order_router = H160::from_str("").unwrap();
-                // config.protocol_creation_block = BlockNumber::Number(35984674.into());
-
-                // config.dexes = vec![];
-
-                // config.executor_address = H160::from_str("").unwrap();
             }
 
             Chain::Arbitrum => {
@@ -230,10 +233,32 @@ impl Config {
                 config.dexes = vec![];
 
                 config.executor_address =
-                    H160::from_str("0x3c37AFb914721bcb1D8eEFF45fB91A99A3ef65DF").unwrap();
+                    H160::from_str("0xe56B8CF0aB1865Dd0C9A1c81C076D2843Eb90B97").unwrap();
             }
-            Chain::BSC => {}
-            Chain::Cronos => {}
+            Chain::BSC => {
+                config.http_endpoint = coex_toml.http_endpoint;
+                config.ws_endpoint = coex_toml.ws_endpoint;
+                config.native_token = NativeToken::ETH;
+                config.weth_address =
+                    H160::from_str("0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c").unwrap();
+                config.weth_decimals = 18;
+                config.limit_order_book =
+                    H160::from_str("0x400966bC4ab862C2094d6d749DB0C42b66605F4A").unwrap();
+                config.sandbox_limit_order_book =
+                    H160::from_str("0x4dCdBa96dc7244baa763eC51Ca0dBcDddBCee4e7").unwrap();
+                config.sandbox_limit_order_router =
+                    H160::from_str("0x456f041CA2f3964bD07AB9FE20e2A0607F04615C").unwrap();
+
+                config.protocol_creation_block = BlockNumber::Number(25617424.into());
+
+                config.dexes = vec![];
+
+                config.executor_address =
+                    H160::from_str("0x902c9e3202F5191db0B6edF5c038F4941Dfd6641").unwrap();
+            }
+            Chain::Cronos => {
+                todo!("Cronos configuration not yet implemented");
+            }
         }
         config
     }
