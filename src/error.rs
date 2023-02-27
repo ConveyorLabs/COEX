@@ -1,4 +1,4 @@
-use cfmms::error::CFMMError;
+use cfmms::errors::CFMMError;
 use ethers::{
     prelude::{nonce_manager::NonceManagerError, AbiError, ContractError},
     providers::{Middleware, ProviderError},
