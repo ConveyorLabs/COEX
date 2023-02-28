@@ -13,7 +13,7 @@ use clap::Parser;
 #[derive(Parser, Default, Debug)]
 pub struct Args {
     #[clap(short, long, help = "Path to the config file for the chain")]
-    pub config: String,
+    pub config: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -55,8 +55,8 @@ impl Default for Config {
             native_token: NativeToken::ETH,
             weth_address: H160::zero(),
             weth_decimals: 0,
-            http_endpoint: "".into(),
-            ws_endpoint: "".into(),
+            http_endpoint: Default::default(),
+            ws_endpoint: Default::default(),
             limit_order_book: H160::zero(),
             sandbox_limit_order_book: H160::zero(),
             sandbox_limit_order_router: H160::zero(),
@@ -132,10 +132,16 @@ pub enum NativeToken {
 
 impl Config {
     pub fn new() -> Config {
-        //TODO: Update so that path to toml is an arg
+        let args = Args::parse();
+
+        let path_to_config = if args.config.is_some() {
+            args.config.unwrap()
+        } else {
+            "./coex.toml".to_string()
+        };
 
         let coex_toml: Toml =
-            toml::from_str(&read_to_string("./coex.toml").expect("Could not read toml from path"))
+            toml::from_str(&read_to_string(path_to_config).expect("Could not read toml from path"))
                 .expect("Could not convert str to Config");
 
         let mut config = Config::default();
