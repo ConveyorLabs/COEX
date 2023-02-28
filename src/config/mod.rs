@@ -9,6 +9,13 @@ use cfmms::dex::{Dex, DexVariant};
 
 use serde::Deserialize;
 
+use clap::Parser;
+#[derive(Parser, Default, Debug)]
+pub struct Args {
+    #[clap(short, long, help = "Path to the config file for the chain")]
+    pub config: String,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Toml {
     pub chain_name: String,
