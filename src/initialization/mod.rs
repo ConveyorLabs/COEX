@@ -30,7 +30,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         config::Config,
         state::State,
         Arc<Sender<(H256, Vec<H256>)>>,
-        Provider<Ws>,
+        String,
         Arc<NonceManagerMiddleware<ethers::providers::Provider<Http>>>,
     ),
     ExecutorError<M>,
@@ -40,9 +40,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
     //Initialize the providers
     let provider: Provider<Http> = Provider::try_from(&configuration.http_endpoint)
         .expect("Could not initialize HTTP provider");
-    let stream_provider = Provider::<Ws>::connect(&configuration.ws_endpoint)
-        .await
-        .expect("Could not initialize WS provider");
+    let stream_provider_endpoint = configuration.ws_endpoint.to_owned();
 
     let middleware = Arc::new(NonceManagerMiddleware::new(
         provider.clone(),
@@ -82,7 +80,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         configuration,
         state,
         pending_transactions_sender,
-        stream_provider,
+        stream_provider_endpoint,
         middleware,
     ))
 }
