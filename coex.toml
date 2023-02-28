@@ -1,4 +1,4 @@
-chain_name = 1
+chain_name = ""
 http_endpoint = ""
 ws_endpoint = ""
 wallet_address = ""
