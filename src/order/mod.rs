@@ -145,7 +145,7 @@ pub async fn get_remote_order<M: Middleware>(
             let slob = abi::ISandboxLimitOrderBook::new(order_book_address, middleware.clone());
 
             let return_data = slob
-                .get_order_by_id(order_id.to_fixed_bytes())
+                .get_sandbox_limit_order_by_id(order_id.to_fixed_bytes())
                 .call()
                 .await?;
 
