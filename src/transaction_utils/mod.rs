@@ -113,7 +113,7 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
 
         let tx = fill_and_simulate_transaction(
             calldata,
-            configuration.limit_order_router,
+            configuration.limit_order_book,
             configuration.wallet_address,
             configuration.chain.chain_id(),
             middleware.clone(),
