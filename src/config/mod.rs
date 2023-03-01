@@ -36,6 +36,7 @@ pub struct Config {
     pub http_endpoint: String,
     pub ws_endpoint: String,
     pub limit_order_book: H160,
+    pub limit_order_router: H160,
     pub sandbox_limit_order_book: H160,
     pub sandbox_limit_order_router: H160,
     pub dexes: Vec<Dex>,
@@ -58,6 +59,7 @@ impl Default for Config {
             http_endpoint: Default::default(),
             ws_endpoint: Default::default(),
             limit_order_book: H160::zero(),
+            limit_order_router: H160::zero(),
             sandbox_limit_order_book: H160::zero(),
             sandbox_limit_order_router: H160::zero(),
             dexes: vec![],
@@ -169,6 +171,9 @@ impl Config {
                 config.weth_address =
                     H160::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap();
                 config.weth_decimals = 18;
+
+                todo!("Add limit order router address to config");
+
                 config.limit_order_book =
                     H160::from_str("0xCd1BA99aF51CcFcffdEa7F466D6A8D5AF81c5e6E").unwrap();
                 config.sandbox_limit_order_book =
@@ -215,8 +220,12 @@ impl Config {
                 config.weth_address =
                     H160::from_str("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270").unwrap();
                 config.weth_decimals = 18;
-                config.limit_order_book =
+
+                config.limit_order_router =
                     H160::from_str("0xDe160A8fb9eB7bd2309E5470D9F0dB3Fc6C99E78").unwrap();
+
+                config.limit_order_book =
+                    H160::from_str("0x87b6Ba07aAB69AF8f91cc7372bBF589e28F5219d").unwrap();
                 config.sandbox_limit_order_book =
                     H160::from_str("0x87b6Ba07aAB69AF8f91cc7372bBF589e28F5219d").unwrap();
                 config.sandbox_limit_order_router =
@@ -271,6 +280,9 @@ impl Config {
                 config.weth_address =
                     H160::from_str("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1").unwrap();
                 config.weth_decimals = 18;
+
+                todo!("Add limit order router address to config");
+
                 config.limit_order_book =
                     H160::from_str("0xf88F7Ebba40674Ce4364a048f6A72367979B7274").unwrap();
                 config.sandbox_limit_order_book =
@@ -310,6 +322,8 @@ impl Config {
                 config.weth_address =
                     H160::from_str("0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c").unwrap();
                 config.weth_decimals = 18;
+                todo!("Add limit order router address to config");
+
                 config.limit_order_book =
                     H160::from_str("0x400966bC4ab862C2094d6d749DB0C42b66605F4A").unwrap();
                 config.sandbox_limit_order_book =
