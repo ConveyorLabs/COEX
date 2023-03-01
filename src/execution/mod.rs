@@ -254,6 +254,9 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
         )
         .await?;
 
+    dbg!(&limit_order_execution_bundle);
+    dbg!(&sandbox_execution_bundles);
+
     //Execute orders if there are any order groups
     if !sandbox_execution_bundles.is_empty() {
         execute_sandbox_limit_order_bundles(
