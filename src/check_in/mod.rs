@@ -10,6 +10,8 @@ use ethers::{
 
 use crate::{abi, config::Chain, error::ExecutorError, transaction_utils};
 
+pub const CHECK_IN_WAIT_TIME: u64 = 43200;
+
 pub async fn start_check_in_service<M: Middleware>(
     check_in_address: H160,
     wallet_address: H160,
@@ -31,25 +33,42 @@ pub async fn start_check_in_service<M: Middleware>(
 
         let time_elapsed = block_timestamp - last_check_in.as_u64();
 
-        if time_elapsed >= 43200 {
-            let tx = transaction_utils::fill_and_simulate_transaction(
-                abi::ICONVEYOREXECUTOR_ABI
-                    .function("checkIn")
-                    .unwrap()
-                    .encode_input(&[])
-                    .expect("Failed to encode checkIn input")
-                    .into(),
-                check_in_address,
-                wallet_address,
-                chain.chain_id(),
-                middleware.clone(),
-            )
-            .await?;
-
-            transaction_utils::sign_and_send_transaction(tx, wallet_key, chain, middleware.clone())
+        if time_elapsed >= CHECK_IN_WAIT_TIME {
+            //submit a check in tx with retries
+            'inner: loop {
+                let tx = transaction_utils::fill_and_simulate_transaction(
+                    abi::ICONVEYOREXECUTOR_ABI
+                        .function("checkIn")
+                        .unwrap()
+                        .encode_input(&[])
+                        .expect("Failed to encode checkIn input")
+                        .into(),
+                    check_in_address,
+                    wallet_address,
+                    chain.chain_id(),
+                    middleware.clone(),
+                )
                 .await?;
+
+                let tx_hash = transaction_utils::sign_and_send_transaction(
+                    tx,
+                    wallet_key,
+                    chain,
+                    middleware.clone(),
+                )
+                .await?;
+
+                if let Ok(tx_receipt) = middleware.get_transaction_receipt(tx_hash).await {
+                    if tx_receipt.is_some() {
+                        break 'inner;
+                    }
+                }
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+
+            tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME)).await;
         } else {
-            tokio::time::sleep(Duration::from_secs(43200 - time_elapsed)).await;
+            tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME - time_elapsed)).await;
         }
     }
     //Calc the sleep time
