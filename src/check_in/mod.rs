@@ -2,7 +2,7 @@ use ethers::providers::Middleware;
 
 use crate::error::ExecutorError;
 
-pub async fn spawn_check_in_service<M: Middleware>() -> Result<(), ExecutorError<M>> {
+pub async fn start_check_in_service<M: Middleware>() -> Result<(), ExecutorError<M>> {
     //Check when the last check in was
 
     //If the last check in was past the threshold, check in

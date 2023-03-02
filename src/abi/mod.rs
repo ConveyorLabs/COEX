@@ -7,6 +7,13 @@ abigen!(
 
 abigen!(
 
+
+    IConveyorExecutor,
+    r#"[
+        function checkIn() external
+        function lastCheckIn(address addr) external view returns (uint256)
+    ]"#;
+
     ISandboxLimitOrderBook,
     r#"[
         event OrderPlaced(bytes32[] orderIds)
