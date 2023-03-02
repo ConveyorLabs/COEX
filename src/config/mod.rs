@@ -174,6 +174,8 @@ impl Config {
                     H160::from_str("0x0c9C4CC14E0C487ef44fA23630A69A06b8b75A91").unwrap();
                 config.sandbox_limit_order_router =
                     H160::from_str("0x6d53e6b2c079a98fC0F736dFdE348278FDc91629").unwrap();
+                config.executor_address =
+                    H160::from_str("0x91AE75251Bc0c6654EF0B327D190877B49b21A2E").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(16616601.into());
 
                 config.dexes = vec![
@@ -202,9 +204,6 @@ impl Config {
                         12771526,
                     ),
                 ];
-
-                config.executor_address =
-                    H160::from_str("0x91AE75251Bc0c6654EF0B327D190877B49b21A2E").unwrap();
             }
 
             Chain::Polygon => {
@@ -220,6 +219,8 @@ impl Config {
                     H160::from_str("0x87b6Ba07aAB69AF8f91cc7372bBF589e28F5219d").unwrap();
                 config.sandbox_limit_order_router =
                     H160::from_str("0xe56B8CF0aB1865Dd0C9A1c81C076D2843Eb90B97").unwrap();
+                config.executor_address =
+                    H160::from_str("0x6d53e6b2c079a98fC0F736dFdE348278FDc91629").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(39229433.into());
 
                 config.dexes = vec![
@@ -254,9 +255,6 @@ impl Config {
                         5436831,
                     ),
                 ];
-
-                config.executor_address =
-                    H160::from_str("0x6d53e6b2c079a98fC0F736dFdE348278FDc91629").unwrap();
             }
 
             Chain::Optimism => {
@@ -276,7 +274,8 @@ impl Config {
                     H160::from_str("0xAAb2e639AaacE78047990B621aD939d4D73680De").unwrap();
                 config.sandbox_limit_order_router =
                     H160::from_str("0xb463F64b4C9cff579b9C2935b702536764F7F8c6").unwrap();
-
+                config.executor_address =
+                    H160::from_str("0xe56B8CF0aB1865Dd0C9A1c81C076D2843Eb90B97").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(71267.into());
 
                 config.dexes = vec![
@@ -298,9 +297,6 @@ impl Config {
                         20702,
                     ),
                 ];
-
-                config.executor_address =
-                    H160::from_str("0xe56B8CF0aB1865Dd0C9A1c81C076D2843Eb90B97").unwrap();
             }
             Chain::BSC => {
                 config.http_endpoint = coex_toml.http_endpoint;
@@ -315,7 +311,8 @@ impl Config {
                     H160::from_str("0x4dCdBa96dc7244baa763eC51Ca0dBcDddBCee4e7").unwrap();
                 config.sandbox_limit_order_router =
                     H160::from_str("0x456f041CA2f3964bD07AB9FE20e2A0607F04615C").unwrap();
-
+                config.executor_address =
+                    H160::from_str("0x902c9e3202F5191db0B6edF5c038F4941Dfd6641").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(25617424.into());
 
                 config.dexes = vec![
@@ -362,9 +359,6 @@ impl Config {
                         18973559,
                     ),
                 ];
-
-                config.executor_address =
-                    H160::from_str("0x902c9e3202F5191db0B6edF5c038F4941Dfd6641").unwrap();
             }
             Chain::Cronos => {
                 todo!("Cronos configuration not yet implemented");
