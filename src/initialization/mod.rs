@@ -17,7 +17,7 @@ use tracing::info;
 
 use crate::{
     abi::{self, OrderPlacedFilter},
-    cancellation, config,
+    cancellation, check_in, config,
     error::ExecutorError,
     execution,
     markets::{self, get_market_id, Market},
@@ -60,21 +60,6 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         )
         .await,
     );
-
-    info!("Checking for orders at execution price...");
-    execution::fill_orders_at_execution_price(
-        &configuration,
-        &state,
-        state
-            .markets
-            .keys()
-            .map(|f| f.to_owned())
-            .collect::<HashSet<U256>>(),
-        pending_transactions_sender.clone(),
-        middleware.clone(),
-    )
-    .await
-    .expect("Could not execute orders on initialization"); //TODO: bubble up this error, just using expect for fast development
 
     Ok((
         configuration,

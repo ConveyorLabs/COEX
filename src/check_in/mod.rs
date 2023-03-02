@@ -23,13 +23,20 @@ pub async fn spawn_check_in_service<M: 'static + Middleware>(
 
     tokio::spawn(async move {
         loop {
-            start_check_in_service(
+            match start_check_in_service(
                 check_in_address,
                 wallet_address,
                 wallet_key.clone(),
                 chain.clone(),
                 middleware.clone(),
-            );
+            )
+            .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    tracing::error!("Error in check in service: {:?}", e);
+                }
+            }
         }
     });
 
