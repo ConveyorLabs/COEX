@@ -52,12 +52,15 @@ pub async fn start_check_in_service<M: Middleware>(
             .last_check_in(wallet_address)
             .call()
             .await?;
+        tracing::info!("Last check in at {:?}", last_check_in);
 
         let block_timestamp = get_block_timestamp(middleware.clone()).await?;
 
         let time_elapsed = block_timestamp - last_check_in.as_u64();
 
         if time_elapsed >= CHECK_IN_WAIT_TIME {
+            tracing::info!("Check in time elapsed, checking in");
+
             //submit a check in tx with retries
             'inner: loop {
                 let tx = transaction_utils::fill_and_simulate_transaction(
@@ -82,16 +85,26 @@ pub async fn start_check_in_service<M: Middleware>(
                 )
                 .await?;
 
+                tracing::info!("Pending check in tx: {:?}", tx_hash);
+
                 if let Ok(tx_receipt) = middleware.get_transaction_receipt(tx_hash).await {
                     if tx_receipt.is_some() {
+                        tracing::info!("Successfully checked in");
                         break 'inner;
                     }
                 }
                 tokio::time::sleep(Duration::from_secs(1)).await;
             }
 
+            tracing::info!("Waiting {:?} until next check in", CHECK_IN_WAIT_TIME);
+
             tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME)).await;
         } else {
+            tracing::info!(
+                "Waiting {:?} until next check in",
+                CHECK_IN_WAIT_TIME - time_elapsed
+            );
+
             tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME - time_elapsed)).await;
         }
     }
