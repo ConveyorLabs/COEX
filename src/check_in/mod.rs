@@ -1,6 +1,12 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
-use ethers::{providers::Middleware, signers::LocalWallet, types::H160};
+use cfmms::pool::Pool;
+use ethers::{
+    abi::ethabi::Bytes,
+    providers::Middleware,
+    signers::LocalWallet,
+    types::{H160, U256},
+};
 
 use crate::{abi, config::Chain, error::ExecutorError, transaction_utils};
 
@@ -15,19 +21,37 @@ pub async fn start_check_in_service<M: Middleware>(
 
     let check_in_contract = abi::IConveyorExecutor::new(check_in_address, middleware.clone());
 
-    let last_check_in = check_in_contract
-        .last_check_in(wallet_address)
-        .call()
-        .await?;
+    loop {
+        let last_check_in: U256 = check_in_contract
+            .last_check_in(wallet_address)
+            .call()
+            .await?;
 
-    let block_timestamp = get_block_timestamp(middleware.clone()).await?;
+        let block_timestamp = get_block_timestamp(middleware.clone()).await?;
 
-    //If the last check in was past the threshold, check in
+        let time_elapsed = block_timestamp - last_check_in.as_u64();
 
-    transaction_utils::sign_and_send_transaction(tx, wallet_key, chain, middleware).await?;
+        if time_elapsed >= 43200 {
+            let tx = transaction_utils::fill_and_simulate_transaction(
+                abi::ICONVEYOREXECUTOR_ABI
+                    .function("checkIn")
+                    .unwrap()
+                    .encode_input(&[])
+                    .expect("Failed to encode checkIn input")
+                    .into(),
+                check_in_address,
+                wallet_address,
+                chain.chain_id(),
+                middleware.clone(),
+            )
+            .await?;
 
-    loop {}
-
+            transaction_utils::sign_and_send_transaction(tx, wallet_key, chain, middleware.clone())
+                .await?;
+        } else {
+            tokio::time::sleep(Duration::from_secs(43200 - time_elapsed)).await;
+        }
+    }
     //Calc the sleep time
 
     //Sleep and await

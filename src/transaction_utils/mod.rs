@@ -286,7 +286,7 @@ pub async fn sign_and_send_transaction<M: Middleware>(
     }
 }
 
-async fn fill_and_simulate_transaction<M: Middleware>(
+pub async fn fill_and_simulate_transaction<M: Middleware>(
     calldata: Bytes,
     to: H160,
     from: H160,
