@@ -1,7 +1,7 @@
 use ::tracing::info;
 use coex::error::ExecutorError;
 use coex::initialization::initialize_coex;
-use coex::{cancellation, state};
+use coex::{cancellation, check_in, state};
 use coex::{config, events, execution, refresh, traces};
 use ethers::prelude::k256::ecdsa::SigningKey;
 use ethers::prelude::NonceManagerMiddleware;
@@ -23,6 +23,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
         initialize_coex::<NonceManagerMiddleware<ethers::providers::Provider<Http>>>()
             .await
             .unwrap();
+
+    check_in::start_check_in_service(
+        configuration.executor_address,
+        configuration.wallet_address,
+        configuration.wallet_key.clone(),
+        configuration.chain,
+        middleware.clone(),
+    )
+    .await?;
 
     //Run an infinite loop, executing orders that are ready and updating local structures with each new block
     run_loop(
@@ -124,6 +133,4 @@ async fn run_loop<M: 'static + Middleware>(
             }
         }
     }
-
-    Ok(())
 }

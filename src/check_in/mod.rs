@@ -12,11 +12,35 @@ use crate::{abi, config::Chain, error::ExecutorError, transaction_utils};
 
 pub const CHECK_IN_WAIT_TIME: u64 = 43200;
 
+pub async fn spawn_check_in_service<M: 'static + Middleware>(
+    check_in_address: H160,
+    wallet_address: H160,
+    wallet_key: LocalWallet,
+    chain: Chain,
+    middleware: Arc<M>,
+) -> Result<(), ExecutorError<M>> {
+    //Check when the last check in was
+
+    tokio::spawn(async move {
+        loop {
+            start_check_in_service(
+                check_in_address,
+                wallet_address,
+                wallet_key.clone(),
+                chain.clone(),
+                middleware.clone(),
+            );
+        }
+    });
+
+    Ok(())
+}
+
 pub async fn start_check_in_service<M: Middleware>(
     check_in_address: H160,
     wallet_address: H160,
-    wallet_key: &LocalWallet,
-    chain: &Chain,
+    wallet_key: LocalWallet,
+    chain: Chain,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     //Check when the last check in was
@@ -52,8 +76,8 @@ pub async fn start_check_in_service<M: Middleware>(
 
                 let tx_hash = transaction_utils::sign_and_send_transaction(
                     tx,
-                    wallet_key,
-                    chain,
+                    &wallet_key,
+                    &chain,
                     middleware.clone(),
                 )
                 .await?;
@@ -71,11 +95,6 @@ pub async fn start_check_in_service<M: Middleware>(
             tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME - time_elapsed)).await;
         }
     }
-    //Calc the sleep time
-
-    //Sleep and await
-
-    Ok(())
 }
 
 pub async fn get_block_timestamp<M: Middleware>(

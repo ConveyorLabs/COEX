@@ -73,8 +73,7 @@ impl Default for Config {
     }
 }
 
-#[derive(Debug)]
-
+#[derive(Debug, Clone, Copy)]
 pub enum Chain {
     Ethereum,
     Polygon,
