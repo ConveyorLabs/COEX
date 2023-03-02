@@ -1,5 +1,6 @@
 pub mod abi;
 pub mod cancellation;
+pub mod check_in;
 pub mod config;
 pub mod error;
 pub mod events;

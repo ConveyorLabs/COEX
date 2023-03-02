@@ -307,6 +307,8 @@ async fn fill_and_simulate_transaction<M: Middleware>(
         .max_fee_per_gas(max_fee_per_gas)
         .into();
 
+    dbg!("tx", tx.clone());
+
     //match fill transaction, it will fail if the calldata fails
     middleware
         .fill_transaction(&mut tx, None)
