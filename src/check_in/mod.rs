@@ -25,6 +25,7 @@ pub async fn spawn_check_in_service<M: 'static + Middleware>(
         wallet_address,
         wallet_key.clone(),
         chain,
+        false,
         middleware.clone(),
     )
     .await?;
@@ -54,6 +55,7 @@ pub async fn check_in<M: Middleware>(
     wallet_address: H160,
     wallet_key: LocalWallet,
     chain: Chain,
+    sleep: bool,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     let check_in_contract = abi::IConveyorExecutor::new(check_in_address, middleware.clone());
@@ -103,19 +105,25 @@ pub async fn check_in<M: Middleware>(
                     break 'inner;
                 }
             }
-            tokio::time::sleep(Duration::from_secs(1)).await;
+
+            if sleep {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
         }
 
         tracing::info!("Waiting {:?} until next check in", CHECK_IN_WAIT_TIME);
-
-        tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME)).await;
+        if sleep {
+            tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME)).await;
+        }
     } else {
         tracing::info!(
             "Waiting {:?} until next check in",
             CHECK_IN_WAIT_TIME - time_elapsed
         );
 
-        tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME - time_elapsed)).await;
+        if sleep {
+            tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME - time_elapsed)).await;
+        }
     }
 
     Ok(())
@@ -136,6 +144,7 @@ pub async fn start_check_in_service<M: Middleware>(
             wallet_address,
             wallet_key.clone(),
             chain,
+            true,
             middleware.clone(),
         )
         .await?;
