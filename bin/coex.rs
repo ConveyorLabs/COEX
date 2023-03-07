@@ -20,6 +20,8 @@ use ethers::types::{H256, U256, U64};
 async fn main() -> Result<(), Box<dyn Error>> {
     traces::init_tracing();
 
+    //TODO: get the last block from the initialize coex function before we initialize markets or active orders
+
     let (configuration, state, pending_transactions_sender, stream_provider_endpoint, middleware) =
         initialize_coex::<NonceManagerMiddleware<ethers::providers::Provider<Http>>>()
             .await
@@ -70,7 +72,7 @@ async fn run_loop<M: 'static + Middleware>(
     stream_provider_endpoint: String,
     mut state: state::State,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
-    mut last_block: U64,
+    mut last_synced_block: U64,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
     let stream_provider = Provider::<Ws>::connect(stream_provider_endpoint.clone()).await?;
@@ -84,69 +86,77 @@ async fn run_loop<M: 'static + Middleware>(
     tracing::info!("Listening for execution conditions...");
     //Listen for new blocks to be published. On every block, check for sync logs, update weights and run bellman ford
     while let Some(block) = block_stream.next().await {
-        tracing::info!("Checking block {:?}", block.number.unwrap());
+        let block_number = block.number.expect("Could not unwrap block number");
 
-        let (order_events, pool_events) = events::sort_events(
-            &middleware
-                .get_logs(&block_filter.clone().from_block(last_block))
+        if last_synced_block < block_number {
+            let current_block_number = middleware
+                .get_block_number()
                 .await
-                .map_err(ExecutorError::MiddlewareError)?,
-            &event_sig_to_belt_event,
-        );
+                .map_err(ExecutorError::MiddlewareError)?;
 
-        last_block = block.number.expect("Could not unwrap block number");
+            tracing::info!("Checking block {:?}", current_block_number);
 
-        //Handle order updates
-        state
-            .handle_order_updates(
-                order_events,
-                configuration.sandbox_limit_order_book,
-                configuration.limit_order_book,
-                configuration.weth_address,
-                &configuration.dexes,
-                middleware.clone(),
-            )
-            .await?;
+            let (order_events, pool_events) = events::sort_events(
+                &middleware
+                    .get_logs(&block_filter.clone().from_block(last_synced_block))
+                    .await
+                    .map_err(ExecutorError::MiddlewareError)?,
+                &event_sig_to_belt_event,
+            );
 
-        //Update markets
-        let markets_updated = state.handle_market_updates(&pool_events);
+            last_synced_block = current_block_number;
 
-        // //Check orders for cancellation
-        // if configuration.order_cancellation {
-        //     order_cancellation::check_orders_for_cancellation(
-        //         &configuration,
-        //         &state,
-        //         block.timestamp,
-        //         pending_transactions_sender.clone(),
-        //         middleware.clone(),
-        //     )
-        //     .await?;
-        // }
+            //Handle order updates
+            state
+                .handle_order_updates(
+                    order_events,
+                    configuration.sandbox_limit_order_book,
+                    configuration.limit_order_book,
+                    configuration.weth_address,
+                    &configuration.dexes,
+                    middleware.clone(),
+                )
+                .await?;
 
-        // //Check orders that are ready to be refreshed and send a refresh tx
-        // if configuration.order_refresh {
-        //     order_refresh::check_orders_for_refresh(
-        //         &configuration,
-        //         &state,
-        //         block.timestamp,
-        //         pending_transactions_sender.clone(),
-        //         middleware.clone(),
-        //     )
-        //     .await?;
-        // }
+            //Update markets
+            let markets_updated = state.handle_market_updates(&pool_events);
 
-        //Evaluate orders for execution
-        if !markets_updated.is_empty() {
-            execution::fill_orders_at_execution_price(
-                &configuration,
-                &state,
-                markets_updated,
-                pending_transactions_sender.clone(),
-                middleware.clone(),
-            )
-            .await?;
+            // //Check orders for cancellation
+            // if configuration.order_cancellation {
+            //     order_cancellation::check_orders_for_cancellation(
+            //         &configuration,
+            //         &state,
+            //         block.timestamp,
+            //         pending_transactions_sender.clone(),
+            //         middleware.clone(),
+            //     )
+            //     .await?;
+            // }
+
+            // //Check orders that are ready to be refreshed and send a refresh tx
+            // if configuration.order_refresh {
+            //     order_refresh::check_orders_for_refresh(
+            //         &configuration,
+            //         &state,
+            //         block.timestamp,
+            //         pending_transactions_sender.clone(),
+            //         middleware.clone(),
+            //     )
+            //     .await?;
+            // }
+
+            //Evaluate orders for execution
+            if !markets_updated.is_empty() {
+                execution::fill_orders_at_execution_price(
+                    &configuration,
+                    &state,
+                    markets_updated,
+                    pending_transactions_sender.clone(),
+                    middleware.clone(),
+                )
+                .await?;
+            }
         }
     }
-
     Ok(())
 }

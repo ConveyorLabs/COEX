@@ -317,10 +317,10 @@ pub async fn fill_and_simulate_transaction<M: Middleware>(
 
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
 
-    middleware
-        .call(&tx, None)
-        .await
-        .map_err(ExecutorError::MiddlewareError)?;
+    // middleware
+    //     .call(&tx, None)
+    //     .await
+    //     .map_err(ExecutorError::MiddlewareError)?;
 
     Ok(tx)
 }
