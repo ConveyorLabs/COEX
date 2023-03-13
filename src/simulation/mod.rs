@@ -33,8 +33,6 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
     middleware: Arc<M>,
 ) -> Result<Vec<execution::sandbox_limit_order::SandboxLimitOrderExecutionBundle>, ExecutorError<M>>
 {
-    //TODO: sort these by usd value in the future
-
     //TODO: update this comment later, but we add order ids to this hashset so that we dont recalc orders for execution viability if they are already in an order group
     // since orders can be affected by multiple markets changing, its possible that the same order is in here twice, hence why we need to check if the order is already
     // in the execution calldata
@@ -48,7 +46,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
 
         //Check if the order can execute within the updated simulated markets
         if order.can_execute(&simulated_markets, weth) {
-            let (a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route) =
+            let (mut amounts_in, mut amounts_out, mut route) =
                 match routing::find_best_a_to_b_route(
                     order.token_in,
                     order.token_out,
@@ -65,30 +63,37 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                     Err(_) => (vec![], vec![], vec![]),
                 };
 
-            let (a_weth_b_amounts_in, a_weth_b_amounts_out, a_weth_b_route) =
-                match routing::find_best_a_to_weth_to_b_route(
-                    order.token_in,
-                    order.token_out,
-                    U256::from(order.amount_in_remaining),
-                    weth,
-                    simulated_markets,
-                    middleware.clone(),
-                )
-                .await
-                {
-                    Ok((a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route)) => {
-                        (a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route)
+            match routing::find_best_a_to_weth_to_b_route(
+                order.token_in,
+                order.token_out,
+                U256::from(order.amount_in_remaining),
+                weth,
+                simulated_markets,
+                middleware.clone(),
+            )
+            .await
+            {
+                Ok((
+                    a_to_weth_to_b_amounts_in,
+                    a_to_weth_to_b_amounts_out,
+                    a_to_weth_to_b_route,
+                )) => {
+                    if let Some(a_to_weth_to_b_last_amount_out) = a_to_weth_to_b_amounts_out.last()
+                    {
+                        if let Some(a_to_b_last_amount_out) = amounts_out.last() {
+                            if a_to_weth_to_b_last_amount_out > a_to_b_last_amount_out {
+                                (amounts_in, amounts_out, route) = (
+                                    a_to_weth_to_b_amounts_in,
+                                    a_to_weth_to_b_amounts_out,
+                                    a_to_weth_to_b_route,
+                                )
+                            }
+                        }
                     }
+                }
 
-                    Err(_) => (vec![], vec![], vec![]),
-                };
-
-            let (amounts_in, amounts_out, route) =
-                if a_to_b_amounts_out.last().unwrap() > a_weth_b_amounts_out.last().unwrap() {
-                    (a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route)
-                } else {
-                    (a_weth_b_amounts_in, a_weth_b_amounts_out, a_weth_b_route)
-                };
+                Err(_) => {}
+            };
 
             let last_amount_out = amounts_out.last().unwrap();
 
