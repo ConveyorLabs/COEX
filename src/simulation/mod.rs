@@ -49,17 +49,24 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
         //Check if the order can execute within the updated simulated markets
         if order.can_execute(&simulated_markets, weth) {
             let (a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route) =
-                routing::find_best_a_to_b_route(
+                match routing::find_best_a_to_b_route(
                     order.token_in,
                     order.token_out,
                     U256::from(order.amount_in_remaining),
                     simulated_markets,
                     middleware.clone(),
                 )
-                .await?;
+                .await
+                {
+                    Ok((a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route)) => {
+                        (a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route)
+                    }
+
+                    Err(_) => (vec![], vec![], vec![]),
+                };
 
             let (a_weth_b_amounts_in, a_weth_b_amounts_out, a_weth_b_route) =
-                routing::find_best_a_to_weth_to_b_route(
+                match routing::find_best_a_to_weth_to_b_route(
                     order.token_in,
                     order.token_out,
                     U256::from(order.amount_in_remaining),
@@ -67,7 +74,14 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                     simulated_markets,
                     middleware.clone(),
                 )
-                .await?;
+                .await
+                {
+                    Ok((a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route)) => {
+                        (a_to_b_amounts_in, a_to_b_amounts_out, a_to_b_route)
+                    }
+
+                    Err(_) => (vec![], vec![], vec![]),
+                };
 
             let (amounts_in, amounts_out, route) =
                 if a_to_b_amounts_out.last().unwrap() > a_weth_b_amounts_out.last().unwrap() {
