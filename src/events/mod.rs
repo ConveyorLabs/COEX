@@ -78,7 +78,7 @@ impl BeltEvent {
                 abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderUpdated"][0].signature()
             }
             BeltEvent::OrderFilled => {
-                abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderFufilled"][0].signature()
+                abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderFilled"][0].signature()
             }
             BeltEvent::OrderPartialFilled => {
                 abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderPartialFilled"][0].signature()
@@ -155,7 +155,7 @@ pub fn initialize_block_filter(dexes: &[Dex]) -> Filter {
     event_signatures.push(abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderPlaced"][0].signature());
     event_signatures.push(abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderCanceled"][0].signature());
     event_signatures.push(abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderUpdated"][0].signature());
-    event_signatures.push(abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderFufilled"][0].signature());
+    event_signatures.push(abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderFilled"][0].signature());
     event_signatures
         .push(abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderPartialFilled"][0].signature());
     event_signatures.push(abi::ISANDBOXLIMITORDERBOOK_ABI.events["OrderRefreshed"][0].signature());

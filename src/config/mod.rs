@@ -216,9 +216,9 @@ impl Config {
                 config.limit_order_book =
                     H160::from_str("0xDe160A8fb9eB7bd2309E5470D9F0dB3Fc6C99E78").unwrap();
                 config.sandbox_limit_order_book =
-                    H160::from_str("0x87b6Ba07aAB69AF8f91cc7372bBF589e28F5219d").unwrap();
+                    H160::from_str("0x2A172fA41503480780bB9676c1c75EF52781f6a6").unwrap();
                 config.sandbox_limit_order_router =
-                    H160::from_str("0x1489c7ccb8da15ac6b4cc7e5548c4f3dd8a04ab9").unwrap();
+                    H160::from_str("0xFBa7315cDF4623C18b9051e1352Db8177d2e5B2C").unwrap();
                 config.executor_address =
                     H160::from_str("0x6d53e6b2c079a98fC0F736dFdE348278FDc91629").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(39229433.into());
