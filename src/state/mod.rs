@@ -18,7 +18,7 @@ use tracing::info;
 
 use crate::{
     abi::{
-        self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFufilledFilter,
+        self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFilledFilter,
         OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
     },
     error::ExecutorError,
@@ -158,12 +158,11 @@ impl State {
 
                 //TODO: combine this and cancel order
                 BeltEvent::OrderFilled => {
-                    let order_fufilled_log: OrderFufilledFilter =
-                        EthLogDecode::decode_log(&RawLog {
-                            topics: event_log.topics,
-                            data: event_log.data.to_vec(),
-                        })
-                        .unwrap();
+                    let order_fufilled_log: OrderFilledFilter = EthLogDecode::decode_log(&RawLog {
+                        topics: event_log.topics,
+                        data: event_log.data.to_vec(),
+                    })
+                    .unwrap();
                     for order_id in order_fufilled_log.order_ids {
                         info!(
                             "{:?} Order Filled: {:?}",

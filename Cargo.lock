@@ -383,15 +383,16 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cfmms"
-version = "0.5.9"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebc53a8c9d58db8998443b80710b7ab458185a495e831798786bed03592a0612"
+checksum = "10a7abc28ede8646f49e262f69d4ebda04b8c261c7d1feacb78fb407e6ec4bfc"
 dependencies = [
  "async-trait",
  "ethers",
  "futures",
  "indicatif 0.17.2",
  "num-bigfloat",
+ "regex",
  "serde",
  "serde_json",
  "thiserror",

@@ -38,6 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )
     .await?;
 
+    //NOTE: TODO: maybe sync before execution to update markets from any missed logs during other parts of initialization
     info!("Checking for orders at execution price...");
     execution::fill_orders_at_execution_price(
         &configuration,

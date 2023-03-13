@@ -74,6 +74,7 @@ impl SandboxLimitOrder {
         ),
         middleware: Arc<M>,
     ) -> Result<SandboxLimitOrder, ExecutorError<M>> {
+        //TODO: update this to be more efficient
         //Price is derived by taking the amount_out_remaining / amount_in_remaining
         //In order to normalize the values, we fetch the token decimals and calculate the amount / 10**token_decimals
         let price = BigFloat::from(return_data.5)

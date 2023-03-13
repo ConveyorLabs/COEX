@@ -19,7 +19,7 @@ abigen!(
         event OrderPlaced(bytes32[] orderIds)
         event OrderCanceled(bytes32[] orderIds)
         event OrderUpdated(bytes32[] orderIds)
-        event OrderFufilled(bytes32[] orderIds)
+        event OrderFilled(bytes32[] orderIds)
         event OrderRefreshed(bytes32 indexed orderId, uint32 indexed lastRefreshTimestamp, uint32 indexed expirationTimestamp)
         event OrderExecutionCreditUpdated(bytes32 orderId, uint128 newExecutionCredit)
         event OrderPartialFilled(bytes32 indexed orderId, uint128 indexed amountInRemaining, uint128 indexed amountOutRemaining, uint128 executionCreditRemaining, uint128 feeRemaining)

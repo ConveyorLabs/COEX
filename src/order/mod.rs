@@ -19,7 +19,7 @@ use tracing::info;
 
 use crate::{
     abi::{
-        self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFufilledFilter,
+        self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFilledFilter,
         OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
     },
     error::ExecutorError,
