@@ -30,30 +30,32 @@ pub async fn find_best_a_to_weth_to_b_route<M: Middleware>(
     //:: First get the a to weth market and then get the weth to b market from the simulated markets
     //TODO: check if there is a better way than to unwrap, some markets might not have the pairing
 
+    // Simulate order along route for token_a -> weth -> token_b
+    let a_to_weth_market = simulated_markets.get(&markets::get_market_id(token_in, weth));
+    let weth_to_b_market = simulated_markets.get(&markets::get_market_id(token_out, weth));
+
     let markets_in_route = if token_out == weth {
-        // Simulate order along route for token_a -> weth -> token_b
-        let a_to_weth_market = simulated_markets
-            .get(&markets::get_market_id(token_in, weth))
-            .expect("Could not get token_a to weth market");
-
-        vec![a_to_weth_market]
+        if a_to_weth_market.is_some() {
+            vec![a_to_weth_market.unwrap()]
+        } else {
+            return Err(ExecutorError::MarketDoesNotExistForPair(token_in, weth));
+        }
     } else if token_in == weth {
-        let weth_to_b_market = simulated_markets
-            .get(&markets::get_market_id(token_out, weth))
-            .expect("Could not get weth to token_b market");
-
-        vec![weth_to_b_market]
+        if weth_to_b_market.is_some() {
+            vec![weth_to_b_market.unwrap()]
+        } else {
+            return Err(ExecutorError::MarketDoesNotExistForPair(weth, token_out));
+        }
     } else {
-        // Simulate order along route for token_a -> weth -> token_b
-        let a_to_weth_market = simulated_markets
-            .get(&markets::get_market_id(token_in, weth))
-            .expect("Could not get token_a to weth market");
-
-        let weth_to_b_market = simulated_markets
-            .get(&markets::get_market_id(token_out, weth))
-            .expect("Could not get weth to token_b market");
-
-        vec![a_to_weth_market, weth_to_b_market]
+        if a_to_weth_market.is_some() {
+            if weth_to_b_market.is_some() {
+                vec![a_to_weth_market.unwrap(), weth_to_b_market.unwrap()]
+            } else {
+                return Err(ExecutorError::MarketDoesNotExistForPair(weth, token_out));
+            }
+        } else {
+            return Err(ExecutorError::MarketDoesNotExistForPair(token_in, weth));
+        }
     };
 
     Ok(find_best_route_across_markets(
