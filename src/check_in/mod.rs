@@ -25,7 +25,6 @@ pub async fn spawn_check_in_service<M: 'static + Middleware>(
         wallet_address,
         wallet_key.clone(),
         chain,
-        false,
         middleware.clone(),
     )
     .await?;
