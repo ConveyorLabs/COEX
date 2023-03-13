@@ -167,11 +167,14 @@ pub async fn check_in<M: Middleware>(
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
 
-        tracing::info!("Waiting {:?} until next check in", CHECK_IN_WAIT_TIME);
+        tracing::info!(
+            "Waiting {:?} seconds until next check in",
+            CHECK_IN_WAIT_TIME
+        );
         tokio::time::sleep(Duration::from_secs(CHECK_IN_WAIT_TIME)).await;
     } else {
         tracing::info!(
-            "Waiting {:?} until next check in",
+            "Waiting {:?} seconds until next check in",
             CHECK_IN_WAIT_TIME - time_elapsed
         );
 
