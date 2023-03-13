@@ -307,29 +307,29 @@ pub async fn fill_and_simulate_transaction<M: Middleware>(
         .max_fee_per_gas(max_fee_per_gas)
         .into();
 
-    // //match fill transaction, it will fail if the calldata fails
-    // middleware
-    //     .fill_transaction(&mut tx, None)
-    //     .await
-    //     .map_err(ExecutorError::MiddlewareError)?;
+    //match fill transaction, it will fail if the calldata fails
+    middleware
+        .fill_transaction(&mut tx, None)
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
 
-    // tx.set_gas(tx.gas().unwrap() * 150 / 100);
+    tx.set_gas(tx.gas().unwrap() * 150 / 100);
 
-    tx.set_nonce(
-        middleware
-            .get_transaction_count(from, None)
-            .await
-            .map_err(ExecutorError::MiddlewareError)?,
-    );
+    // tx.set_nonce(
+    //     middleware
+    //         .get_transaction_count(from, None)
+    //         .await
+    //         .map_err(ExecutorError::MiddlewareError)?,
+    // );
 
-    tx.set_gas(350000 as u128);
+    // tx.set_gas(350000 as u128);
 
     dbg!("tx", tx.clone());
 
-    // middleware
-    //     .call(&tx, None)
-    //     .await
-    //     .map_err(ExecutorError::MiddlewareError)?;
+    middleware
+        .call(&tx, None)
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
 
     Ok(tx)
 }
