@@ -36,6 +36,9 @@ pub async fn get_market<M: 'static + Middleware>(
     let mut market = HashMap::new();
 
     for dex in dexes {
+        dbg!("here");
+        dbg!(dex.clone(), token_a, token_b);
+
         if let Some(pools) = dex
             .get_all_pools_for_pair(token_a, token_b, middleware.clone())
             .await?
@@ -44,6 +47,7 @@ pub async fn get_market<M: 'static + Middleware>(
                 market.insert(pool.address(), pool);
             }
         }
+        dbg!("there");
     }
 
     if !market.is_empty() {

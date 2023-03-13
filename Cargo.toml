@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+cfmms = "0.6.1"
 toml = "0.5.9"
 serde_json = "1.0.85"
 serde = "1.0.145"
@@ -14,7 +15,6 @@ tokio = { version = "1.21.1", features = ["full"] }
 serde_derive = "1.0.147"
 thiserror = "1.0.36"
 num-bigfloat = "1.6.0"
-cfmms = "0.6.0"
 uniswap_v3_math = "0.2.26"
 sha3 = "0.10.6"
 rand = "0.8.5"

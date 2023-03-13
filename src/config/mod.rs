@@ -231,31 +231,34 @@ impl Config {
                         11333218,
                         Some(300),
                     ),
-                    // //UniswapV3
-                    // Dex::new(
-                    //     H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
-                    //     DexVariant::UniswapV3,
-                    //     22757547,
-                    // ),
-                    //Quickswap
-                    // Dex::new(
-                    //     H160::from_str("0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     4931780,
-                    //     Some(300),
-                    // ),
-                    // //MM Finance
-                    // Dex::new(
-                    //     H160::from_str("0x7cFB780010e9C861e03bCbC7AC12E013137D47A5").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     31337344,
-                    // ),
+                    //UniswapV3
+                    Dex::new(
+                        H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
+                        DexVariant::UniswapV3,
+                        22757547,
+                        None,
+                    ),
+                    // Quickswap
+                    Dex::new(
+                        H160::from_str("0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32").unwrap(),
+                        DexVariant::UniswapV2,
+                        4931780,
+                        Some(300),
+                    ),
+                    //MM Finance
+                    Dex::new(
+                        H160::from_str("0x7cFB780010e9C861e03bCbC7AC12E013137D47A5").unwrap(),
+                        DexVariant::UniswapV2,
+                        31337344,
+                        Some(300),
+                    ),
                     // //DFYN
-                    // Dex::new(
-                    //     H160::from_str("0xE7Fb3e833eFE5F9c441105EB65Ef8b261266423B").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     5436831,
-                    // ),
+                    Dex::new(
+                        H160::from_str("0xE7Fb3e833eFE5F9c441105EB65Ef8b261266423B").unwrap(),
+                        DexVariant::UniswapV2,
+                        5436831,
+                        Some(300),
+                    ),
                 ];
             }
 

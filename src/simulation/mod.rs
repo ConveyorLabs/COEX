@@ -498,21 +498,10 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
     weth: H160,
     middleware: Arc<M>,
 ) -> Result<execution::limit_order::LimitOrderExecutionBundle, ExecutorError<M>> {
-    //:: First group the orders by market and sort each of the orders by the amount in (ie quantity)
-    //Go through the slice of sandbox limit orders and group the orders
-
     let orders_grouped_by_market = group_limit_orders(limit_orders);
-
     let sorted_orders_grouped_by_market = sort_limit_orders_by_amount_in(orders_grouped_by_market);
-
-    //TODO: sort these by usd value in the future
-
-    //TODO: update this comment later, but we add order ids to this hashset so that we dont recalc orders for execution viability if they are already in an order group
-    // since orders can be affected by multiple markets changing, its possible that the same order is in here twice, hence why we need to check if the order is already
-    // in the execution calldata
     let mut order_ids_in_calldata: HashSet<H256> = HashSet::new();
 
-    //:: This is a vec of order groups, ie vec of vec of bytes32
     let mut execution_calldata = execution::limit_order::LimitOrderExecutionBundle::new();
     // Go through each sorted order group, and simulate the order. If the order can execute, add it to the batch
 
