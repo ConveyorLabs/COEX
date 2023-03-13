@@ -315,17 +315,6 @@ pub async fn fill_and_simulate_transaction<M: Middleware>(
 
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
 
-    // tx.set_nonce(
-    //     middleware
-    //         .get_transaction_count(from, None)
-    //         .await
-    //         .map_err(ExecutorError::MiddlewareError)?,
-    // );
-
-    // tx.set_gas(350000 as u128);
-
-    dbg!("tx", tx.clone());
-
     middleware
         .call(&tx, None)
         .await
