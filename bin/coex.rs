@@ -99,7 +99,12 @@ async fn run_loop<M: 'static + Middleware>(
 
             let (order_events, pool_events) = events::sort_events(
                 &middleware
-                    .get_logs(&block_filter.clone().from_block(last_synced_block))
+                    .get_logs(
+                        &block_filter
+                            .clone()
+                            .from_block(last_synced_block)
+                            .to_block(current_block_number),
+                    )
                     .await
                     .map_err(ExecutorError::MiddlewareError)?,
                 &event_sig_to_belt_event,
