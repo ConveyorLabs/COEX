@@ -108,7 +108,7 @@ async fn run_loop<M: 'static + Middleware>(
             last_synced_block = current_block_number;
 
             //Handle order updates
-            state
+            let mut affected_markets = state
                 .handle_order_updates(
                     order_events,
                     configuration.sandbox_limit_order_book,
@@ -120,38 +120,38 @@ async fn run_loop<M: 'static + Middleware>(
                 .await?;
 
             //Update markets
-            let markets_updated = state.handle_market_updates(&pool_events);
+            affected_markets.extend(state.handle_market_updates(&pool_events));
 
-            // //Check orders for cancellation
-            // if configuration.order_cancellation {
-            //     order_cancellation::check_orders_for_cancellation(
-            //         &configuration,
-            //         &state,
-            //         block.timestamp,
-            //         pending_transactions_sender.clone(),
-            //         middleware.clone(),
-            //     )
-            //     .await?;
-            // }
+            //Check orders for cancellation
+            if configuration.order_cancellation {
+                cancellation::check_orders_for_cancellation(
+                    &configuration,
+                    &state,
+                    block.timestamp,
+                    pending_transactions_sender.clone(),
+                    middleware.clone(),
+                )
+                .await?;
+            }
 
-            // //Check orders that are ready to be refreshed and send a refresh tx
-            // if configuration.order_refresh {
-            //     order_refresh::check_orders_for_refresh(
-            //         &configuration,
-            //         &state,
-            //         block.timestamp,
-            //         pending_transactions_sender.clone(),
-            //         middleware.clone(),
-            //     )
-            //     .await?;
-            // }
+            //Check orders that are ready to be refreshed and send a refresh tx
+            if configuration.order_refresh {
+                refresh::check_orders_for_refresh(
+                    &configuration,
+                    &state,
+                    block.timestamp,
+                    pending_transactions_sender.clone(),
+                    middleware.clone(),
+                )
+                .await?;
+            }
 
             //Evaluate orders for execution
-            if !markets_updated.is_empty() {
+            if !affected_markets.is_empty() {
                 execution::fill_orders_at_execution_price(
                     &configuration,
                     &state,
-                    markets_updated,
+                    affected_markets,
                     pending_transactions_sender.clone(),
                     middleware.clone(),
                 )

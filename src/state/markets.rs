@@ -117,6 +117,32 @@ impl State {
         }
     }
 
+    pub fn get_affected_markets_for_order(&mut self, order_id: &H256, weth: H160) -> HashSet<U256> {
+        let mut affected_markets = HashSet::new();
+
+        if let Some(order) = self.active_orders.get(order_id) {
+            let token_in = order.token_in();
+            let token_out = order.token_out();
+
+            let a_to_weth_market_id = markets::get_market_id(token_in, weth);
+            let weth_to_b_market_id = markets::get_market_id(weth, token_out);
+
+            affected_markets.insert(weth_to_b_market_id);
+            affected_markets.insert(a_to_weth_market_id);
+
+            //Remove order as affected by a to b market if the order is a sandbox order
+            match order {
+                Order::SandboxLimitOrder(_) => {
+                    let a_to_b_market_id = markets::get_market_id(token_in, token_out);
+
+                    affected_markets.insert(a_to_b_market_id);
+                }
+                _ => {}
+            }
+        }
+        affected_markets
+    }
+
     pub fn remove_order_from_market_to_affected_orders(&mut self, order_id: &H256, weth: H160) {
         if let Some(order) = self.active_orders.get(order_id) {
             let token_in = order.token_in();

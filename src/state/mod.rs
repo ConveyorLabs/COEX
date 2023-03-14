@@ -62,7 +62,9 @@ impl State {
         weth: H160,
         dexes: &[Dex],
         middleware: Arc<M>,
-    ) -> Result<(), ExecutorError<M>> {
+    ) -> Result<HashSet<U256>, ExecutorError<M>> {
+        let mut affected_markets = HashSet::new();
+
         //Handle order updates
         for order_event in order_events {
             let belt_event = order_event.0;
@@ -99,6 +101,9 @@ impl State {
                             middleware.clone(),
                         )
                         .await?;
+
+                        affected_markets
+                            .extend(self.get_affected_markets_for_order(&order.order_id(), weth));
 
                         //Add markets for order
                         self.add_markets_for_order(&order, weth, dexes, middleware.clone())
@@ -151,6 +156,9 @@ impl State {
                             middleware.clone(),
                         )
                         .await?;
+
+                        affected_markets
+                            .extend(self.get_affected_markets_for_order(&order.order_id(), weth));
 
                         self.update_order(order);
                     }
@@ -235,7 +243,7 @@ impl State {
                     self.update_execution_credit(
                         order_execution_credit_updated_log.order_id.into(),
                         order_execution_credit_updated_log.new_execution_credit,
-                    )
+                    );
                 }
 
                 BeltEvent::UniswapV2PoolUpdate => {}
@@ -243,7 +251,7 @@ impl State {
             }
         }
 
-        Ok(())
+        Ok(affected_markets)
     }
 
     //Returns markets affected

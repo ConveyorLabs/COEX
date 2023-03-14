@@ -23,10 +23,8 @@ pub async fn check_orders_for_refresh<M: Middleware>(
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
-    //TODO: make this async
+    //TODO: make this parallel
     for (order_id, order) in state.active_orders.iter() {
-        //TODO: check order for refresh
-
         if block_timestamp - U256::from(order.last_refresh_timestamp()) >= THIRTY_DAYS_IN_SECONDS {
             let order_variant = match order {
                 Order::LimitOrder(_) => OrderVariant::LimitOrder,
