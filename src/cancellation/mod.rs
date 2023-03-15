@@ -11,7 +11,7 @@ use crate::{
     error::ExecutorError,
     order::{Order, OrderVariant},
     state::State,
-    transaction_utils,
+    transactions,
 };
 
 pub async fn check_orders_for_cancellation<M: Middleware>(
@@ -23,7 +23,7 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
 ) -> Result<(), ExecutorError<M>> {
     //TODO: We can make this process much faster and lightweight by using a batch contract to get the token in balance for the order in large batches
     //TODO: Then we can handle cancellation as one single group or as async singular transactions to make cancellation profits more distributed across COEXs
-    //TODO: Right now this will be functional but this is very slow
+    //TODO: Right now this implementation was used to get things on its feet and functional at the very least but this is very slow
     for (order_id, order) in state.active_orders.iter() {
         let owner_balance = abi::IErc20::new(order.token_in(), middleware.clone())
             .balance_of(order.owner())
@@ -38,7 +38,7 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
                 Order::SandboxLimitOrder(_) => OrderVariant::SandboxLimitOrder,
             };
 
-            let tx = transaction_utils::construct_and_simulate_cancel_order_transaction(
+            let tx = transactions::construct_and_simulate_cancel_order_transaction(
                 configuration,
                 *order_id,
                 order_variant,
@@ -46,7 +46,7 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
             )
             .await?;
 
-            let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+            let pending_tx_hash = transactions::sign_and_send_transaction(
                 tx,
                 &configuration.wallet_key,
                 &configuration.chain,

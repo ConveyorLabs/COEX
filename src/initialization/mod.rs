@@ -22,7 +22,7 @@ use crate::{
     execution,
     markets::{self, get_market_id, Market},
     order::{self},
-    refresh, state, transaction_utils,
+    refresh, state, transactions,
 };
 
 pub async fn initialize_coex<M: Middleware>() -> Result<
@@ -53,7 +53,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         .expect("Could not initialize state"); //TODO: bubble up this error, just using expect for fast development
 
     let pending_transactions_sender = Arc::new(
-        transaction_utils::initialize_pending_transaction_handler(
+        transactions::initialize_pending_transaction_handler(
             state.pending_order_ids.clone(),
             Duration::new(0, 10000000), //10 ms
             middleware.clone(),

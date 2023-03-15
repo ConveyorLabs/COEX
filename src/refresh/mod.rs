@@ -11,7 +11,7 @@ use crate::{
     error::ExecutorError,
     order::{Order, OrderVariant},
     state::State,
-    transaction_utils,
+    transactions,
 };
 
 pub const THIRTY_DAYS_IN_SECONDS: U256 = U256([39395328, 0, 0, 0]);
@@ -34,7 +34,7 @@ pub async fn check_orders_for_refresh<M: Middleware>(
             //The order id is inserted into a vec to be passed into the refreshOrder function as well as passed into the pending transactions
             let order_ids = vec![*order_id];
 
-            let tx = transaction_utils::construct_and_simulate_refresh_order_transaction(
+            let tx = transactions::construct_and_simulate_refresh_order_transaction(
                 configuration,
                 &order_ids,
                 order_variant,
@@ -42,7 +42,7 @@ pub async fn check_orders_for_refresh<M: Middleware>(
             )
             .await?;
 
-            let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+            let pending_tx_hash = transactions::sign_and_send_transaction(
                 tx,
                 &configuration.wallet_key,
                 &configuration.chain,

@@ -8,7 +8,7 @@ use ethers::types::{H160, H256, I256, U256};
 
 use crate::error::ExecutorError;
 use crate::order::sandbox_limit_order::SandboxLimitOrder;
-use crate::{abi, config, transaction_utils};
+use crate::{abi, config, transactions};
 
 #[derive(Debug, Default)]
 
@@ -240,7 +240,7 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
     for bundle in slo_bundles {
         let order_id_bundles = bundle.order_id_bundles.clone();
 
-        match transaction_utils::construct_and_simulate_slo_execution_transaction(
+        match transactions::construct_and_simulate_slo_execution_transaction(
             configuration,
             bundle,
             middleware.clone(),
@@ -248,7 +248,7 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
         .await
         {
             Ok(tx) => {
-                let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+                let pending_tx_hash = transactions::sign_and_send_transaction(
                     tx,
                     &configuration.wallet_key,
                     &configuration.chain,
