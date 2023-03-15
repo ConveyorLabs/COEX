@@ -158,7 +158,7 @@ pub async fn get_remote_order<M: Middleware>(
             let lob = abi::ILimitOrderBook::new(order_book_address, middleware);
 
             let return_data = lob
-                .get_order_by_id(order_id.to_fixed_bytes())
+                .get_limit_order_by_id(order_id.to_fixed_bytes())
                 .call()
                 .await?;
 

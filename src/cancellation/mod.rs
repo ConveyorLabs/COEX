@@ -21,7 +21,9 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
-    //TODO: make this async
+    //TODO: We can make this process much faster and lightweight by using a batch contract to get the token in balance for the order in large batches
+    //TODO: Then we can handle cancellation as one single group or as async singular transactions to make cancellation profits more distributed across COEXs
+    //TODO: Right now this will be functional but this is very slow
     for (order_id, order) in state.active_orders.iter() {
         let owner_balance = abi::IErc20::new(order.token_in(), middleware.clone())
             .balance_of(order.owner())

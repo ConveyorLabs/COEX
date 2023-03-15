@@ -34,4 +34,6 @@ where
     InsufficientWalletFunds(),
     #[error("Market does not exist for pair")]
     MarketDoesNotExistForPair(H160, H160),
+    #[error("Eth ABI error")]
+    EthABIError(#[from] ethers::abi::Error),
 }

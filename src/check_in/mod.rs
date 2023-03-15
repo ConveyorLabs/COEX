@@ -80,7 +80,7 @@ pub async fn initial_check_in<M: Middleware>(
                 .into(),
             check_in_address,
             wallet_address,
-            chain.chain_id(),
+            chain,
             middleware.clone(),
         )
         .await?;
@@ -141,7 +141,7 @@ pub async fn check_in<M: Middleware>(
                 .into(),
             check_in_address,
             wallet_address,
-            chain.chain_id(),
+            chain,
             middleware.clone(),
         )
         .await?;

@@ -5,27 +5,23 @@ use std::{
 };
 
 use ethers::{
-    providers::{Middleware, PendingTransaction},
+    providers::Middleware,
     signers::LocalWallet,
     types::{
-        transaction::eip2718::TypedTransaction, Bytes, Eip1559TransactionRequest, TraceType,
+        transaction::eip2718::TypedTransaction, Bytes, Eip1559TransactionRequest,
         TransactionRequest, H160, H256,
     },
 };
-use sha3::digest::KeyInit;
 use tokio::time::sleep;
 
 use crate::{
-    abi::{self, SandboxMulticall},
+    abi::{self},
     config::{self, Chain},
     error::ExecutorError,
     execution,
     order::OrderVariant,
-    traces,
 };
 
-//TODO: pass in sleep time for checking transactions
-//TODO: pass in pending order ids
 pub async fn initialize_pending_transaction_handler<M: 'static + Middleware>(
     pending_order_ids: Arc<Mutex<HashSet<H256>>>,
     pending_tx_interval: Duration,
@@ -108,22 +104,16 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
         .calldata()
         .unwrap();
 
-    if configuration.chain.is_eip1559() {
-        //:: EIP 1559 transaction
+    let tx = fill_and_simulate_transaction(
+        calldata,
+        configuration.limit_order_book,
+        configuration.wallet_address,
+        configuration.chain,
+        middleware.clone(),
+    )
+    .await?;
 
-        let tx = fill_and_simulate_transaction(
-            calldata,
-            configuration.limit_order_book,
-            configuration.wallet_address,
-            configuration.chain.chain_id(),
-            middleware.clone(),
-        )
-        .await?;
-
-        Ok(tx)
-    } else {
-        panic!("need to handle legacy txs");
-    }
+    Ok(tx)
 }
 
 //TODO: change this to construct execution transaction, pass in calldata and execution address,
@@ -144,20 +134,16 @@ pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
         .calldata()
         .unwrap();
 
-    if configuration.chain.is_eip1559() {
-        let tx = fill_and_simulate_transaction(
-            calldata,
-            configuration.sandbox_limit_order_router,
-            configuration.wallet_address,
-            configuration.chain.chain_id(),
-            middleware.clone(),
-        )
-        .await?;
+    let tx = fill_and_simulate_transaction(
+        calldata,
+        configuration.sandbox_limit_order_router,
+        configuration.wallet_address,
+        configuration.chain,
+        middleware.clone(),
+    )
+    .await?;
 
-        Ok(tx)
-    } else {
-        panic!("need to handle legacy txs");
-    }
+    Ok(tx)
 }
 
 //TODO: change this to construct execution transaction, pass in calldata and execution address,
@@ -186,20 +172,16 @@ pub async fn construct_and_simulate_cancel_order_transaction<M: Middleware>(
         }
     };
 
-    if configuration.chain.is_eip1559() {
-        let tx = fill_and_simulate_transaction(
-            calldata,
-            configuration.sandbox_limit_order_router,
-            configuration.wallet_address,
-            configuration.chain.chain_id(),
-            middleware.clone(),
-        )
-        .await?;
+    let tx = fill_and_simulate_transaction(
+        calldata,
+        configuration.sandbox_limit_order_router,
+        configuration.wallet_address,
+        configuration.chain,
+        middleware.clone(),
+    )
+    .await?;
 
-        Ok(tx)
-    } else {
-        panic!("need to handle legacy txs");
-    }
+    Ok(tx)
 }
 
 //TODO: change this to construct execution transaction, pass in calldata and execution address,
@@ -228,20 +210,16 @@ pub async fn construct_and_simulate_refresh_order_transaction<M: Middleware>(
         }
     };
 
-    if configuration.chain.is_eip1559() {
-        let tx = fill_and_simulate_transaction(
-            calldata,
-            configuration.sandbox_limit_order_router,
-            configuration.wallet_address,
-            configuration.chain.chain_id(),
-            middleware.clone(),
-        )
-        .await?;
+    let tx = fill_and_simulate_transaction(
+        calldata,
+        configuration.sandbox_limit_order_router,
+        configuration.wallet_address,
+        configuration.chain,
+        middleware.clone(),
+    )
+    .await?;
 
-        Ok(tx)
-    } else {
-        panic!("need to handle legacy txs");
-    }
+    Ok(tx)
 }
 
 //Signs and sends transaction, bumps gas if necessary
@@ -290,6 +268,21 @@ pub async fn fill_and_simulate_transaction<M: Middleware>(
     calldata: Bytes,
     to: H160,
     from: H160,
+    chain: Chain,
+    middleware: Arc<M>,
+) -> Result<TypedTransaction, ExecutorError<M>> {
+    if chain.is_eip1559() {
+        fill_and_simulate_eip1559_transaction(calldata, to, from, chain.chain_id(), middleware)
+            .await
+    } else {
+        fill_and_simulate_legacy_transaction(calldata, to, from, chain.chain_id(), middleware).await
+    }
+}
+
+pub async fn fill_and_simulate_eip1559_transaction<M: Middleware>(
+    calldata: Bytes,
+    to: H160,
+    from: H160,
     chain_id: usize,
     middleware: Arc<M>,
 ) -> Result<TypedTransaction, ExecutorError<M>> {
@@ -323,48 +316,47 @@ pub async fn fill_and_simulate_transaction<M: Middleware>(
     Ok(tx)
 }
 
-//Construct a sandbox limit order execution transaction
-pub async fn construct_slo_execution_transaction<M: 'static + Middleware>(
-    execution_address: H160,
-    data: Bytes,
+pub async fn fill_and_simulate_legacy_transaction<M: Middleware>(
+    calldata: Bytes,
+    to: H160,
+    from: H160,
+    chain_id: usize,
     middleware: Arc<M>,
-    chain: &Chain,
 ) -> Result<TypedTransaction, ExecutorError<M>> {
-    //TODO: For the love of god, refactor the transaction composition
+    let gas_price = middleware
+        .get_gas_price()
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
 
-    match chain {
-        //:: EIP 1559 transaction
-        Chain::Ethereum | Chain::Polygon | Chain::Optimism | Chain::Arbitrum => {
-            let tx = Eip1559TransactionRequest::new()
-                .to(execution_address)
-                .data(data)
-                .into();
+    let tx = TransactionRequest::new()
+        .to(to)
+        .from(from)
+        .data(calldata)
+        .gas_price(gas_price)
+        .chain_id(chain_id);
 
-            Ok(tx)
-        }
+    let mut tx: TypedTransaction = tx.into();
+    let gas_limit = middleware
+        .estimate_gas(&tx, None)
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
 
-        //:: Legacy transaction
-        Chain::BSC | Chain::Cronos => {
-            let tx = TransactionRequest::new().to(execution_address).data(data);
+    tx.set_gas(gas_limit);
 
-            let gas_price = middleware
-                .get_gas_price()
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
+    //match fill transaction, it will fail if the calldata fails
+    middleware
+        .fill_transaction(&mut tx, None)
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
 
-            let tx = tx.gas_price(gas_price);
+    tx.set_gas(tx.gas().unwrap() * 150 / 100);
 
-            let mut tx: TypedTransaction = tx.into();
-            let gas_limit = middleware
-                .estimate_gas(&tx, None)
-                .await
-                .map_err(ExecutorError::MiddlewareError)?;
+    middleware
+        .call(&tx, None)
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
 
-            tx.set_gas(gas_limit);
-
-            Ok(tx)
-        }
-    }
+    Ok(tx)
 }
 
 pub fn raw_signed_transaction(tx: TypedTransaction, wallet_key: &LocalWallet) -> Bytes {

@@ -2,7 +2,9 @@ use ethers::prelude::abigen;
 
 abigen!(
     ISandboxLimitOrderRouter,
-    "./src/abi/sandbox_limit_order_router_abi.json"
+    "./src/abi/sandbox_limit_order_router_abi.json";
+    GetTokenBalanceBatchRequest,
+    "src/abi/GetTokenBalanceBatchRequest.json";
 );
 
 abigen!(
@@ -30,7 +32,7 @@ abigen!(
 
     ILimitOrderBook,
     r#"[
-        function getOrderById(bytes32 orderId) external view returns (bool, bool, bool, uint32, uint32, uint24, uint24, uint16, uint128, uint128, uint128, uint128, address, address, address, bytes32) 
+        function getLimitOrderById(bytes32 orderId) external view returns (bool, bool, bool, uint32, uint32, uint24, uint24, uint16, uint128, uint128, uint128, uint128, address, address, address, bytes32) 
         function cancelOrder(bytes32 orderId) external;
     ]"#;
 

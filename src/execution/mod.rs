@@ -231,7 +231,6 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 ) -> Result<(), ExecutorError<M>> {
     let (mut simulated_markets, slo_at_execution_price, lo_at_execution_price) =
         group_orders_at_execution_price(state, affected_markets, configuration.weth_address);
-
     //Simulate sandbox limit orders and generate execution transaction calldata
     let sandbox_execution_bundles = simulation::simulate_and_batch_sandbox_limit_orders(
         slo_at_execution_price,
