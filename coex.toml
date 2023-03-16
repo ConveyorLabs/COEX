@@ -3,6 +3,5 @@ http_endpoint = ""
 ws_endpoint = ""
 wallet_address = ""
 private_key = ""
-taxed_tokens = false
 order_cancellation = false
 order_refresh = false
