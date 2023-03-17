@@ -24,6 +24,7 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
     //TODO: We can make this process much faster and lightweight by using a batch contract to get the token in balance for the order in large batches
     //TODO: Then we can handle cancellation as one single group or as async singular transactions to make cancellation profits more distributed across COEXs
     //TODO: Right now this implementation was used to get things on its feet and functional at the very least but this is very slow
+
     for (order_id, order) in state.active_orders.iter() {
         let owner_balance = abi::IErc20::new(order.token_in(), middleware.clone())
             .balance_of(order.owner())

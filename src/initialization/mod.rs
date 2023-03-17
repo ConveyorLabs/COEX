@@ -5,16 +5,6 @@ use std::{
     time::Duration,
 };
 
-use cfmms::{dex::Dex, pool::Pool};
-use ethers::{
-    abi::RawLog,
-    prelude::{gas_escalator::GasEscalatorMiddleware, EthLogDecode, NonceManagerMiddleware},
-    providers::{Http, Middleware, Provider, Ws},
-    types::{BlockNumber, Filter, ValueOrArray, H160, H256, U256},
-};
-use tokio::sync::mpsc::Sender;
-use tracing::info;
-
 use crate::{
     abi::{self, OrderPlacedFilter},
     cancellation, check_in, config,
@@ -24,6 +14,19 @@ use crate::{
     order::{self},
     refresh, state, transactions,
 };
+use cfmms::{dex::Dex, pool::Pool};
+use ethers::{
+    abi::RawLog,
+    prelude::{
+        gas_escalator::{self, GasEscalatorMiddleware, LinearGasPrice},
+        EthLogDecode, NonceManagerMiddleware,
+    },
+    providers::{Http, Middleware, Provider, Ws},
+    types::{BlockNumber, Filter, ValueOrArray, H160, H256, U256},
+};
+use ethers::{middleware::gas_escalator::*, prelude::nonce_manager};
+use tokio::sync::mpsc::Sender;
+use tracing::info;
 
 pub async fn initialize_coex<M: Middleware>() -> Result<
     (
@@ -31,7 +34,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         state::State,
         Arc<Sender<(H256, Vec<H256>)>>,
         String,
-        Arc<NonceManagerMiddleware<ethers::providers::Provider<Http>>>,
+        Arc<NonceManagerMiddleware<GasEscalatorMiddleware<Provider<Http>, LinearGasPrice>>>,
     ),
     ExecutorError<M>,
 > {
@@ -42,10 +45,18 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         .expect("Could not initialize HTTP provider");
     let stream_provider_endpoint = configuration.ws_endpoint.to_owned();
 
-    let middleware = Arc::new(NonceManagerMiddleware::new(
+    //TODO: FIXME: double check this and make sure this is set up the way we want
+
+    //TODO: add a field the config to specify the gas escalation inc value. Also specify the time between gas escalation bumps
+    let gas_escalator = GasEscalatorMiddleware::new(
         provider.clone(),
-        configuration.wallet_address,
-    ));
+        LinearGasPrice::new(100, 60_u64, None),
+        Frequency::PerBlock,
+    );
+
+    let nonce_manager = NonceManagerMiddleware::new(gas_escalator, configuration.wallet_address);
+
+    let middleware = Arc::new(nonce_manager);
 
     //Initialize the markets and order structures
     let state = initialize_state(&configuration, middleware.clone())

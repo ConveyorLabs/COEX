@@ -123,19 +123,14 @@ impl SandboxLimitOrder {
         weth: H160,
     ) -> f64 {
         //Check if the order is at execution price
-        dbg!("1", self.order_id);
 
         //Check a -> b price
         let a_to_b_price = get_best_market_price(true, self.token_in, self.token_out, markets);
 
         //Check a -> weth -> b price
-        dbg!("2", self.order_id);
         let a_to_weth_price = get_best_market_price(true, self.token_in, weth, markets);
-        dbg!("3", self.order_id);
         let weth_to_b_price = get_best_market_price(true, weth, self.token_out, markets);
-        dbg!("4", self.order_id);
         let a_to_weth_to_b_price = a_to_weth_price * weth_to_b_price;
-        dbg!("5", self.order_id);
 
         if a_to_weth_to_b_price > a_to_b_price {
             a_to_weth_to_b_price

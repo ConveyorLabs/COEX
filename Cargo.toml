@@ -10,7 +10,7 @@ repository = "https://github.com/ConveyorLabs/COEX"
 keywords = ["evm", "mev", "blockchain"]
 
 [dependencies]
-cfmms = "0.6.1"
+cfmms = "0.6.2"
 toml = "0.5.9"
 serde_json = "1.0.85"
 serde = "1.0.145"

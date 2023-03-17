@@ -165,6 +165,8 @@ pub fn group_orders_at_execution_price(
     let mut slo_at_execution_price: HashMap<H256, &SandboxLimitOrder> = HashMap::new();
     let mut lo_at_execution_price: HashMap<H256, &LimitOrder> = HashMap::new();
 
+    dbg!("orders", &state.active_orders);
+
     for market_id in affected_markets {
         if let Some(affected_orders) = state.market_to_affected_orders.get(&market_id) {
             for order_id in affected_orders {
@@ -231,6 +233,8 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
 ) -> Result<(), ExecutorError<M>> {
     let (mut simulated_markets, slo_at_execution_price, lo_at_execution_price) =
         group_orders_at_execution_price(state, affected_markets, configuration.weth_address);
+
+    dbg!(lo_at_execution_price.len(), slo_at_execution_price.len());
     //Simulate sandbox limit orders and generate execution transaction calldata
     let sandbox_execution_bundles = simulation::simulate_and_batch_sandbox_limit_orders(
         slo_at_execution_price,

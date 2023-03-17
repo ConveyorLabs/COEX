@@ -64,7 +64,6 @@ pub fn get_best_market_price(
     let market_id = get_market_id(base_token, quote_token);
     if let Some(market) = markets.get(&market_id) {
         for (_, pool) in market {
-            dbg!("Pool", pool);
             let price = match pool.calculate_price(base_token) {
                 Ok(price) => price,
                 Err(_) => 0.0,

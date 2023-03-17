@@ -155,26 +155,31 @@ pub async fn construct_and_simulate_cancel_order_transaction<M: Middleware>(
     order_variant: OrderVariant,
     middleware: Arc<M>,
 ) -> Result<TypedTransaction, ExecutorError<M>> {
-    let calldata = match order_variant {
-        OrderVariant::SandboxLimitOrder => abi::ISandboxLimitOrderBook::new(
-            configuration.sandbox_limit_order_book,
-            middleware.clone(),
-        )
-        .cancel_order(order_id.into())
-        .calldata()
-        .unwrap(),
+    dbg!("getting here11", order_id, order_variant);
+    let (to_address, calldata) = match order_variant {
+        OrderVariant::SandboxLimitOrder => (
+            configuration.sandbox_limit_order_router,
+            abi::ISandboxLimitOrderBook::new(
+                configuration.sandbox_limit_order_book,
+                middleware.clone(),
+            )
+            .validate_and_cancel_order(order_id.into())
+            .calldata()
+            .unwrap(),
+        ),
 
-        OrderVariant::LimitOrder => {
+        OrderVariant::LimitOrder => (
+            configuration.limit_order_book,
             abi::ILimitOrderBook::new(configuration.limit_order_book, middleware.clone())
-                .cancel_order(order_id.into())
+                .validate_and_cancel_order(order_id.into())
                 .calldata()
-                .unwrap()
-        }
+                .unwrap(),
+        ),
     };
 
     let tx = fill_and_simulate_transaction(
         calldata,
-        configuration.sandbox_limit_order_router,
+        to_address,
         configuration.wallet_address,
         configuration.chain,
         middleware.clone(),
@@ -246,12 +251,15 @@ pub async fn sign_and_send_transaction<M: Middleware>(
                         eip1559_tx.max_fee_per_gas =
                             Some(eip1559_tx.max_fee_per_gas.unwrap() * 150 / 100);
 
-                        //TODO: remove this, just for throttling
+                        //TODO: FIXME: remove this, just for throttling
                         sleep(Duration::new(0, 500000000)).await; //.5 sec
 
                         tx = eip1559_tx.to_owned().into();
 
                         signed_tx = raw_signed_transaction(tx.clone(), wallet_key);
+                    } else {
+                        let legacy_tx = tx.as_legacy_mut().unwrap();
+                        legacy_tx.gas_price = Some(legacy_tx.gas_price.unwrap() * 150 / 100);
                     }
                 } else if error_string.contains("insufficient funds") {
                     return Err(ExecutorError::InsufficientWalletFunds());
@@ -300,13 +308,21 @@ pub async fn fill_and_simulate_eip1559_transaction<M: Middleware>(
         .max_fee_per_gas(max_fee_per_gas)
         .into();
 
-    //match fill transaction, it will fail if the calldata fails
-    middleware
-        .fill_transaction(&mut tx, None)
-        .await
-        .map_err(ExecutorError::MiddlewareError)?;
+    // //match fill transaction, it will fail if the calldata fails
+    // middleware
+    //     .fill_transaction(&mut tx, None)
+    //     .await
+    //     .map_err(ExecutorError::MiddlewareError)?;
 
-    tx.set_gas(tx.gas().unwrap() * 150 / 100);
+    // tx.set_gas(tx.gas().unwrap() * 150 / 100);
+    tx.set_nonce(
+        middleware
+            .get_transaction_count(from, None)
+            .await
+            .expect("bad"),
+    );
+
+    tx.set_gas(300000);
 
     middleware
         .call(&tx, None)
