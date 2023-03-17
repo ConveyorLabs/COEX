@@ -45,7 +45,7 @@ Below is an example `coex.toml` file.
 ```toml
 chain_name = "ethereum"
 http_endpoint = "https://ethereum-mainnet.xyz"
-ws_endpoint = "wss://ehereum-mainnet.xyz"
+ws_endpoint = "wss://ethereum-mainnet.xyz"
 wallet_address = "0xc0ffee254729296a45a3885639AC7E10F9d54979"
 private_key = "afdfd9c3d2095ef696594f6cedcae59e72dcd697e2a7521b1578140422a4f890"
 order_cancellation = true
