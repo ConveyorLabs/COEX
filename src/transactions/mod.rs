@@ -308,21 +308,21 @@ pub async fn fill_and_simulate_eip1559_transaction<M: Middleware>(
         .max_fee_per_gas(max_fee_per_gas)
         .into();
 
-    // //match fill transaction, it will fail if the calldata fails
-    // middleware
-    //     .fill_transaction(&mut tx, None)
-    //     .await
-    //     .map_err(ExecutorError::MiddlewareError)?;
+    //match fill transaction, it will fail if the calldata fails
+    middleware
+        .fill_transaction(&mut tx, None)
+        .await
+        .map_err(ExecutorError::MiddlewareError)?;
 
-    // tx.set_gas(tx.gas().unwrap() * 150 / 100);
-    tx.set_nonce(
-        middleware
-            .get_transaction_count(from, None)
-            .await
-            .expect("bad"),
-    );
+    tx.set_gas(tx.gas().unwrap() * 150 / 100);
+    // tx.set_nonce(
+    //     middleware
+    //         .get_transaction_count(from, None)
+    //         .await
+    //         .expect("bad"),
+    // );
 
-    tx.set_gas(300000);
+    // tx.set_gas(300000);
 
     middleware
         .call(&tx, None)

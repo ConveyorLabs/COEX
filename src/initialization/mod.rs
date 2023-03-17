@@ -130,7 +130,7 @@ pub async fn initialize_active_orders<M: Middleware>(
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
-    let step = 100000;
+    let step = 10000;
 
     //Unwrap can be used here because the creation block was verified within `Dex::new()`
     let from_block = protocol_creation_block

@@ -27,7 +27,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await
             .unwrap();
 
-    let current_block = middleware.get_block_number().await?;
+    let current_block_number = middleware.get_block_number().await?;
+    let current_block = middleware
+        .get_block(current_block_number)
+        .await?
+        .expect("Could not get the current block");
 
     check_in::spawn_check_in_service(
         configuration.executor_address,
@@ -37,6 +41,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
         middleware.clone(),
     )
     .await?;
+
+    //Check orders for cancellation
+    if configuration.order_cancellation {
+        cancellation::check_orders_for_cancellation(
+            &configuration,
+            &state,
+            current_block.timestamp,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await?;
+    }
+
+    //Check orders that are ready to be refreshed and send a refresh tx
+    if configuration.order_refresh {
+        refresh::check_orders_for_refresh(
+            &configuration,
+            &state,
+            current_block.timestamp,
+            pending_transactions_sender.clone(),
+            middleware.clone(),
+        )
+        .await?;
+    }
 
     //NOTE: TODO: maybe sync before execution to update markets from any missed logs during other parts of initialization
     info!("Checking for orders at execution price...");
@@ -60,7 +88,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         stream_provider_endpoint,
         state,
         pending_transactions_sender,
-        current_block,
+        current_block_number,
         middleware,
     )
     .await?;

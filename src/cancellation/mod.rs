@@ -55,6 +55,8 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
             )
             .await?;
 
+            tracing::info!("Pending order cancellation tx: {:?}", pending_tx_hash);
+
             pending_transactions_sender
                 .send((pending_tx_hash, vec![*order_id]))
                 .await?;
