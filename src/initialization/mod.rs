@@ -34,7 +34,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         state::State,
         Arc<Sender<(H256, Vec<H256>)>>,
         String,
-        Arc<NonceManagerMiddleware<GasEscalatorMiddleware<Provider<Http>, LinearGasPrice>>>,
+        Arc<NonceManagerMiddleware<Provider<Http>>>,
     ),
     ExecutorError<M>,
 > {
@@ -45,17 +45,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         .expect("Could not initialize HTTP provider");
     let stream_provider_endpoint = configuration.ws_endpoint.to_owned();
 
-    //TODO: FIXME: double check this and make sure this is set up the way we want
-
-    //TODO: add a field the config to specify the gas escalation inc value. Also specify the time between gas escalation bumps
-    let gas_escalator = GasEscalatorMiddleware::new(
-        provider.clone(),
-        LinearGasPrice::new(100, 60_u64, None),
-        Frequency::PerBlock,
-    );
-
-    let nonce_manager = NonceManagerMiddleware::new(gas_escalator, configuration.wallet_address);
-
+    let nonce_manager = NonceManagerMiddleware::new(provider.clone(), configuration.wallet_address);
     let middleware = Arc::new(nonce_manager);
 
     //Initialize the markets and order structures

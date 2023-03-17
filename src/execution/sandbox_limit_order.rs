@@ -95,32 +95,47 @@ impl SandboxLimitOrderExecutionBundle {
         order: &SandboxLimitOrder,
         sandbox_limit_order_router: H160,
     ) {
+        dbg!("route: ", route.clone());
+
         //Add calls for each swap throughout the route
         let mut token_in = order.token_in;
         for (i, pool) in route.iter().enumerate() {
             match pool {
                 Pool::UniswapV2(uniswap_v2_pool) => {
-                    let to = if i == route.len() - 1 {
+                    let to_address = if i == route.len() - 1 {
                         sandbox_limit_order_router
                     } else {
-                        route[i + 1].address()
+                        match route[i + 1] {
+                            Pool::UniswapV2(next_pool) => next_pool.address,
+                            Pool::UniswapV3(_) => sandbox_limit_order_router,
+                        }
                     };
 
                     self.add_uniswap_v2_swap_to_calls(
                         token_in,
                         amounts_out[i],
-                        to,
+                        to_address,
                         uniswap_v2_pool,
                     );
                 }
 
-                Pool::UniswapV3(uniswap_v3_pool) => self.add_uniswap_v3_swap_to_calls(
-                    token_in,
-                    amounts_in[i],
-                    sandbox_limit_order_router,
-                    sandbox_limit_order_router,
-                    uniswap_v3_pool,
-                ),
+                Pool::UniswapV3(uniswap_v3_pool) => {
+                    let to_address = if i == route.len() - 1 {
+                        sandbox_limit_order_router
+                    } else {
+                        match route[i + 1] {
+                            Pool::UniswapV2(next_pool) => next_pool.address,
+                            Pool::UniswapV3(_) => sandbox_limit_order_router,
+                        }
+                    };
+                    self.add_uniswap_v3_swap_to_calls(
+                        token_in,
+                        amounts_in[i],
+                        to_address,
+                        sandbox_limit_order_router,
+                        uniswap_v3_pool,
+                    );
+                }
             }
             //Update the token in
             token_in = self.get_next_token_in(token_in, pool);

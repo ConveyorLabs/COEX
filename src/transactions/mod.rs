@@ -322,7 +322,7 @@ pub async fn fill_and_simulate_eip1559_transaction<M: Middleware>(
     //         .expect("bad"),
     // );
 
-    // tx.set_gas(300000);
+    // tx.set_gas(350000);
 
     middleware
         .call(&tx, None)

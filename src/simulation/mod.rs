@@ -100,11 +100,8 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
             //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for execution
             if last_amount_out.as_u128() >= order.amount_out_remaining {
                 if order.token_out == weth {
-                    println!("out is weth");
                     if last_amount_out.as_u128() - order.amount_out_remaining > order.fee_remaining
                     {
-                        println!("can fill with fee");
-
                         routing::update_pools_along_route(
                             order.token_in,
                             U256::from(order.amount_in_remaining),
