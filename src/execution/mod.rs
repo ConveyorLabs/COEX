@@ -30,7 +30,7 @@ pub trait ExecutionCalldata {
     fn to_bytes(&self) -> Bytes;
 }
 
-pub async fn fill_all_orders_at_execution_price<M: Middleware>(
+pub async fn fill_all_orders_at_execution_price<M: 'static + Middleware>(
     state: &state::State,
     configuration: &config::Config,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,

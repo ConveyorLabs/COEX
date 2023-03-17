@@ -492,7 +492,7 @@ fn sort_sandbox_limit_orders_by_amount_in(
 }
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
-pub async fn simulate_and_batch_limit_orders<'a, M: 'a + Middleware>(
+pub async fn simulate_and_batch_limit_orders<M: 'static + Middleware>(
     limit_orders: HashMap<H256, &LimitOrder>,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
