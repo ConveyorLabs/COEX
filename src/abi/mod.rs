@@ -73,6 +73,11 @@ abigen!(
         event Swap(address sender, address recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)
         ]"#;
 
+    IUniswapV3Quoter,
+    r#"[
+        function quoteExactInputSingle(address tokenIn, address tokenOut,uint24 fee, uint256 amountIn, uint160 sqrtPriceLimitX96) external returns (uint256 amountOut)
+        ]"#;
+
     IErc20,
     r#"[
         function balanceOf(address account) external view returns (uint256)

@@ -59,3 +59,4 @@ Once you have configured the `coex.toml` file, you can start the COEX by enterin
 ```bash
 coex --config <path_to_config>
 ```
+

@@ -23,7 +23,7 @@ use crate::{
 };
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
-pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
+pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
     sandbox_limit_orders: HashMap<H256, &SandboxLimitOrder>,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
@@ -63,11 +63,11 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                     Err(_) => (vec![], vec![], vec![]),
                 };
 
-            match routing::find_best_a_to_weth_to_b_route(
+            match routing::find_best_a_to_x_to_b_route(
                 order.token_in,
+                weth,
                 order.token_out,
                 U256::from(order.amount_in_remaining),
-                weth,
                 simulated_markets,
                 middleware.clone(),
             )
@@ -492,7 +492,7 @@ fn sort_sandbox_limit_orders_by_amount_in(
 }
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
-pub async fn simulate_and_batch_limit_orders<M: Middleware>(
+pub async fn simulate_and_batch_limit_orders<'a, M: 'a + Middleware>(
     limit_orders: HashMap<H256, &LimitOrder>,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
@@ -518,11 +518,11 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
 
                 //Check if the order can execute within the updated simulated markets
                 if order.can_execute(order.buy, &simulated_markets, weth) {
-                    let (_, amount_out, route) = routing::find_best_a_to_weth_to_b_route(
+                    let (_, amount_out, route) = routing::find_best_a_to_x_to_b_route(
                         order.token_in,
+                        weth,
                         order.token_out,
                         U256::from(order.quantity),
-                        weth,
                         simulated_markets,
                         middleware.clone(),
                     )
