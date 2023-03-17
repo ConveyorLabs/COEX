@@ -2,8 +2,15 @@
 name = "coex"
 version = "0.1.0"
 edition = "2021"
+license = ""
+description = "The Conveyor Offchain Executor"
+readme = "README.md"
+homepage = "https://github.com/ConveyorLabs/COEX"
+repository = "https://github.com/ConveyorLabs/COEX"
+keywords = ["evm", "mev", "blockchain"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+
 
 [dependencies]
 cfmms = "0.6.1"
