@@ -1,7 +1,0 @@
-chain_name = ""
-http_endpoint = ""
-ws_endpoint = ""
-wallet_address = ""
-private_key = ""
-order_cancellation = false
-order_refresh = false
