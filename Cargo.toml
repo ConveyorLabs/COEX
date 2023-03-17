@@ -2,7 +2,7 @@
 name = "coex"
 version = "0.1.0"
 edition = "2021"
-license = ""
+license = "MIT"
 description = "The Conveyor Offchain Executor"
 readme = "README.md"
 homepage = "https://github.com/ConveyorLabs/COEX"
