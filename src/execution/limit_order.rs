@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::error::ExecutorError;
-use crate::{config, transaction_utils};
+use crate::{config, transactions};
 
 use super::ExecutionCalldata;
 use ethers::abi::ethabi::Bytes;
@@ -90,14 +90,15 @@ pub async fn execute_limit_order_groups<M: Middleware>(
     // execute limit orders
     for order_group in limit_order_execution_bundle.order_groups {
         if !order_group.order_ids.is_empty() {
-            if let Ok(tx) = transaction_utils::construct_and_simulate_lo_execution_transaction(
+            if let Ok(tx) = transactions::construct_and_simulate_lo_execution_transaction(
                 configuration,
                 order_group.order_ids.clone(),
                 middleware.clone(),
             )
             .await
             {
-                let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+                dbg!(tx.clone());
+                let pending_tx_hash = transactions::sign_and_send_transaction(
                     tx,
                     &configuration.wallet_key,
                     &configuration.chain,

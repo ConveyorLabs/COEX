@@ -3,8 +3,7 @@ pub mod sandbox_limit_order;
 
 use std::{
     collections::{HashMap, HashSet},
-    str::FromStr,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use ethers::{
@@ -18,19 +17,19 @@ use crate::{
     error::ExecutorError,
     markets,
     order::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, Order},
-    simulation, state, transaction_utils,
+    simulation, state,
 };
 
 use self::{
     limit_order::LimitOrderExecutionBundle,
-    sandbox_limit_order::{execute_sandbox_limit_order_bundles, SandboxLimitOrderExecutionBundle},
+    sandbox_limit_order::execute_sandbox_limit_order_bundles,
 };
 
 pub trait ExecutionCalldata {
     fn to_bytes(&self) -> Bytes;
 }
 
-pub async fn fill_all_orders_at_execution_price<M: Middleware>(
+pub async fn fill_all_orders_at_execution_price<M: 'static + Middleware>(
     state: &state::State,
     configuration: &config::Config,
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
@@ -50,44 +49,44 @@ pub async fn fill_all_orders_at_execution_price<M: Middleware>(
     let mut lo_at_execution_price: HashMap<H256, &LimitOrder> = HashMap::new();
 
     for order in state.active_orders.values() {
-        if order.can_execute(&state.markets, configuration.weth_address) {
-            if order.has_sufficient_balance(middleware.clone()).await? {
-                let a_to_weth_market_id =
-                    markets::get_market_id(order.token_in(), configuration.weth_address);
+        if order.can_execute(&state.markets, configuration.weth_address)
+            && order.has_sufficient_balance(middleware.clone()).await?
+        {
+            let a_to_weth_market_id =
+                markets::get_market_id(order.token_in(), configuration.weth_address);
 
-                if let Some(market) = state.markets.get(&a_to_weth_market_id) {
-                    //Add the market to the simulation markets structure
-                    simulated_markets.insert(a_to_weth_market_id, market.clone());
-                }
+            if let Some(market) = state.markets.get(&a_to_weth_market_id) {
+                //Add the market to the simulation markets structure
+                simulated_markets.insert(a_to_weth_market_id, market.clone());
+            }
 
-                let weth_to_b_market_id =
-                    markets::get_market_id(configuration.weth_address, order.token_out());
-                if let Some(market) = state.markets.get(&weth_to_b_market_id) {
-                    //Add the market to the simulation markets structure
-                    simulated_markets.insert(weth_to_b_market_id, market.clone());
-                }
+            let weth_to_b_market_id =
+                markets::get_market_id(configuration.weth_address, order.token_out());
+            if let Some(market) = state.markets.get(&weth_to_b_market_id) {
+                //Add the market to the simulation markets structure
+                simulated_markets.insert(weth_to_b_market_id, market.clone());
+            }
 
-                match order {
-                    Order::SandboxLimitOrder(sandbox_limit_order) => {
-                        let a_to_b_market_id =
-                            markets::get_market_id(order.token_in(), order.token_out());
-                        if let Some(market) = state.markets.get(&a_to_b_market_id) {
-                            //Add the market to the simulation markets structure
-                            simulated_markets.insert(a_to_b_market_id, market.clone());
-                        }
-
-                        if slo_at_execution_price
-                            .get(&sandbox_limit_order.order_id)
-                            .is_none()
-                        {
-                            slo_at_execution_price
-                                .insert(sandbox_limit_order.order_id, sandbox_limit_order);
-                        }
+            match order {
+                Order::SandboxLimitOrder(sandbox_limit_order) => {
+                    let a_to_b_market_id =
+                        markets::get_market_id(order.token_in(), order.token_out());
+                    if let Some(market) = state.markets.get(&a_to_b_market_id) {
+                        //Add the market to the simulation markets structure
+                        simulated_markets.insert(a_to_b_market_id, market.clone());
                     }
-                    Order::LimitOrder(limit_order) => {
-                        if lo_at_execution_price.get(&limit_order.order_id).is_none() {
-                            lo_at_execution_price.insert(limit_order.order_id, limit_order);
-                        }
+
+                    if slo_at_execution_price
+                        .get(&sandbox_limit_order.order_id)
+                        .is_none()
+                    {
+                        slo_at_execution_price
+                            .insert(sandbox_limit_order.order_id, sandbox_limit_order);
+                    }
+                }
+                Order::LimitOrder(limit_order) => {
+                    if lo_at_execution_price.get(&limit_order.order_id).is_none() {
+                        lo_at_execution_price.insert(limit_order.order_id, limit_order);
                     }
                 }
             }
@@ -229,6 +228,8 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
+    //Get the simulated markets that the orders at execution price could potentially route through
+    //Additionally, this function collects all of the sandbox orders and limit orders at execution price
     let (mut simulated_markets, slo_at_execution_price, lo_at_execution_price) =
         group_orders_at_execution_price(state, affected_markets, configuration.weth_address);
 
@@ -265,7 +266,6 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
         .await?;
     }
 
-    //TODO: rename the limit order execution bundle order groiups to just be execution bundles and return a vec of bundle
     //Execute orders if there are any order groups
     if !limit_order_execution_bundle.order_groups.is_empty() {
         //execute sandbox limit orders

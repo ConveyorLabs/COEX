@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use cfmms::pool::Pool;
 use ethers::abi::ethabi::Bytes;
-use ethers::abi::{AbiEncode, Token};
+use ethers::abi::Token;
 use ethers::providers::Middleware;
 use ethers::types::{H160, H256, I256, U256};
 
 use crate::error::ExecutorError;
 use crate::order::sandbox_limit_order::SandboxLimitOrder;
-use crate::{abi, config, transaction_utils};
+use crate::{abi, config, transactions};
 
 #[derive(Debug, Default)]
 
@@ -47,7 +47,7 @@ impl SandboxLimitOrderExecutionBundle {
             order_id_bundles,
             fill_amounts: self.fill_amounts,
             transfer_addresses: self.transfer_addresses,
-            calls: calls,
+            calls,
         }
     }
 }
@@ -95,32 +95,47 @@ impl SandboxLimitOrderExecutionBundle {
         order: &SandboxLimitOrder,
         sandbox_limit_order_router: H160,
     ) {
+        dbg!("route: ", route.clone());
+
         //Add calls for each swap throughout the route
         let mut token_in = order.token_in;
         for (i, pool) in route.iter().enumerate() {
             match pool {
                 Pool::UniswapV2(uniswap_v2_pool) => {
-                    let to = if i == route.len() - 1 {
+                    let to_address = if i == route.len() - 1 {
                         sandbox_limit_order_router
                     } else {
-                        route[i + 1].address()
+                        match route[i + 1] {
+                            Pool::UniswapV2(next_pool) => next_pool.address,
+                            Pool::UniswapV3(_) => sandbox_limit_order_router,
+                        }
                     };
 
                     self.add_uniswap_v2_swap_to_calls(
                         token_in,
                         amounts_out[i],
-                        to,
+                        to_address,
                         uniswap_v2_pool,
                     );
                 }
 
-                Pool::UniswapV3(uniswap_v3_pool) => self.add_uniswap_v3_swap_to_calls(
-                    token_in,
-                    amounts_in[i],
-                    sandbox_limit_order_router,
-                    sandbox_limit_order_router,
-                    uniswap_v3_pool,
-                ),
+                Pool::UniswapV3(uniswap_v3_pool) => {
+                    let to_address = if i == route.len() - 1 {
+                        sandbox_limit_order_router
+                    } else {
+                        match route[i + 1] {
+                            Pool::UniswapV2(next_pool) => next_pool.address,
+                            Pool::UniswapV3(_) => sandbox_limit_order_router,
+                        }
+                    };
+                    self.add_uniswap_v3_swap_to_calls(
+                        token_in,
+                        amounts_in[i],
+                        to_address,
+                        sandbox_limit_order_router,
+                        uniswap_v3_pool,
+                    );
+                }
             }
             //Update the token in
             token_in = self.get_next_token_in(token_in, pool);
@@ -194,11 +209,7 @@ impl SandboxLimitOrderExecutionBundle {
         from: H160,
         pool: &cfmms::pool::UniswapV3Pool,
     ) {
-        let zero_for_one = if pool.token_a == token_in {
-            true
-        } else {
-            false
-        };
+        let zero_for_one = pool.token_a == token_in;
 
         let sqrt_price_limit_x_96 = if zero_for_one {
             uniswap_v3_math::tick_math::MIN_SQRT_RATIO + 1
@@ -206,7 +217,7 @@ impl SandboxLimitOrderExecutionBundle {
             uniswap_v3_math::tick_math::MAX_SQRT_RATIO - 1
         };
 
-        let calldata = ethers::abi::encode(&vec![
+        let calldata = ethers::abi::encode(&[
             Token::Bool(zero_for_one),
             Token::Address(token_in),
             Token::Address(from),
@@ -240,7 +251,7 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
     for bundle in slo_bundles {
         let order_id_bundles = bundle.order_id_bundles.clone();
 
-        match transaction_utils::construct_and_simulate_slo_execution_transaction(
+        match transactions::construct_and_simulate_slo_execution_transaction(
             configuration,
             bundle,
             middleware.clone(),
@@ -248,7 +259,7 @@ pub async fn execute_sandbox_limit_order_bundles<M: Middleware>(
         .await
         {
             Ok(tx) => {
-                let pending_tx_hash = transaction_utils::sign_and_send_transaction(
+                let pending_tx_hash = transactions::sign_and_send_transaction(
                     tx,
                     &configuration.wallet_key,
                     &configuration.chain,

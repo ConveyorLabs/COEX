@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, str::FromStr, sync::Arc, vec};
+use std::{fs::read_to_string, str::FromStr, vec};
 
 use ethers::{
     signers::LocalWallet,
@@ -179,30 +179,34 @@ impl Config {
                 config.protocol_creation_block = BlockNumber::Number(16616601.into());
 
                 config.dexes = vec![
-                    // // Sushiswap
-                    // Dex::new(
-                    //     H160::from_str("0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     10794229,
-                    // ),
-                    // // Uniswap V3
-                    // Dex::new(
-                    //     H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
-                    //     DexVariant::UniswapV3,
-                    //     12369621,
-                    // ),
-                    // // Pancakeswap
-                    // Dex::new(
-                    //     H160::from_str("0x1097053Fd2ea711dad45caCcc45EfF7548fCB362").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     15614590,
-                    // ),
-                    // // Shibaswap
-                    // Dex::new(
-                    //     H160::from_str("0x115934131916C8b277DD010Ee02de363c09d037c").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     12771526,
-                    // ),
+                    // Sushiswap
+                    Dex::new(
+                        H160::from_str("0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac").unwrap(),
+                        DexVariant::UniswapV2,
+                        10794229,
+                        Some(300),
+                    ),
+                    // Uniswap V3
+                    Dex::new(
+                        H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
+                        DexVariant::UniswapV3,
+                        12369621,
+                        None,
+                    ),
+                    // Pancakeswap
+                    Dex::new(
+                        H160::from_str("0x1097053Fd2ea711dad45caCcc45EfF7548fCB362").unwrap(),
+                        DexVariant::UniswapV2,
+                        15614590,
+                        Some(300),
+                    ),
+                    // Shibaswap
+                    Dex::new(
+                        H160::from_str("0x115934131916C8b277DD010Ee02de363c09d037c").unwrap(),
+                        DexVariant::UniswapV2,
+                        12771526,
+                        Some(300),
+                    ),
                 ];
             }
 
@@ -283,25 +287,9 @@ impl Config {
                     H160::from_str("0xe56B8CF0aB1865Dd0C9A1c81C076D2843Eb90B97").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(71267.into());
 
-                config.dexes = vec![
-                    //Sushiswap
-                    // Dex::new(
-                    //     H160::from_str("0xc35DADB65012eC5796536bD9864eD8773aBc74C4").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     70,
-                    // ), //UniswapV3
-                    // Dex::new(
-                    //     H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
-                    //     DexVariant::UniswapV3,
-                    //     35,
-                    // ),
-                    // //Camelot
-                    // Dex::new(
-                    //     H160::from_str("0x6EcCab422D763aC031210895C81787E87B43A652").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     20702,
-                    // ),
-                ];
+                config.dexes = vec![];
+
+                todo!("Dexes not yet implemented for this chain.")
             }
             Chain::BSC => {
                 config.http_endpoint = coex_toml.http_endpoint;
@@ -320,50 +308,8 @@ impl Config {
                     H160::from_str("0x902c9e3202F5191db0B6edF5c038F4941Dfd6641").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(25617424.into());
 
-                config.dexes = vec![
-                    //PancakeSwapV2
-                    // Dex::new(
-                    //     H160::from_str("0xca143ce32fe78f1f7019d7d551a6402fc5350c73").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     6809737,
-                    // ),
-                    // //PancakeSwapV1
-                    // Dex::new(
-                    //     H160::from_str("0xBCfCcbde45cE874adCB698cC183deBcF17952812").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     586851,
-                    // ),
-                    // //Apeswap
-                    // Dex::new(
-                    //     H160::from_str("0x0841BD0B734E4F5853f0dD8d7Ea041c241fb0Da6").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     4855901,
-                    // ),
-                    // //Biswap
-                    // Dex::new(
-                    //     H160::from_str("0x858E3312ed3A876947EA49d572A7C42DE08af7EE").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     7664646,
-                    // ),
-                    // //BabySwap
-                    // Dex::new(
-                    //     H160::from_str("0x86407bEa2078ea5f5EB5A52B2caA963bC1F889Da").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     7911393,
-                    // ),
-                    // //Sushiswap
-                    // Dex::new(
-                    //     H160::from_str("0xc35DADB65012eC5796536bD9864eD8773aBc74C4").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     5205069,
-                    // ),
-                    // //BabyDogeSwap
-                    // Dex::new(
-                    //     H160::from_str("0x4693B62E5fc9c0a45F89D62e6300a03C85f43137").unwrap(),
-                    //     DexVariant::UniswapV2,
-                    //     18973559,
-                    // ),
-                ];
+                config.dexes = vec![];
+                todo!("Dexes not yet implemented for this chain.")
             }
             Chain::Cronos => {
                 todo!("Cronos configuration not yet implemented");

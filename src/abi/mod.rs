@@ -2,7 +2,8 @@ use ethers::prelude::abigen;
 
 abigen!(
     ISandboxLimitOrderRouter,
-    "./src/abi/sandbox_limit_order_router_abi.json"
+    "./src/abi/SandboxLimitOrderRouterABI.json";
+
 );
 
 abigen!(
@@ -24,14 +25,14 @@ abigen!(
         event OrderExecutionCreditUpdated(bytes32 orderId, uint128 newExecutionCredit)
         event OrderPartialFilled(bytes32 indexed orderId, uint128 indexed amountInRemaining, uint128 indexed amountOutRemaining, uint128 executionCreditRemaining, uint128 feeRemaining)
         function getSandboxLimitOrderById(bytes32 orderId) external view returns (uint32, uint32, uint128, uint128, uint128, uint128, uint128, address, address, address, bytes32)
-        function cancelOrder(bytes32 orderId) external;
+        function validateAndCancelOrder(bytes32 orderId) external returns (bool success)
         function refreshOrder(bytes32[] calldata orderIds) external;
     ]"#;
 
     ILimitOrderBook,
     r#"[
-        function getOrderById(bytes32 orderId) external view returns (bool, bool, bool, uint32, uint32, uint24, uint24, uint16, uint128, uint128, uint128, uint128, address, address, address, bytes32) 
-        function cancelOrder(bytes32 orderId) external;
+        function getLimitOrderById(bytes32 orderId) external view returns (bool, bool, bool, uint32, uint32, uint24, uint24, uint16, uint128, uint128, uint128, uint128, address, address, address, bytes32) 
+        function validateAndCancelOrder(bytes32 orderId) external returns (bool success)
     ]"#;
 
     ILimitOrderRouter,
@@ -69,6 +70,11 @@ abigen!(
         function slot0() external view returns (uint160, int24, uint16, uint16, uint16, uint8, bool)
         function fee() external view returns (uint24)
         event Swap(address sender, address recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)
+        ]"#;
+
+    IUniswapV3Quoter,
+    r#"[
+        function quoteExactInputSingle(address tokenIn, address tokenOut,uint24 fee, uint256 amountIn, uint160 sqrtPriceLimitX96) external returns (uint256 amountOut)
         ]"#;
 
     IErc20,

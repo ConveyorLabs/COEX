@@ -104,7 +104,7 @@ impl State {
         }
         //Add order as affected by a to b market if the order is a sandbox order
         match order {
-            Order::SandboxLimitOrder(sandbox_limit_order) => {
+            Order::SandboxLimitOrder(_sandbox_limit_order) => {
                 let a_to_b_market_id = markets::get_market_id(token_in, token_out);
                 if self.markets.get(&weth_to_b_market_id).is_some() {
                     self.market_to_affected_orders
@@ -164,7 +164,7 @@ impl State {
 
             //Remove order as affected by a to b market if the order is a sandbox order
             match order {
-                Order::SandboxLimitOrder(sandbox_limit_order) => {
+                Order::SandboxLimitOrder(_sandbox_limit_order) => {
                     let a_to_b_market_id = markets::get_market_id(token_in, token_out);
                     if let Some(affected_orders) =
                         self.market_to_affected_orders.get_mut(&a_to_b_market_id)

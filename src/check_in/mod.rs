@@ -1,14 +1,12 @@
 use std::{sync::Arc, time::Duration};
 
-use cfmms::pool::Pool;
 use ethers::{
-    abi::ethabi::Bytes,
     providers::Middleware,
     signers::LocalWallet,
     types::{H160, U256},
 };
 
-use crate::{abi, config::Chain, error::ExecutorError, transaction_utils};
+use crate::{abi, config::Chain, error::ExecutorError, transactions};
 
 pub const CHECK_IN_WAIT_TIME: u64 = 43200;
 
@@ -34,7 +32,7 @@ pub async fn spawn_check_in_service<M: 'static + Middleware>(
             check_in_address,
             wallet_address,
             wallet_key.clone(),
-            chain.clone(),
+            chain,
             middleware.clone(),
         )
         .await
@@ -71,7 +69,7 @@ pub async fn initial_check_in<M: Middleware>(
         tracing::info!("Check in time elapsed, checking in");
 
         //submit a check in tx with retries
-        let tx = transaction_utils::fill_and_simulate_transaction(
+        let tx = transactions::fill_and_simulate_transaction(
             abi::ICONVEYOREXECUTOR_ABI
                 .function("checkIn")
                 .unwrap()
@@ -80,18 +78,14 @@ pub async fn initial_check_in<M: Middleware>(
                 .into(),
             check_in_address,
             wallet_address,
-            chain.chain_id(),
+            chain,
             middleware.clone(),
         )
         .await?;
 
-        let tx_hash = transaction_utils::sign_and_send_transaction(
-            tx,
-            &wallet_key,
-            &chain,
-            middleware.clone(),
-        )
-        .await?;
+        let tx_hash =
+            transactions::sign_and_send_transaction(tx, &wallet_key, &chain, middleware.clone())
+                .await?;
 
         tracing::info!("Pending check in tx: {:?}", tx_hash);
 
@@ -132,7 +126,7 @@ pub async fn check_in<M: Middleware>(
         tracing::info!("Check in time elapsed, checking in");
 
         //submit a check in tx with retries
-        let tx = transaction_utils::fill_and_simulate_transaction(
+        let tx = transactions::fill_and_simulate_transaction(
             abi::ICONVEYOREXECUTOR_ABI
                 .function("checkIn")
                 .unwrap()
@@ -141,18 +135,14 @@ pub async fn check_in<M: Middleware>(
                 .into(),
             check_in_address,
             wallet_address,
-            chain.chain_id(),
+            chain,
             middleware.clone(),
         )
         .await?;
 
-        let tx_hash = transaction_utils::sign_and_send_transaction(
-            tx,
-            &wallet_key,
-            &chain,
-            middleware.clone(),
-        )
-        .await?;
+        let tx_hash =
+            transactions::sign_and_send_transaction(tx, &wallet_key, &chain, middleware.clone())
+                .await?;
 
         tracing::info!("Pending check in tx: {:?}", tx_hash);
 

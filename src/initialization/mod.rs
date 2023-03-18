@@ -1,29 +1,21 @@
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
-
-use cfmms::{dex::Dex, pool::Pool};
-use ethers::{
-    abi::RawLog,
-    prelude::{gas_escalator::GasEscalatorMiddleware, EthLogDecode, NonceManagerMiddleware},
-    providers::{Http, Middleware, Provider, Ws},
-    types::{BlockNumber, Filter, ValueOrArray, H160, H256, U256},
-};
-use tokio::sync::mpsc::Sender;
-use tracing::info;
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use crate::{
     abi::{self, OrderPlacedFilter},
-    cancellation, check_in, config,
+    config,
     error::ExecutorError,
-    execution,
-    markets::{self, get_market_id, Market},
     order::{self},
-    refresh, state, transaction_utils,
+    state, transactions,
 };
+
+use ethers::{
+    abi::RawLog,
+    prelude::{EthLogDecode, NonceManagerMiddleware},
+    providers::{Http, Middleware, Provider},
+    types::{BlockNumber, Filter, ValueOrArray, H160, H256},
+};
+
+use tokio::sync::mpsc::Sender;
 
 pub async fn initialize_coex<M: Middleware>() -> Result<
     (
@@ -31,7 +23,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         state::State,
         Arc<Sender<(H256, Vec<H256>)>>,
         String,
-        Arc<NonceManagerMiddleware<ethers::providers::Provider<Http>>>,
+        Arc<NonceManagerMiddleware<Provider<Http>>>,
     ),
     ExecutorError<M>,
 > {
@@ -42,10 +34,8 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         .expect("Could not initialize HTTP provider");
     let stream_provider_endpoint = configuration.ws_endpoint.to_owned();
 
-    let middleware = Arc::new(NonceManagerMiddleware::new(
-        provider.clone(),
-        configuration.wallet_address,
-    ));
+    let nonce_manager = NonceManagerMiddleware::new(provider.clone(), configuration.wallet_address);
+    let middleware = Arc::new(nonce_manager);
 
     //Initialize the markets and order structures
     let state = initialize_state(&configuration, middleware.clone())
@@ -53,7 +43,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         .expect("Could not initialize state"); //TODO: bubble up this error, just using expect for fast development
 
     let pending_transactions_sender = Arc::new(
-        transaction_utils::initialize_pending_transaction_handler(
+        transactions::initialize_pending_transaction_handler(
             state.pending_order_ids.clone(),
             Duration::new(0, 10000000), //10 ms
             middleware.clone(),
@@ -100,7 +90,7 @@ async fn initialize_state<M: 'static + Middleware>(
             .await?;
 
         //Add order to market to affected orders
-        state.add_order_to_market_to_affected_orders(&order, configuration.weth_address);
+        state.add_order_to_market_to_affected_orders(order, configuration.weth_address);
     }
 
     tracing::info!("Markets initialized");
@@ -119,7 +109,7 @@ pub async fn initialize_active_orders<M: Middleware>(
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
-    let step = 100000;
+    let step = 10000;
 
     //Unwrap can be used here because the creation block was verified within `Dex::new()`
     let from_block = protocol_creation_block
@@ -175,7 +165,7 @@ pub async fn initialize_active_orders<M: Middleware>(
                     .await
                     {
                         Ok(order) => order,
-                        Err(err) => {
+                        Err(_err) => {
                             //TODO: match contract error, panic on provider error
                             continue;
                         }
@@ -196,7 +186,7 @@ pub async fn initialize_active_orders<M: Middleware>(
                     .await
                     {
                         Ok(order) => order,
-                        Err(err) => {
+                        Err(_err) => {
                             //TODO: match contract error, panic on provider error
                             continue;
                         }

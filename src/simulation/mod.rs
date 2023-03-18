@@ -1,12 +1,12 @@
 use std::{
     borrow::BorrowMut,
     collections::{HashMap, HashSet},
-    ops::{AddAssign, BitAnd, Div, Shl, ShlAssign, Shr, ShrAssign},
+    ops::{BitAnd, Div, Shl, ShlAssign, Shr, ShrAssign},
     str::FromStr,
     sync::Arc,
 };
 
-use cfmms::pool::{self, Pool, UniswapV2Pool};
+use cfmms::pool::Pool;
 use ethers::{
     abi::Token,
     providers::Middleware,
@@ -18,12 +18,12 @@ use crate::{
     abi,
     error::ExecutorError,
     execution::{self},
-    order::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, Order},
+    order::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder},
     routing,
 };
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
-pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
+pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
     sandbox_limit_orders: HashMap<H256, &SandboxLimitOrder>,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
@@ -45,7 +45,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
         let middleware = middleware.clone();
 
         //Check if the order can execute within the updated simulated markets
-        if order.can_execute(&simulated_markets, weth) {
+        if order.can_execute(simulated_markets, weth) {
             let (mut amounts_in, mut amounts_out, mut route) =
                 match routing::find_best_a_to_b_route(
                     order.token_in,
@@ -63,11 +63,11 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                     Err(_) => (vec![], vec![], vec![]),
                 };
 
-            match routing::find_best_a_to_weth_to_b_route(
+            match routing::find_best_a_to_x_to_b_route(
                 order.token_in,
+                weth,
                 order.token_out,
                 U256::from(order.amount_in_remaining),
-                weth,
                 simulated_markets,
                 middleware.clone(),
             )
@@ -100,11 +100,8 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
             //:: If that amount out is greater than or equal to the amount out min of the order update the pools along the route and add the order Id to the order group read for execution
             if last_amount_out.as_u128() >= order.amount_out_remaining {
                 if order.token_out == weth {
-                    println!("out is weth");
                     if last_amount_out.as_u128() - order.amount_out_remaining > order.fee_remaining
                     {
-                        println!("can fill with fee");
-
                         routing::update_pools_along_route(
                             order.token_in,
                             U256::from(order.amount_in_remaining),
@@ -153,7 +150,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(order.owner),
                                     Token::Uint(amount_due_to_owner),
                                 ])
@@ -166,7 +163,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(executor_address),
                                     Token::Uint(U256::from(order.fee_remaining)),
                                 ])
@@ -181,13 +178,13 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                                 abi::IERC20_ABI
                                     .function("transfer")
                                     .unwrap()
-                                    .encode_input(&vec![
+                                    .encode_input(&[
                                         Token::Address(wallet_address),
-                                        Token::Uint(U256::from(
+                                        Token::Uint(
                                             last_amount_out
                                                 - (U256::from(order.fee_remaining)
                                                     + amount_due_to_owner),
-                                        )),
+                                        ),
                                     ])
                                     .expect("Could not encode Weth transfer inputs"),
                             ));
@@ -255,7 +252,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(order.owner),
                                     Token::Uint(amount_due_to_owner),
                                 ])
@@ -269,7 +266,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                                 abi::IERC20_ABI
                                     .function("transfer")
                                     .unwrap()
-                                    .encode_input(&vec![
+                                    .encode_input(&[
                                         Token::Address(weth_exit_pool.address()),
                                         Token::Uint(amount_in_to_weth_exit),
                                     ])
@@ -293,7 +290,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(executor_address),
                                     Token::Uint(U256::from(order.fee_remaining)),
                                 ])
@@ -306,11 +303,9 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(wallet_address),
-                                    Token::Uint(U256::from(
-                                        weth_exit_amount_out - order.fee_remaining,
-                                    )),
+                                    Token::Uint(weth_exit_amount_out - order.fee_remaining),
                                 ])
                                 .expect("Could not encode Weth transfer inputs"),
                         ));
@@ -492,7 +487,7 @@ fn sort_sandbox_limit_orders_by_amount_in(
 }
 
 //Takes a hashmap of market to sandbox limit orders that are ready to execute
-pub async fn simulate_and_batch_limit_orders<M: Middleware>(
+pub async fn simulate_and_batch_limit_orders<M: 'static + Middleware>(
     limit_orders: HashMap<H256, &LimitOrder>,
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     weth: H160,
@@ -517,12 +512,12 @@ pub async fn simulate_and_batch_limit_orders<M: Middleware>(
                 order_ids_in_calldata.insert(order.order_id);
 
                 //Check if the order can execute within the updated simulated markets
-                if order.can_execute(order.buy, &simulated_markets, weth) {
-                    let (_, amount_out, route) = routing::find_best_a_to_weth_to_b_route(
+                if order.can_execute(order.buy, simulated_markets, weth) {
+                    let (_, amount_out, route) = routing::find_best_a_to_x_to_b_route(
                         order.token_in,
+                        weth,
                         order.token_out,
                         U256::from(order.quantity),
-                        weth,
                         simulated_markets,
                         middleware.clone(),
                     )

@@ -1,27 +1,16 @@
 pub mod limit_order;
 pub mod sandbox_limit_order;
 
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
-use cfmms::{errors::ArithmeticError, pool::Pool};
+use cfmms::pool::Pool;
 use ethers::{
-    abi::RawLog,
-    prelude::EthLogDecode,
     providers::Middleware,
-    types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U256},
+    types::{H160, H256, U256},
 };
-use tracing::info;
 
 use crate::{
-    abi::{
-        self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFilledFilter,
-        OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
-    },
+    abi::{self},
     error::ExecutorError,
     order::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder},
 };
@@ -158,7 +147,7 @@ pub async fn get_remote_order<M: Middleware>(
             let lob = abi::ILimitOrderBook::new(order_book_address, middleware);
 
             let return_data = lob
-                .get_order_by_id(order_id.to_fixed_bytes())
+                .get_limit_order_by_id(order_id.to_fixed_bytes())
                 .call()
                 .await?;
 
