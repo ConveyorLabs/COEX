@@ -97,6 +97,7 @@ pub async fn execute_limit_order_groups<M: Middleware>(
             )
             .await
             {
+                dbg!(tx.clone());
                 let pending_tx_hash = transactions::sign_and_send_transaction(
                     tx,
                     &configuration.wallet_key,

@@ -34,7 +34,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         state::State,
         Arc<Sender<(H256, Vec<H256>)>>,
         String,
-        Arc<NonceManagerMiddleware<Provider<Http>>>,
+        Arc<NonceManagerMiddleware<GasEscalatorMiddleware<Provider<Http>, GeometricGasPrice>>>,
     ),
     ExecutorError<M>,
 > {
@@ -45,7 +45,10 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         .expect("Could not initialize HTTP provider");
     let stream_provider_endpoint = configuration.ws_endpoint.to_owned();
 
-    let nonce_manager = NonceManagerMiddleware::new(provider.clone(), configuration.wallet_address);
+    let geometric_gas_price = GeometricGasPrice::new::<u32, u64>(2.0, 10_u64, None);
+    let gas_escalator =
+        GasEscalatorMiddleware::new(provider.clone(), geometric_gas_price, Frequency::PerBlock);
+    let nonce_manager = NonceManagerMiddleware::new(gas_escalator, configuration.wallet_address);
     let middleware = Arc::new(nonce_manager);
 
     //Initialize the markets and order structures
@@ -120,7 +123,7 @@ pub async fn initialize_active_orders<M: Middleware>(
     let mut active_orders = HashMap::new();
 
     //Define the step for searching a range of blocks for pair created events
-    let step = 10000;
+    let step = 100000;
 
     //Unwrap can be used here because the creation block was verified within `Dex::new()`
     let from_block = protocol_creation_block

@@ -3,7 +3,6 @@ use coex::error::ExecutorError;
 use coex::initialization::initialize_coex;
 use coex::{cancellation, check_in, state};
 use coex::{config, events, execution, refresh, traces};
-use ethers::prelude::k256::ecdsa::SigningKey;
 use ethers::prelude::NonceManagerMiddleware;
 use ethers::providers::{Http, Provider, Ws};
 use std::collections::HashSet;
@@ -13,8 +12,6 @@ use std::sync::Arc;
 use ethers::providers::Middleware;
 use ethers::providers::StreamExt;
 use ethers::types::{H256, U256, U64};
-
-//TODO: move this to bin
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -28,10 +25,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .unwrap();
 
     let current_block_number = middleware.get_block_number().await?;
-    let current_block = middleware
-        .get_block(current_block_number)
-        .await?
-        .expect("Could not get the current block");
 
     check_in::spawn_check_in_service(
         configuration.executor_address,
@@ -41,30 +34,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         middleware.clone(),
     )
     .await?;
-
-    //Check orders for cancellation
-    if configuration.order_cancellation {
-        cancellation::check_orders_for_cancellation(
-            &configuration,
-            &state,
-            current_block.timestamp,
-            pending_transactions_sender.clone(),
-            middleware.clone(),
-        )
-        .await?;
-    }
-
-    //Check orders that are ready to be refreshed and send a refresh tx
-    if configuration.order_refresh {
-        refresh::check_orders_for_refresh(
-            &configuration,
-            &state,
-            current_block.timestamp,
-            pending_transactions_sender.clone(),
-            middleware.clone(),
-        )
-        .await?;
-    }
 
     //NOTE: TODO: maybe sync before execution to update markets from any missed logs during other parts of initialization
     info!("Checking for orders at execution price...");

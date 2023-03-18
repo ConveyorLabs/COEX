@@ -315,14 +315,6 @@ pub async fn fill_and_simulate_eip1559_transaction<M: Middleware>(
         .map_err(ExecutorError::MiddlewareError)?;
 
     tx.set_gas(tx.gas().unwrap() * 150 / 100);
-    // tx.set_nonce(
-    //     middleware
-    //         .get_transaction_count(from, None)
-    //         .await
-    //         .expect("bad"),
-    // );
-
-    // tx.set_gas(350000);
 
     middleware
         .call(&tx, None)
