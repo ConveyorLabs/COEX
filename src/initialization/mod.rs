@@ -34,7 +34,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         state::State,
         Arc<Sender<(H256, Vec<H256>)>>,
         String,
-        Arc<NonceManagerMiddleware<GasEscalatorMiddleware<Provider<Http>, GeometricGasPrice>>>,
+        Arc<NonceManagerMiddleware<Provider<Http>>>,
     ),
     ExecutorError<M>,
 > {
@@ -45,10 +45,7 @@ pub async fn initialize_coex<M: Middleware>() -> Result<
         .expect("Could not initialize HTTP provider");
     let stream_provider_endpoint = configuration.ws_endpoint.to_owned();
 
-    let geometric_gas_price = GeometricGasPrice::new::<u32, u64>(2.0, 10_u64, None);
-    let gas_escalator =
-        GasEscalatorMiddleware::new(provider.clone(), geometric_gas_price, Frequency::PerBlock);
-    let nonce_manager = NonceManagerMiddleware::new(gas_escalator, configuration.wallet_address);
+    let nonce_manager = NonceManagerMiddleware::new(provider.clone(), configuration.wallet_address);
     let middleware = Arc::new(nonce_manager);
 
     //Initialize the markets and order structures
