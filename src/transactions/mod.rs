@@ -151,7 +151,7 @@ pub async fn construct_and_simulate_cancel_order_transaction<M: Middleware>(
 ) -> Result<TypedTransaction, ExecutorError<M>> {
     let (to_address, calldata) = match order_variant {
         OrderVariant::SandboxLimitOrder => (
-            configuration.sandbox_limit_order_router,
+            configuration.sandbox_limit_order_book,
             abi::ISandboxLimitOrderBook::new(
                 configuration.sandbox_limit_order_book,
                 middleware.clone(),
