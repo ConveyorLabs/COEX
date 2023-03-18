@@ -91,8 +91,6 @@ pub async fn initialize_pending_transaction_handler<M: 'static + Middleware>(
     tx
 }
 
-//TODO: change this to construct execution transaction, pass in calldata and execution address,
-//TODO: this way we can simulate the tx with the same contract instance that made the calldata
 //Construct a limit order execution transaction
 pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
     configuration: &config::Config,
@@ -116,8 +114,6 @@ pub async fn construct_and_simulate_lo_execution_transaction<M: Middleware>(
     Ok(tx)
 }
 
-//TODO: change this to construct execution transaction, pass in calldata and execution address,
-//TODO: this way we can simulate the tx with the same contract instance that made the calldata
 //Construct a limit order execution transaction
 pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
     configuration: &config::Config,
@@ -146,8 +142,6 @@ pub async fn construct_and_simulate_slo_execution_transaction<M: Middleware>(
     Ok(tx)
 }
 
-//TODO: change this to construct execution transaction, pass in calldata and execution address,
-//TODO: this way we can simulate the tx with the same contract instance that made the calldata
 //Construct a limit order execution transaction
 pub async fn construct_and_simulate_cancel_order_transaction<M: Middleware>(
     configuration: &config::Config,
@@ -155,7 +149,6 @@ pub async fn construct_and_simulate_cancel_order_transaction<M: Middleware>(
     order_variant: OrderVariant,
     middleware: Arc<M>,
 ) -> Result<TypedTransaction, ExecutorError<M>> {
-    dbg!("getting here11", order_id, order_variant);
     let (to_address, calldata) = match order_variant {
         OrderVariant::SandboxLimitOrder => (
             configuration.sandbox_limit_order_router,
@@ -189,8 +182,6 @@ pub async fn construct_and_simulate_cancel_order_transaction<M: Middleware>(
     Ok(tx)
 }
 
-//TODO: change this to construct execution transaction, pass in calldata and execution address,
-//TODO: this way we can simulate the tx with the same contract instance that made the calldata
 //Construct a limit order execution transaction
 pub async fn construct_and_simulate_refresh_order_transaction<M: Middleware>(
     configuration: &config::Config,

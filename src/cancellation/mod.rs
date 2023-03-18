@@ -38,28 +38,28 @@ pub async fn check_orders_for_cancellation<M: Middleware>(
                 Order::LimitOrder(_) => OrderVariant::LimitOrder,
                 Order::SandboxLimitOrder(_) => OrderVariant::SandboxLimitOrder,
             };
-
-            let tx = transactions::construct_and_simulate_cancel_order_transaction(
+            if let Ok(tx) = transactions::construct_and_simulate_cancel_order_transaction(
                 configuration,
                 *order_id,
                 order_variant,
                 middleware.clone(),
             )
-            .await?;
-
-            let pending_tx_hash = transactions::sign_and_send_transaction(
-                tx,
-                &configuration.wallet_key,
-                &configuration.chain,
-                middleware.clone(),
-            )
-            .await?;
-
-            tracing::info!("Pending order cancellation tx: {:?}", pending_tx_hash);
-
-            pending_transactions_sender
-                .send((pending_tx_hash, vec![*order_id]))
+            .await
+            {
+                let pending_tx_hash = transactions::sign_and_send_transaction(
+                    tx,
+                    &configuration.wallet_key,
+                    &configuration.chain,
+                    middleware.clone(),
+                )
                 .await?;
+
+                tracing::info!("Pending order cancellation tx: {:?}", pending_tx_hash);
+
+                pending_transactions_sender
+                    .send((pending_tx_hash, vec![*order_id]))
+                    .await?;
+            }
         }
     }
 
