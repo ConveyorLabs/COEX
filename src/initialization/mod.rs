@@ -1,32 +1,21 @@
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use crate::{
     abi::{self, OrderPlacedFilter},
-    cancellation, check_in, config,
+    config,
     error::ExecutorError,
-    execution,
-    markets::{self, get_market_id, Market},
     order::{self},
-    refresh, state, transactions,
+    state, transactions,
 };
-use cfmms::{dex::Dex, pool::Pool};
+
 use ethers::{
     abi::RawLog,
-    prelude::{
-        gas_escalator::{self, GasEscalatorMiddleware, LinearGasPrice},
-        EthLogDecode, NonceManagerMiddleware,
-    },
-    providers::{Http, Middleware, Provider, Ws},
-    types::{BlockNumber, Filter, ValueOrArray, H160, H256, U256},
+    prelude::{EthLogDecode, NonceManagerMiddleware},
+    providers::{Http, Middleware, Provider},
+    types::{BlockNumber, Filter, ValueOrArray, H160, H256},
 };
-use ethers::{middleware::gas_escalator::*, prelude::nonce_manager};
+
 use tokio::sync::mpsc::Sender;
-use tracing::info;
 
 pub async fn initialize_coex<M: Middleware>() -> Result<
     (
@@ -101,7 +90,7 @@ async fn initialize_state<M: 'static + Middleware>(
             .await?;
 
         //Add order to market to affected orders
-        state.add_order_to_market_to_affected_orders(&order, configuration.weth_address);
+        state.add_order_to_market_to_affected_orders(order, configuration.weth_address);
     }
 
     tracing::info!("Markets initialized");
@@ -176,7 +165,7 @@ pub async fn initialize_active_orders<M: Middleware>(
                     .await
                     {
                         Ok(order) => order,
-                        Err(err) => {
+                        Err(_err) => {
                             //TODO: match contract error, panic on provider error
                             continue;
                         }
@@ -197,7 +186,7 @@ pub async fn initialize_active_orders<M: Middleware>(
                     .await
                     {
                         Ok(order) => order,
-                        Err(err) => {
+                        Err(_err) => {
                             //TODO: match contract error, panic on provider error
                             continue;
                         }

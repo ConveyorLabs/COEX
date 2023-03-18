@@ -1,15 +1,9 @@
-use std::{
-    borrow::BorrowMut,
-    collections::{HashMap, HashSet},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
-use cfmms::pool::{self, Pool, UniswapV2Pool};
+use cfmms::pool::{Pool, UniswapV2Pool};
 use ethers::{
     providers::Middleware,
-    types::{H160, H256, U256},
-    utils::keccak256,
+    types::{H160, U256},
 };
 use futures::future::join_all;
 
@@ -60,7 +54,7 @@ pub async fn find_best_a_to_b_route<M: 'static + Middleware>(
     if let Some(a_to_b_market) = simulated_markets.get(&markets::get_market_id(token_in, token_out))
     {
         Ok(find_best_route_across_markets(
-            U256::from(amount_in),
+            amount_in,
             token_in,
             vec![a_to_b_market],
             middleware.clone(),

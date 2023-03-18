@@ -4,29 +4,26 @@ pub mod orders;
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
-    time::Duration,
 };
 
 use cfmms::{dex::Dex, pool::Pool};
 use ethers::{
     abi::{decode, ParamType, RawLog},
-    prelude::{EthLogDecode, NonceManagerMiddleware},
-    providers::{Http, Middleware, Provider, Ws},
-    types::{BlockNumber, Filter, Log, ValueOrArray, H160, H256, U256},
+    prelude::EthLogDecode,
+    providers::Middleware,
+    types::{Log, H160, H256, U256},
 };
 use tracing::info;
 
 use crate::{
     abi::{
-        self, OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFilledFilter,
+        OrderCanceledFilter, OrderExecutionCreditUpdatedFilter, OrderFilledFilter,
         OrderPartialFilledFilter, OrderPlacedFilter, OrderRefreshedFilter, OrderUpdatedFilter,
     },
     error::ExecutorError,
     events::BeltEvent,
-    execution,
     markets::Market,
     order::OrderVariant,
-    transactions,
 };
 
 #[derive(Debug)]

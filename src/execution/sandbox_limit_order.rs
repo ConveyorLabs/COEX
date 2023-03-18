@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use cfmms::pool::Pool;
 use ethers::abi::ethabi::Bytes;
-use ethers::abi::{AbiEncode, Token};
+use ethers::abi::Token;
 use ethers::providers::Middleware;
 use ethers::types::{H160, H256, I256, U256};
 
@@ -47,7 +47,7 @@ impl SandboxLimitOrderExecutionBundle {
             order_id_bundles,
             fill_amounts: self.fill_amounts,
             transfer_addresses: self.transfer_addresses,
-            calls: calls,
+            calls,
         }
     }
 }
@@ -209,11 +209,7 @@ impl SandboxLimitOrderExecutionBundle {
         from: H160,
         pool: &cfmms::pool::UniswapV3Pool,
     ) {
-        let zero_for_one = if pool.token_a == token_in {
-            true
-        } else {
-            false
-        };
+        let zero_for_one = pool.token_a == token_in;
 
         let sqrt_price_limit_x_96 = if zero_for_one {
             uniswap_v3_math::tick_math::MIN_SQRT_RATIO + 1
@@ -221,7 +217,7 @@ impl SandboxLimitOrderExecutionBundle {
             uniswap_v3_math::tick_math::MAX_SQRT_RATIO - 1
         };
 
-        let calldata = ethers::abi::encode(&vec![
+        let calldata = ethers::abi::encode(&[
             Token::Bool(zero_for_one),
             Token::Address(token_in),
             Token::Address(from),

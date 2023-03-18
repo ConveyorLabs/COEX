@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use cfmms::dex::{Dex, DexVariant};
+use cfmms::dex::Dex;
 use ethers::{
     abi::Event,
     types::{Filter, Log, H256},

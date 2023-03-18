@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, str::FromStr, sync::Arc, vec};
+use std::{fs::read_to_string, str::FromStr, vec};
 
 use ethers::{
     signers::LocalWallet,

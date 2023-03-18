@@ -1,12 +1,12 @@
 use std::{
     borrow::BorrowMut,
     collections::{HashMap, HashSet},
-    ops::{AddAssign, BitAnd, Div, Shl, ShlAssign, Shr, ShrAssign},
+    ops::{BitAnd, Div, Shl, ShlAssign, Shr, ShrAssign},
     str::FromStr,
     sync::Arc,
 };
 
-use cfmms::pool::{self, Pool, UniswapV2Pool};
+use cfmms::pool::Pool;
 use ethers::{
     abi::Token,
     providers::Middleware,
@@ -18,7 +18,7 @@ use crate::{
     abi,
     error::ExecutorError,
     execution::{self},
-    order::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder, Order},
+    order::{limit_order::LimitOrder, sandbox_limit_order::SandboxLimitOrder},
     routing,
 };
 
@@ -45,7 +45,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
         let middleware = middleware.clone();
 
         //Check if the order can execute within the updated simulated markets
-        if order.can_execute(&simulated_markets, weth) {
+        if order.can_execute(simulated_markets, weth) {
             let (mut amounts_in, mut amounts_out, mut route) =
                 match routing::find_best_a_to_b_route(
                     order.token_in,
@@ -150,7 +150,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(order.owner),
                                     Token::Uint(amount_due_to_owner),
                                 ])
@@ -163,7 +163,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(executor_address),
                                     Token::Uint(U256::from(order.fee_remaining)),
                                 ])
@@ -178,13 +178,13 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
                                 abi::IERC20_ABI
                                     .function("transfer")
                                     .unwrap()
-                                    .encode_input(&vec![
+                                    .encode_input(&[
                                         Token::Address(wallet_address),
-                                        Token::Uint(U256::from(
+                                        Token::Uint(
                                             last_amount_out
                                                 - (U256::from(order.fee_remaining)
                                                     + amount_due_to_owner),
-                                        )),
+                                        ),
                                     ])
                                     .expect("Could not encode Weth transfer inputs"),
                             ));
@@ -252,7 +252,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(order.owner),
                                     Token::Uint(amount_due_to_owner),
                                 ])
@@ -266,7 +266,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
                                 abi::IERC20_ABI
                                     .function("transfer")
                                     .unwrap()
-                                    .encode_input(&vec![
+                                    .encode_input(&[
                                         Token::Address(weth_exit_pool.address()),
                                         Token::Uint(amount_in_to_weth_exit),
                                     ])
@@ -290,7 +290,7 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(executor_address),
                                     Token::Uint(U256::from(order.fee_remaining)),
                                 ])
@@ -303,11 +303,9 @@ pub async fn simulate_and_batch_sandbox_limit_orders<M: 'static + Middleware>(
                             abi::IERC20_ABI
                                 .function("transfer")
                                 .unwrap()
-                                .encode_input(&vec![
+                                .encode_input(&[
                                     Token::Address(wallet_address),
-                                    Token::Uint(U256::from(
-                                        weth_exit_amount_out - order.fee_remaining,
-                                    )),
+                                    Token::Uint(weth_exit_amount_out - order.fee_remaining),
                                 ])
                                 .expect("Could not encode Weth transfer inputs"),
                         ));
@@ -514,7 +512,7 @@ pub async fn simulate_and_batch_limit_orders<M: 'static + Middleware>(
                 order_ids_in_calldata.insert(order.order_id);
 
                 //Check if the order can execute within the updated simulated markets
-                if order.can_execute(order.buy, &simulated_markets, weth) {
+                if order.can_execute(order.buy, simulated_markets, weth) {
                     let (_, amount_out, route) = routing::find_best_a_to_x_to_b_route(
                         order.token_in,
                         weth,

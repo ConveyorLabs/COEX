@@ -2,11 +2,10 @@ use std::sync::Arc;
 
 use ethers::{
     providers::Middleware,
-    types::{H160, H256, U256},
+    types::{H256, U256},
 };
 
 use crate::{
-    abi::{self, ISandboxLimitOrderBook},
     config::Config,
     error::ExecutorError,
     order::{Order, OrderVariant},
