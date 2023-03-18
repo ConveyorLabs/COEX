@@ -40,11 +40,6 @@ pub struct State {
 
 impl State {
     pub fn new() -> State {
-        let pool_address_to_market_id: HashMap<H160, U256> = HashMap::new();
-        let market_initialized: HashSet<U256> = HashSet::new();
-        let markets: HashMap<U256, HashMap<H160, Pool>> = HashMap::new();
-        let market_to_affected_orders: HashMap<U256, HashSet<H256>> = HashMap::new();
-
         State {
             active_orders: HashMap::new(),
             pending_order_ids: Arc::new(Mutex::new(HashSet::new())),
@@ -70,6 +65,7 @@ impl State {
             let belt_event = order_event.0;
             let event_log = order_event.1;
 
+            //Check which address the order is from and set the order variant
             let order_variant = if event_log.address == sandbox_limit_order_book_address {
                 OrderVariant::SandboxLimitOrder
             } else if event_log.address == limit_order_book_address {
@@ -78,6 +74,7 @@ impl State {
                 panic!("Unexpected event log address: {:?}", event_log.address);
             };
 
+            //Match the type of event and handle accordingly
             match belt_event {
                 BeltEvent::OrderPlaced => {
                     let order_placed_log: OrderPlacedFilter = EthLogDecode::decode_log(&RawLog {
@@ -164,14 +161,13 @@ impl State {
                     }
                 }
 
-                //TODO: combine this and cancel order
                 BeltEvent::OrderFilled => {
-                    let order_fufilled_log: OrderFilledFilter = EthLogDecode::decode_log(&RawLog {
+                    let order_filled_log: OrderFilledFilter = EthLogDecode::decode_log(&RawLog {
                         topics: event_log.topics,
                         data: event_log.data.to_vec(),
                     })
                     .unwrap();
-                    for order_id in order_fufilled_log.order_ids {
+                    for order_id in order_filled_log.order_ids {
                         info!(
                             "{:?} Order Filled: {:?}",
                             order_variant,
@@ -246,6 +242,7 @@ impl State {
                     );
                 }
 
+                //Handling these to explicitly handle every BeltEvent. We could also use _=> {} but we are explicitly handling them to make sure we are not missing anything
                 BeltEvent::UniswapV2PoolUpdate => {}
                 BeltEvent::UniswapV3PoolUpdate => {}
             }

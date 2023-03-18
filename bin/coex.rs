@@ -17,8 +17,6 @@ use ethers::types::{H256, U256, U64};
 async fn main() -> Result<(), Box<dyn Error>> {
     traces::init_tracing();
 
-    //TODO: get the last block from the initialize coex function before we initialize markets or active orders
-
     let (configuration, state, pending_transactions_sender, stream_provider_endpoint, middleware) =
         initialize_coex::<NonceManagerMiddleware<ethers::providers::Provider<Http>>>()
             .await
@@ -35,7 +33,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )
     .await?;
 
-    //NOTE: TODO: maybe sync before execution to update markets from any missed logs during other parts of initialization
     info!("Checking for orders at execution price...");
     execution::fill_orders_at_execution_price(
         &configuration,
@@ -73,8 +70,8 @@ async fn run_loop<M: 'static + Middleware>(
     mut last_synced_block: U64,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
+    //Initialize a new stream provider and create a new stream of block headers
     let stream_provider = Provider::<Ws>::connect(stream_provider_endpoint.clone()).await?;
-
     let mut block_stream = stream_provider.subscribe_blocks().await?;
     let block_filter = events::initialize_block_filter(&configuration.dexes);
 
@@ -94,6 +91,7 @@ async fn run_loop<M: 'static + Middleware>(
 
             tracing::info!("Checking block {:?}", current_block_number);
 
+            //Sort the events into order events and pool events
             let (order_events, pool_events) = events::sort_events(
                 &middleware
                     .get_logs(

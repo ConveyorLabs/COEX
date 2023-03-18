@@ -229,6 +229,8 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
     pending_transactions_sender: Arc<tokio::sync::mpsc::Sender<(H256, Vec<H256>)>>,
     middleware: Arc<M>,
 ) -> Result<(), ExecutorError<M>> {
+    //Get the simulated markets that the orders at execution price could potentially route through
+    //Additionally, this function collects all of the sandbox orders and limit orders at execution price
     let (mut simulated_markets, slo_at_execution_price, lo_at_execution_price) =
         group_orders_at_execution_price(state, affected_markets, configuration.weth_address);
 
@@ -265,7 +267,6 @@ pub async fn fill_orders_at_execution_price<M: 'static + Middleware>(
         .await?;
     }
 
-    //TODO: rename the limit order execution bundle order groiups to just be execution bundles and return a vec of bundle
     //Execute orders if there are any order groups
     if !limit_order_execution_bundle.order_groups.is_empty() {
         //execute sandbox limit orders

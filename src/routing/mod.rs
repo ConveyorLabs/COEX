@@ -56,7 +56,6 @@ pub async fn find_best_a_to_b_route<M: 'static + Middleware>(
     simulated_markets: &mut HashMap<U256, HashMap<H160, Pool>>,
     middleware: Arc<M>,
 ) -> Result<(Vec<U256>, Vec<U256>, Vec<Pool>), ExecutorError<M>> {
-    //:: First get the a to weth market and then get the weth to b market from the simulated markets
     // Simulate order along route for token_a -> weth -> token_b
     if let Some(a_to_b_market) = simulated_markets.get(&markets::get_market_id(token_in, token_out))
     {
@@ -160,7 +159,7 @@ pub async fn find_best_route_across_markets<M: 'static + Middleware>(
         route.push(best_pool);
 
         //update token in
-        //We dont care about which pool we are using to check the token in for the next market because all of the pools
+        //Get the token out from the market to set as the new token in, we can use any pool in the market since the token out and token in for each pool in the market are the same.
         // Have the same token in and out to be in the same market.
         token_in = match market.values().next().unwrap() {
             Pool::UniswapV2(uniswap_v2_pool) => {
