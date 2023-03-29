@@ -15,17 +15,23 @@ cd COEX
 cargo install --path .
 ```
 
-If you would rather install the COEX from `crates.io` you can simply run the following command in your terminal instead.
+If you would rather install the COEX from `crates.io` you can simply run the following command.
 
 ```bash
 cargo install coex
+```
+
+If you want to run the program directly from the source code.
+
+```bash
+ cargo run -- --config path/to/config.toml
 ```
 
 
 ## Configuration
 
 
-`chain_name`: A string value specifying which blockchain to configure the COEX for. The current options are `"ethereum"`, `"bsc"`,  `"polygon"`, `"optimism"`, `"arbitrum"` and `"bsc"`.
+`chain_name`: A string value specifying which blockchain to configure the COEX for. The current options are `"ethereum"`, `"BSC"`,  `"polygon"`, `"optimism"`, and `"arbitrum"`.
 
 `http_endpoint`: A string value specifying the HTTP endpoint for the specified blockchain. The HTTP endpoint can be from a remote node, local node or even IPC connection.
 
@@ -39,6 +45,8 @@ cargo install coex
 
 `order_refresh`: A boolean value specifying whether your program should listen for orders that are eligible for refresh. If this variable is set to true and the refresh conditions are met, your COEX will refresh orders, receiving a reward for each order refreshed.
 
+`taxed_tokens`: A boolean value specifying whether you want to automate transactions for tokens with a tax mechanic on transfer built into them.
+
 
 Below is an example `coex.toml` file.
 
@@ -50,6 +58,7 @@ wallet_address = "0xc0ffee254729296a45a3885639AC7E10F9d54979"
 private_key = "thisisnotarealprivatekeyafdfd9c3d2f6cedcae59e72dcd697e2a7521b1578140422a4f890"
 order_cancellation = true
 order_refresh = true
+taxed_tokens = true
 ```
 
 ## Running the COEX
