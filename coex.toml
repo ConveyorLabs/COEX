@@ -1,0 +1,8 @@
+chain_name = "BSC"
+http_endpoint = "https://endpoint.example.com/"
+ws_endpoint = "wss://endpoint.example.com/"
+wallet_address = "0xwalletAddress000000000000000000000000000"
+private_key = "notAnActualPrivateKeyec926722c7a392e8f2868734ac5582f6b38fb9b91a81"
+order_cancellation = true
+order_refresh = true
+taxed_tokens = false
