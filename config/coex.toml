@@ -1,8 +1,8 @@
-chain_name = "BSC"
-http_endpoint = "https://endpoint.example.com/"
-ws_endpoint = "wss://endpoint.example.com/"
-wallet_address = "0xwalletAddress000000000000000000000000000"
-private_key = "notAnActualPrivateKeyec926722c7a392e8f2868734ac5582f6b38fb9b91a81"
+chain_name = "ethereum"
+http_endpoint = "https://ethereum-mainnet.xyz"
+ws_endpoint = "wss://ethereum-mainnet.xyz"
+wallet_address = "0xc0ffee254729296a45a3885639AC7E10F9d54979"
+private_key = "thisisnotarealprivatekeyafdfd9c3d2f6cedcae59e72dcd697e2a7521b1578140422a4f890"
 order_cancellation = true
 order_refresh = true
-taxed_tokens = false
+taxed_tokens = true
