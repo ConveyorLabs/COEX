@@ -1,4 +1,4 @@
-chain_name = "test2"
+chain_name = "BSC"
 http_endpoint = "https://endpoint.example.com/"
 ws_endpoint = "wss://endpoint.example.com/"
 wallet_address = "0xwalletAddress000000000000000000000000000"
