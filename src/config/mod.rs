@@ -308,8 +308,57 @@ impl Config {
                     H160::from_str("0x902c9e3202F5191db0B6edF5c038F4941Dfd6641").unwrap();
                 config.protocol_creation_block = BlockNumber::Number(25617424.into());
 
-                config.dexes = vec![];
-                todo!("Dexes not yet implemented for this chain.")
+                config.dexes = vec![
+                    // Pancakeswap v2
+                    Dex::new(
+                        H160::from_str("0xca143ce32fe78f1f7019d7d551a6402fc5350c73").unwrap(),
+                        DexVariant::UniswapV2,
+                        6809737,
+                        Some(250),
+                    ),
+                    // Pancakeswap v1
+                    Dex::new(
+                        H160::from_str("0xBCfCcbde45cE874adCB698cC183deBcF17952812").unwrap(),
+                        DexVariant::UniswapV2,
+                        586851,
+                        Some(250),
+                    ),
+                    // Apeswap
+                    Dex::new(
+                        H160::from_str("0x0841BD0B734E4F5853f0dD8d7Ea041c241fb0Da6").unwrap(),
+                        DexVariant::UniswapV2,
+                        4855901,
+                        Some(200),
+                    ),
+                    // Biswap
+                    Dex::new(
+                        H160::from_str("0x858E3312ed3A876947EA49d572A7C42DE08af7EE").unwrap(),
+                        DexVariant::UniswapV2,
+                        7664646,
+                        Some(100),
+                    ),
+                    // Babyswap
+                    Dex::new(
+                        H160::from_str("0x86407bEa2078ea5f5EB5A52B2caA963bC1F889Da").unwrap(),
+                        DexVariant::UniswapV2,
+                        7911393,
+                        Some(300),
+                    ),
+                     // Sushiswap
+                     Dex::new(
+                        H160::from_str("0xc35DADB65012eC5796536bD9864eD8773aBc74C4").unwrap(),
+                        DexVariant::UniswapV2,
+                        5205069,
+                        Some(300),
+                    ),
+                     // BabyDoge Swap
+                     Dex::new(
+                        H160::from_str("0x4693B62E5fc9c0a45F89D62e6300a03C85f43137").unwrap(),
+                        DexVariant::UniswapV2,
+                        18973559,
+                        Some(300),
+                    ),
+                ];
             }
             Chain::Cronos => {
                 todo!("Cronos configuration not yet implemented");
