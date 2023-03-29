@@ -1,8 +1,0 @@
-chain_name = "test2"
-http_endpoint = "https://endpoint.example.com/"
-ws_endpoint = "wss://endpoint.example.com/"
-wallet_address = "0x019274Abf2c48A279De581A5074a0bAFC5f8cC29A4"
-private_key = "notAnActualPrivateKeyec926722c7a392e8f2868734ac5582f6b38fb9b91a81"
-order_cancellation = true
-order_refresh = true
-taxed_tokens = false
