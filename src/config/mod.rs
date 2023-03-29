@@ -79,7 +79,7 @@ pub enum Chain {
     Polygon,
     Optimism,
     Arbitrum,
-    BSC,
+    Bsc,
     Cronos,
 }
 
@@ -90,7 +90,7 @@ impl Chain {
             "polygon" => Chain::Polygon,
             "optimism" => Chain::Optimism,
             "arbitrum" => Chain::Arbitrum,
-            "bsc" => Chain::BSC,
+            "bsc" => Chain::Bsc,
             "cronos" => Chain::Cronos,
             other => {
                 panic!("Unrecognized `chain_name`: {:?}", other)
@@ -104,7 +104,7 @@ impl Chain {
             Chain::Polygon => 137,
             Chain::Optimism => 420,
             Chain::Arbitrum => 42161,
-            Chain::BSC => 56,
+            Chain::Bsc => 56,
             Chain::Cronos => 25,
         }
     }
@@ -115,7 +115,7 @@ impl Chain {
             Chain::Polygon => true,
             Chain::Optimism => true,
             Chain::Arbitrum => true,
-            Chain::BSC => false,
+            Chain::Bsc => false,
             Chain::Cronos => false,
         }
     }
@@ -173,9 +173,10 @@ impl Config {
                 config.sandbox_limit_order_book =
                     H160::from_str("0x0c9C4CC14E0C487ef44fA23630A69A06b8b75A91").unwrap();
                 config.sandbox_limit_order_router =
-                    H160::from_str("0xA148f5333f8458533f025a456B5772e42fE1597c").unwrap();
+                    H160::from_str("0xCd1BA99aF51CcFcffdEa7F466D6A8D5AF81c5e6E").unwrap();
                 config.executor_address =
                     H160::from_str("0x91AE75251Bc0c6654EF0B327D190877B49b21A2E").unwrap();
+                // limit order book creation block
                 config.protocol_creation_block = BlockNumber::Number(16616601.into());
 
                 config.dexes = vec![
@@ -218,13 +219,14 @@ impl Config {
                     H160::from_str("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270").unwrap();
                 config.weth_decimals = 18;
                 config.limit_order_book =
-                    H160::from_str("0xFBa7315cDF4623C18b9051e1352Db8177d2e5B2C").unwrap();
+                    H160::from_str("0xDe160A8fb9eB7bd2309E5470D9F0dB3Fc6C99E78").unwrap();
                 config.sandbox_limit_order_book =
-                    H160::from_str("0x2A172fA41503480780bB9676c1c75EF52781f6a6").unwrap();
+                    H160::from_str("0x87b6Ba07aAB69AF8f91cc7372bBF589e28F5219d").unwrap();
                 config.sandbox_limit_order_router =
-                    H160::from_str("0xcFCB52B676418Cd734f509812dFfab03D2b896d3").unwrap();
+                    H160::from_str("0x1489c7ccb8da15ac6b4cc7e5548c4f3dd8a04ab9").unwrap();
                 config.executor_address =
                     H160::from_str("0x6d53e6b2c079a98fC0F736dFdE348278FDc91629").unwrap();
+                    // limit order book creation block
                 config.protocol_creation_block = BlockNumber::Number(39229433.into());
 
                 config.dexes = vec![
@@ -266,10 +268,6 @@ impl Config {
                 ];
             }
 
-            Chain::Optimism => {
-                todo!("Optimism configuration not yet implemented");
-            }
-
             Chain::Arbitrum => {
                 config.http_endpoint = coex_toml.http_endpoint;
                 config.ws_endpoint = coex_toml.ws_endpoint;
@@ -285,13 +283,35 @@ impl Config {
                     H160::from_str("0x2841a7f275266cc00a02f2c341d04b9b7bd4b056").unwrap();
                 config.executor_address =
                     H160::from_str("0xe56B8CF0aB1865Dd0C9A1c81C076D2843Eb90B97").unwrap();
+                    // limit order book creation block
                 config.protocol_creation_block = BlockNumber::Number(71267.into());
 
-                config.dexes = vec![];
+                config.dexes = vec![
+                    // Sushiswap
+                    Dex::new(
+                        H160::from_str("0xc35DADB65012eC5796536bD9864eD8773aBc74C4").unwrap(),
+                        DexVariant::UniswapV2,
+                        70,
+                        Some(300),
+                    ),
+                    //UniswapV3
+                    Dex::new(
+                        H160::from_str("0x1F98431c8aD98523631AE4a59f267346ea31F984").unwrap(),
+                        DexVariant::UniswapV3,
+                        35,
+                        None,
+                    ),
+                    // Camelot
+                    Dex::new(
+                        H160::from_str("0x6EcCab422D763aC031210895C81787E87B43A652").unwrap(),
+                        DexVariant::UniswapV2,
+                        20702,
+                        Some(300),
+                    ),
+                ];
 
-                todo!("Dexes not yet implemented for this chain.")
             }
-            Chain::BSC => {
+            Chain::Bsc => {
                 config.http_endpoint = coex_toml.http_endpoint;
                 config.ws_endpoint = coex_toml.ws_endpoint;
                 config.native_token = NativeToken::ETH;
@@ -362,6 +382,9 @@ impl Config {
             }
             Chain::Cronos => {
                 todo!("Cronos configuration not yet implemented");
+            }
+            Chain::Optimism => {
+                todo!("Optimism configuration not yet implemented");
             }
         }
         config
