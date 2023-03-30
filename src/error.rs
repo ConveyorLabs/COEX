@@ -2,6 +2,7 @@ use cfmms::errors::CFMMError;
 use ethers::{
     prelude::{nonce_manager::NonceManagerError, AbiError, ContractError},
     providers::{Middleware, ProviderError},
+    signers::WalletError,
     types::{H160, H256},
 };
 use thiserror::Error;
@@ -36,4 +37,6 @@ where
     MarketDoesNotExistForPair(H160, H160),
     #[error("Eth ABI error")]
     EthABIError(#[from] ethers::abi::Error),
+    #[error("WalletError")]
+    WalletError(#[from] WalletError),
 }

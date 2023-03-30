@@ -6,7 +6,7 @@ use std::{
 
 use ethers::{
     providers::Middleware,
-    signers::LocalWallet,
+    signers::{LocalWallet, WalletError},
     types::{
         transaction::eip2718::TypedTransaction, Bytes, Eip1559TransactionRequest,
         TransactionRequest, H160, H256,
@@ -225,7 +225,7 @@ pub async fn sign_and_send_transaction<M: Middleware>(
     chain: &Chain,
     middleware: Arc<M>,
 ) -> Result<H256, ExecutorError<M>> {
-    let mut signed_tx = raw_signed_transaction(tx.clone(), wallet_key);
+    let mut signed_tx = raw_signed_transaction(tx.clone(), wallet_key)?;
     loop {
         match middleware.send_raw_transaction(signed_tx.clone()).await {
             Ok(pending_tx) => {
@@ -247,7 +247,7 @@ pub async fn sign_and_send_transaction<M: Middleware>(
 
                         tx = eip1559_tx.to_owned().into();
 
-                        signed_tx = raw_signed_transaction(tx.clone(), wallet_key);
+                        signed_tx = raw_signed_transaction(tx.clone(), wallet_key)?;
                     } else {
                         let legacy_tx = tx.as_legacy_mut().unwrap();
                         legacy_tx.gas_price = Some(legacy_tx.gas_price.unwrap() * 150 / 100);
@@ -358,6 +358,9 @@ pub async fn fill_and_simulate_legacy_transaction<M: Middleware>(
     Ok(tx)
 }
 
-pub fn raw_signed_transaction(tx: TypedTransaction, wallet_key: &LocalWallet) -> Bytes {
-    tx.rlp_signed(&wallet_key.sign_transaction_sync(&tx))
+pub fn raw_signed_transaction(
+    tx: TypedTransaction,
+    wallet_key: &LocalWallet,
+) -> Result<Bytes, WalletError> {
+    Ok(tx.rlp_signed(&wallet_key.sign_transaction_sync(&tx)?))
 }
